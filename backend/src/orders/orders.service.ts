@@ -10,6 +10,7 @@ import { Product } from '../products/entities/product.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
+import { OrdersGateway } from './orders.gateway';
 
 export interface FindOrdersFilter {
   status?: OrderStatus;
@@ -22,6 +23,7 @@ export class OrdersService {
     @InjectRepository(Order)
     private readonly repo: Repository<Order>,
     private readonly dataSource: DataSource,
+    private readonly gateway: OrdersGateway,
   ) {}
 
   /**
@@ -78,8 +80,11 @@ export class OrdersService {
       return saved.id;
     });
 
-    // Return the fully-populated order (with items + product details).
-    return this.findOne(orderId);
+    // Return the fully-populated order (with items + product details),
+    // and broadcast it live to the kitchen / barista screens.
+    const order = await this.findOne(orderId);
+    this.gateway.emitOrderCreated(order);
+    return order;
   }
 
   findAll(filter: FindOrdersFilter = {}): Promise<Order[]> {
@@ -115,6 +120,10 @@ export class OrdersService {
     const order = await this.findOne(id);
     order.status = status;
     await this.repo.save(order);
-    return this.findOne(id);
+
+    // Broadcast the status change so every screen stays in sync.
+    const updated = await this.findOne(id);
+    this.gateway.emitOrderUpdated(updated);
+    return updated;
   }
 }
