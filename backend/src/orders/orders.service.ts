@@ -83,8 +83,18 @@ export class OrdersService {
   }
 
   findAll(filter: FindOrdersFilter = {}): Promise<Order[]> {
+    // Build the where clause with only defined keys — TypeORM throws on
+    // undefined values in a where condition.
+    const where: FindOrdersFilter = {};
+    if (filter.status !== undefined) {
+      where.status = filter.status;
+    }
+    if (filter.userId !== undefined) {
+      where.userId = filter.userId;
+    }
+
     return this.repo.find({
-      where: filter,
+      where,
       relations: { items: { product: true }, user: true },
       order: { createdAt: 'DESC' },
     });
