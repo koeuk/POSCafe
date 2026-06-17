@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/koeuk/Projects/POSCAFE/frontend/src/app/page.tsx"],"sourcesContent":["\"use client\";\n\nimport { useRouter } from \"next/navigation\";\nimport { useEffect } from \"react\";\nimport { useAuth } from \"@/lib/auth-context\";\nimport { Role } from \"@/lib/types\";\n\nexport default function Home() {\n  const { user, loading } = useAuth();\n  const router = useRouter();\n\n  useEffect(() => {\n    if (loading) return;\n    if (!user) {\n      router.replace(\"/login\");\n    } else {\n      router.replace(user.role === Role.ADMIN ? \"/admin\" : \"/pos\");\n    }\n  }, [user, loading, router]);\n\n  return (\n    <div className=\"flex min-h-screen items-center justify-center text-sm text-gray-500\">\n      Loading…\n    </div>\n  );\n}\n"],"names":["Home","user","loading","router","replace","role","ADMIN","className"],"mappings":";;;;;AAEA;AACA;AACA;AACA;AALA;;;;;;AAOe,SAASA;IACtB,MAAM,EAAEC,IAAI,EAAEC,OAAO,EAAE,GAAG,IAAA,yIAAO;IACjC,MAAMC,SAAS,IAAA,+IAAS;IAExB,IAAA,kNAAS,EAAC;QACR,IAAID,SAAS;QACb,IAAI,CAACD,MAAM;YACTE,OAAOC,OAAO,CAAC;QACjB,OAAO;YACLD,OAAOC,OAAO,CAACH,KAAKI,IAAI,KAAK,2HAAI,CAACC,KAAK,GAAG,WAAW;QACvD;IACF,GAAG;QAACL;QAAMC;QAASC;KAAO;IAE1B,qBACE,8OAAC;QAAII,WAAU;kBAAsE;;;;;;AAIzF"}}]
+}
