@@ -5,13 +5,7 @@ import { useMemo, useState } from "react";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
 
-export function MenuBrowser({
-  menu,
-  productHrefBase = "/menu",
-}: {
-  menu: MenuCategory[];
-  productHrefBase?: string;
-}) {
+export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<number | "all">("all");
 
@@ -134,7 +128,7 @@ export function MenuBrowser({
                   {cat.products.map((product) => (
                     <Link
                       key={product.id}
-                      href={`${productHrefBase}/${product.id}`}
+                      href={`/menu/`}
                       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100 transition hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <div className="relative aspect-square w-full bg-stone-100">

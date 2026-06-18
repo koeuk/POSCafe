@@ -1,7 +1,7 @@
-import { MenuBrowser } from "@/components/menu-browser";
+import { AdminMenuBrowser } from "@/components/admin-menu-browser";
 import type { MenuCategory } from "@/lib/types";
 
-// Customer-facing menu is always fresh (availability/prices change).
+// Admin menu preview is always fresh (availability/prices change).
 export const dynamic = "force-dynamic";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -23,7 +23,7 @@ export default async function MenuPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-amber-50 px-4">
+      <main className="flex min-h-screen items-center justify-center bg-[#F3ECE3] px-4">
         <p className="rounded-xl bg-red-50 px-6 py-8 text-center text-red-600">
           {error}
         </p>
@@ -31,5 +31,5 @@ export default async function MenuPage() {
     );
   }
 
-  return <MenuBrowser menu={menu} productHrefBase="/admin/menu" />;
+  return <AdminMenuBrowser menu={menu} />;
 }
