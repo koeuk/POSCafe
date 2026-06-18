@@ -304,11 +304,11 @@ export function AdminProductManagement({
           {view === "categories" && (
             <ManagementSection
               title="Menu Categories"
-            description="Group customer-facing products into visible menu sections."
-            count={categories.length}
-            actionLabel="Create category"
-            onCreate={openCategoryCreate}
-          >
+              description="Group customer-facing products into visible menu sections."
+              count={categories.length}
+              actionLabel="Create category"
+              onCreate={openCategoryCreate}
+            >
             {categories.length === 0 ? (
               <EmptyState message="No categories yet." />
             ) : (
@@ -366,11 +366,11 @@ export function AdminProductManagement({
           {view === "products" && (
             <ManagementSection
               title="Products"
-            description="Control item details, availability, stock, prices, and menu visibility."
-            count={products.length}
-            actionLabel="Create product"
-            onCreate={openProductCreate}
-          >
+              description="Control item details, availability, stock, prices, and menu visibility."
+              count={products.length}
+              actionLabel="Create product"
+              onCreate={openProductCreate}
+            >
             {products.length === 0 ? (
               <EmptyState message="No products yet." />
             ) : (
