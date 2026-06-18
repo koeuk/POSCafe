@@ -48,12 +48,12 @@ export class ReportsService {
 
     const rows = await this.orderRepo
       .createQueryBuilder('o')
-      .select('DATE(o.createdAt)', 'date')
+      .select("DATE_FORMAT(o.createdAt, '%Y-%m-%d')", 'date')
       .addSelect('COUNT(*)', 'orders')
       .addSelect('SUM(o.total)', 'revenue')
       .where('o.status = :status', { status: OrderStatus.COMPLETED })
       .andWhere('o.createdAt >= :since', { since })
-      .groupBy('DATE(o.createdAt)')
+      .groupBy("DATE_FORMAT(o.createdAt, '%Y-%m-%d')")
       .orderBy('date', 'DESC')
       .getRawMany();
 

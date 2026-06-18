@@ -9,6 +9,7 @@ import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
+import { ReportsModule } from './reports/reports.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -38,6 +39,7 @@ import { UsersModule } from './users/users.module';
     OrdersModule,
     MenuModule,
     PaymentsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
