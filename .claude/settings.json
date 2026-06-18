@@ -32,7 +32,10 @@
       "Bash(curl -s http://localhost:3000/menu)",
       "Bash(curl -s http://localhost:3000/menu/1)",
       "Bash(mysql -uroot -pkoeuk poscafe -e \"SELECT id,name,isActive FROM categories;\")",
-      "Bash(mysql -uroot -pkoeuk poscafe -e \"SELECT id,name,price,discountPercent,categoryId,isAvailable,stock FROM products;\")"
+      "Bash(mysql -uroot -pkoeuk poscafe -e \"SELECT id,name,price,discountPercent,categoryId,isAvailable,stock FROM products;\")",
+      "Bash(mysql -uroot -pkoeuk poscafe -e \"DESCRIBE products;\")",
+      "Bash(curl -s http://localhost:3001/menu)",
+      "Bash(curl -s -o /dev/null -w \"/menu/2 → %{http_code}\\\\n\" http://localhost:3000/menu/2)"
     ]
   }
 }
