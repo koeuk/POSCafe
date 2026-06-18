@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RequireAuth } from "@/components/require-auth";
+import { StaffShell } from "@/components/staff-shell";
 import { api } from "@/lib/api";
-import { OrderStatus, Role, type Order } from "@/lib/types";
+import { OrderStatus, type Order } from "@/lib/types";
 
 // The orders endpoint joins the cashier; extend locally to avoid editing
 // the shared types.ts (kept minimal to prevent collisions).
@@ -99,10 +99,10 @@ function OrderHistory() {
           </p>
         </div>
         <Link
-          href="/dashboard"
+          href="/pos"
           className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
         >
-          ← Dashboard
+          ← Back to POS
         </Link>
       </header>
 
@@ -201,10 +201,10 @@ function OrderHistory() {
   );
 }
 
-export default function AdminOrdersPage() {
+export default function OrderHistoryPage() {
   return (
-    <RequireAuth role={Role.ADMIN}>
+    <StaffShell>
       <OrderHistory />
-    </RequireAuth>
+    </StaffShell>
   );
 }
