@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RequireAuth } from "@/components/require-auth";
-import { useAuth } from "@/lib/auth-context";
+import { StaffShell } from "@/components/staff-shell";
 import { api } from "@/lib/api";
 import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
 import type { Category, Order, Product } from "@/lib/types";
@@ -18,8 +17,6 @@ interface CartLine {
 }
 
 function POSScreen() {
-  const { user, logout } = useAuth();
-
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
@@ -150,41 +147,7 @@ function POSScreen() {
   }
 
   return (
-    <div className="font-ios flex h-screen flex-col bg-[#FBF7F1] text-stone-900">
-      {/* Header */}
-      <header className="flex shrink-0 items-center justify-between border-b border-stone-200/80 bg-white/70 px-5 py-3 backdrop-blur-xl sm:px-7">
-        <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
-            ☕
-          </span>
-          <span
-            className={`${display.className} text-xl font-semibold tracking-tight`}
-          >
-            POSCAFE
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="hidden items-center gap-2 text-stone-600 sm:flex">
-            {user?.name}
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
-              {user?.role}
-            </span>
-          </span>
-          <Link
-            href="/orders"
-            className="rounded-full border border-stone-200 bg-white px-3.5 py-1.5 font-medium text-stone-700 shadow-sm transition hover:bg-stone-50 active:scale-95"
-          >
-            Orders
-          </Link>
-          <button
-            onClick={logout}
-            className="rounded-full border border-stone-200 bg-white px-3.5 py-1.5 font-medium text-stone-700 shadow-sm transition hover:bg-stone-50 active:scale-95"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <div className="font-ios flex h-full flex-col bg-[#FBF7F1] text-stone-900">
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Menu */}
         <main className="flex min-w-0 flex-1 flex-col">
@@ -502,8 +465,8 @@ function GridSkeleton() {
 
 export default function POSPage() {
   return (
-    <RequireAuth>
+    <StaffShell bleed>
       <POSScreen />
-    </RequireAuth>
+    </StaffShell>
   );
 }

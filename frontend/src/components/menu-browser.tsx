@@ -160,7 +160,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                             {product.description}
                           </p>
                         )}
-                        <div className="mt-3 flex items-baseline gap-2">
+                        <div className="mt-auto pt-3 flex items-baseline gap-2">
                           <span className="font-bold text-stone-900">
                             {formatPrice(effectivePrice(product))}
                           </span>
