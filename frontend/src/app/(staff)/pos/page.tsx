@@ -134,14 +134,6 @@ function POSScreen() {
     [],
   );
 
-  const removeLine = useCallback((productId: number, sizeName: string | null = null) => {
-    setCart((prev) =>
-      prev.filter(
-        (l) => l.product.id !== productId || (l.size?.size ?? null) !== sizeName,
-      ),
-    );
-  }, []);
-
   const clearCart = useCallback(() => setCart([]), []);
 
   async function handleCheckout() {

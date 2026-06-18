@@ -5,6 +5,33 @@
 A full-stack Point-of-Sale system for a coffee shop. Cashiers take orders, admins
 manage the menu and view reports, and the kitchen sees orders update in real time.
 
+
+---
+
+## Current Implementation Notes
+
+Updated continuation status:
+
+- Staff routes use a shared authenticated sidebar layout. Admin routes are additionally role guarded.
+- Product management supports image URL, stock, discount percent, and optional size-price rows.
+- POS checkout supports size selection and sends selected sizes to `/orders`.
+- Payment UI supports cash, QR, and card; cash records tendered amount and change.
+- Reports UI is wired to `/reports/summary`, `/reports/daily-sales`, and `/reports/best-products`.
+- Public menu and product detail show size-aware `from` prices.
+
+Verification notes:
+
+- Frontend `npm run lint` passes.
+- Frontend `npm run build` passes.
+- Backend `tsc -p tsconfig.build.json --noEmit` passes.
+- Backend `npm run build` is blocked by root-owned generated files in `backend/dist`; clean/chown that folder outside the app code, then rerun the normal build.
+
+Remaining product work:
+
+- Add admin user-management endpoints/UI if staff accounts must be managed after bootstrap.
+- Add stronger test coverage/smoke tests around auth, checkout, payment, and realtime updates.
+- Replace `synchronize: true` with migrations before production.
+
 ---
 
 ## 1. Tech Stack
@@ -19,9 +46,10 @@ manage the menu and view reports, and the kitchen sees orders update in real tim
 | Real-time | Socket.IO                           |
 | Hashing   | bcrypt                              |
 
-**Current state:** Backend is scaffolded with all dependencies installed (TypeORM,
-mysql2, JWT, Passport, bcrypt, Socket.IO). `.env` is configured for MySQL db `poscafe`
-on `localhost:3306`, JWT secret, app on port `3001`. Frontend not yet created.
+**Current state:** Backend and frontend are both implemented beyond scaffold. The backend has
+JWT auth, role guards, TypeORM/MySQL entities, product/category/order/payment/report APIs,
+and authenticated Socket.IO order updates. The frontend has login, POS, order queue, admin
+products, admin reports, kitchen, payments, public menu, product detail, and QR menu pages.
 
 ---
 

@@ -125,9 +125,8 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/menu/qr",
+    href: "/admin/menu/qr",
     label: "QR Code",
-    newTab: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <rect x="3" y="3" width="7" height="7" rx="1" />
