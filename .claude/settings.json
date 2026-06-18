@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ps -o user= -C node)",
+      "Bash(curl -s -X POST http://localhost:3001/auth/customer/register -H \"Content-Type: application/json\" -d '{\"name\":\"Test Customer\",\"phone\":\"012345678\",\"password\":\"pass1234\"}')",
+      "Bash(curl -s -X POST http://localhost:3001/auth/customer/login -H \"Content-Type: application/json\" -d '{\"phone\":\"012345678\",\"password\":\"pass1234\"}')",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" -X POST http://localhost:3001/auth/customer/register -H \"Content-Type: application/json\" -d '{\"name\":\"Test Customer\",\"phone\":\"012999888\",\"password\":\"pass1234\"}')",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(mysql -uroot -pkoeuk poscafe -e \"DESCRIBE users;\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3001/menu)",
+      "Bash(mysql -uroot -pkoeuk poscafe -N -e \"SELECT id,name,username,role FROM users;\")",
+      "Bash(mysql -uroot -pkoeuk poscafe -N -e \"SHOW COLUMNS FROM users LIKE 'role';\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"koeuk@gmail.com\",\"password\":\"12345678\"}')",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3001/menu)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" -X POST http://localhost:3001/auth/customer/register -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(awk '{print $3, $4, $NF}')"
+    ]
+  }
+}

@@ -64,8 +64,8 @@ export default async function MenuPage() {
                     key={product.id}
                     className="flex items-center gap-4 px-4 py-4"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     {product.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={product.image}
                         alt={product.name}
