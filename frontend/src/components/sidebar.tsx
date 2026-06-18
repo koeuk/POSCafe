@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 interface NavItem {
-  href: string;
+  href: string | { staff: string; admin: string };
   label: string;
   icon: ReactNode;
   newTab?: boolean;
@@ -58,7 +58,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/pay",
+    href: { staff: "/pay", admin: "/admin/pay" },
     label: "Payments",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -68,7 +68,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/kitchen",
+    href: { staff: "/kitchen", admin: "/admin/kitchen" },
     label: "Kitchen",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -150,13 +150,16 @@ function NavLinks({
   return (
     <nav className="flex flex-col gap-1">
       {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
+        const href = typeof item.href === "string"
+          ? item.href
+          : item.href[isAdmin ? "admin" : "staff"];
         const active = item.exact
-          ? pathname === item.href
-          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          ? pathname === href
+          : pathname === href || pathname.startsWith(`/`);
         return (
           <Link
-            key={item.href}
-            href={item.href}
+            key={item.label}
+            href={href}
             target={item.newTab ? "_blank" : undefined}
             onClick={onNavigate}
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
