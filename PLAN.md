@@ -1,5 +1,7 @@
 # ☕ POSCAFE — Coffee Shop POS System Plan
 
+> **Project start date:** 2026-06-18 (Thursday) ~13:35 +07
+
 A full-stack Point-of-Sale system for a coffee shop. Cashiers take orders, admins
 manage the menu and view reports, and the kitchen sees orders update in real time.
 

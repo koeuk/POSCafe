@@ -25,7 +25,8 @@
       "Bash(PORT=3009 NODE_PATH=/home/koeuk/Projects/POSCAFE/backend/node_modules node /tmp/pcdist/main.js)",
       "Bash(mysql -h127.0.0.1 -uroot -pkoeuk poscafe -e \"DELETE FROM users WHERE username='testadmin2';\")",
       "Bash(python3 /home/koeuk/.claude/skills/webapp-testing/scripts/with_server.py --server \"npm run start -- -p 3005\" --port 3005 --timeout 60 -- python3 /tmp/pay_smoke.py)",
-      "Bash(node -e \"console.log\\('socket.io-client', require\\('socket.io-client/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\('socket.io-client', require\\('socket.io-client/package.json'\\).version\\)\")",
+      "Bash(NEXT_PUBLIC_API_URL=http://localhost:3009 NEXT_PUBLIC_SOCKET_URL=http://localhost:3009 npm run build)"
     ]
   }
 }
