@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/lib/auth-context";
@@ -154,6 +155,12 @@ function POSScreen() {
               {user?.role}
             </span>
           </span>
+          <Link
+            href="/orders"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium text-gray-700 transition hover:bg-gray-100"
+          >
+            Orders
+          </Link>
           <button
             onClick={logout}
             className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium text-gray-700 transition hover:bg-gray-100"
@@ -259,6 +266,12 @@ function POSScreen() {
               <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
                 ✅ Order <strong>{lastOrder.orderNumber}</strong> placed —{" "}
                 ${Number(lastOrder.total).toFixed(2)}
+                <Link
+                  href="/orders"
+                  className="ml-1 font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
+                >
+                  View in Orders →
+                </Link>
               </div>
             )}
 
