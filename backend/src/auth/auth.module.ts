@@ -31,5 +31,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
+  // Re-export JwtModule so other modules (e.g. the orders gateway) can
+  // verify socket tokens with the same JwtService configuration.
+  exports: [JwtModule],
 })
 export class AuthModule {}
