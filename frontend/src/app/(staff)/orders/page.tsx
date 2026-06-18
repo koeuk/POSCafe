@@ -101,23 +101,23 @@ function OrdersQueue() {
   );
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+    <main className="mx-auto max-w-7xl">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Orders</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Orders</h1>
+          <p className="text-sm text-stone-500">
             {activeCount} active · {orders.length} total · live
           </p>
         </div>
         <Link
           href="/pos"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
         >
           ← Back to POS
         </Link>
       </header>
 
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <section className="mx-auto max-w-4xl rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         {/* Status filter */}
         <div className="mb-6 flex flex-wrap gap-2">
           {STATUS_FILTERS.map((f) => (
@@ -126,8 +126,8 @@ function OrdersQueue() {
               onClick={() => setFilter(f.value)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 filter === f.value
-                  ? "bg-gray-900 text-white"
-                  : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
+                  ? "bg-[#2A1D15] text-white"
+                  : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-100"
               }`}
             >
               {f.label}
@@ -142,9 +142,9 @@ function OrdersQueue() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-500">Loading orders…</p>
+          <p className="text-sm text-stone-500">Loading orders…</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-gray-400">No orders here yet.</p>
+          <p className="text-sm text-stone-400">No orders here yet.</p>
         ) : (
           <ul className="space-y-4">
             {orders.map((order) => {
@@ -157,14 +157,14 @@ function OrdersQueue() {
               return (
                 <li
                   key={order.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-5"
+                  className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-stone-900">
                         {order.orderNumber}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-stone-500">
                         {new Date(order.createdAt).toLocaleString()}
                         {order.user && <> · {order.user.name}</>}
                       </p>
@@ -176,11 +176,11 @@ function OrdersQueue() {
                     </span>
                   </div>
 
-                  <ul className="mt-4 space-y-1 border-t border-gray-100 pt-3 text-sm">
+                  <ul className="mt-4 space-y-1 border-t border-stone-100 pt-3 text-sm">
                     {order.items.map((item) => (
                       <li
                         key={item.id}
-                        className="flex justify-between text-gray-600"
+                        className="flex justify-between text-stone-600"
                       >
                         <span>
                           {item.quantity}× {item.product?.name ?? `#${item.productId}`}
@@ -190,8 +190,8 @@ function OrdersQueue() {
                     ))}
                   </ul>
 
-                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                    <span className="font-semibold text-gray-900">
+                  <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-3">
+                    <span className="font-semibold text-stone-900">
                       Total ${Number(order.total).toFixed(2)}
                     </span>
                     <div className="flex gap-2">
@@ -201,7 +201,7 @@ function OrdersQueue() {
                             changeStatus(order.id, OrderStatus.CANCELLED)
                           }
                           disabled={busy}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+                          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-100 disabled:opacity-50"
                         >
                           Cancel
                         </button>
@@ -210,7 +210,7 @@ function OrdersQueue() {
                         <button
                           onClick={() => changeStatus(order.id, next.status)}
                           disabled={busy}
-                          className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
+                          className="rounded-lg bg-[#2A1D15] px-4 py-1.5 text-sm font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
                         >
                           {busy ? "…" : next.label}
                         </button>
@@ -222,7 +222,7 @@ function OrdersQueue() {
             })}
           </ul>
         )}
-      </div>
+      </section>
     </main>
   );
 }

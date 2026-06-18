@@ -153,7 +153,7 @@ function PayScreen() {
               <li key={o.id}>
                 <Link
                   href={`/admin/pay?orderId=${o.id}`}
-                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-4 transition hover:border-stone-900"
+                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-4 transition hover:border-[#2A1D15]"
                 >
                   <span>
                     <span className="font-semibold text-stone-900">
@@ -213,7 +213,7 @@ function PayScreen() {
         <div className="mt-6 flex justify-center">
           <Link
             href="/admin/pay"
-            className="rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white transition hover:bg-stone-800"
+            className="rounded-lg bg-[#2A1D15] px-5 py-2.5 font-medium text-white transition hover:bg-[#3A2A20]"
           >
             Next payment
           </Link>
@@ -268,7 +268,7 @@ function PayScreen() {
                 onClick={() => setMethod(option)}
                 className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                   method === option
-                    ? "border-stone-900 bg-stone-900 text-white"
+                    ? "border-[#2A1D15] bg-[#2A1D15] text-white"
                     : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
                 }`}
               >
@@ -335,7 +335,7 @@ function PayScreen() {
           <button
             onClick={confirm}
             disabled={!canConfirm || submitting}
-            className="mt-4 w-full rounded-lg bg-stone-900 py-3 font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-4 w-full rounded-lg bg-[#2A1D15] py-3 font-semibold text-white transition hover:bg-[#3A2A20] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting
               ? "Processing..."
@@ -355,14 +355,30 @@ function Shell({
   wide?: boolean;
 }) {
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-10">
-      <div
-        className={`mx-auto rounded-2xl border border-stone-200 bg-white p-6 ${
-          wide ? "max-w-3xl" : "max-w-md"
+    <main className="mx-auto max-w-7xl">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+            Payments
+          </h1>
+          <p className="text-sm text-stone-500">
+            Settle unpaid orders and record cash, QR, or card payments.
+          </p>
+        </div>
+        <Link
+          href="/orders"
+          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+        >
+          View orders
+        </Link>
+      </header>
+      <section
+        className={`mx-auto rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${
+          wide ? "max-w-5xl" : "max-w-2xl"
         }`}
       >
         {children}
-      </div>
+      </section>
     </main>
   );
 }

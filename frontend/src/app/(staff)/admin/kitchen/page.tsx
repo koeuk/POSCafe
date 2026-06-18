@@ -115,10 +115,10 @@ function KitchenScreen() {
   }, [orders]);
 
   return (
-    <div className="flex h-screen flex-col bg-stone-900 text-stone-100">
-      <header className="flex items-center justify-between border-b border-stone-700 px-6 py-3">
+    <main className="mx-auto max-w-7xl">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold">👨‍🍳 Kitchen</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">👨‍🍳 Kitchen</h1>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
               connected
@@ -137,12 +137,13 @@ function KitchenScreen() {
       </header>
 
       {error && (
-        <p className="mx-6 mt-3 rounded-lg bg-red-500/15 px-4 py-2 text-sm text-red-300">
+        <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 sm:grid-cols-3">
+      <section className="rounded-2xl border border-stone-800 bg-stone-950 p-4 text-stone-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="grid min-h-[640px] grid-cols-1 gap-4 sm:grid-cols-3">
         {COLUMNS.map((col) => {
           const list = byStatus.get(col.status) ?? [];
           return (
@@ -199,7 +200,8 @@ function KitchenScreen() {
           );
         })}
       </div>
-    </div>
+      </section>
+    </main>
   );
 }
 

@@ -284,6 +284,7 @@ export function AdminProductManagement() {
       ) : (
         <div className="space-y-6">
           <ManagementSection
+            id="categories"
             title="Menu Categories"
             description="Group customer-facing products into visible menu sections."
             count={categories.length}
@@ -344,6 +345,7 @@ export function AdminProductManagement() {
           </ManagementSection>
 
           <ManagementSection
+            id="products"
             title="Products"
             description="Control item details, availability, stock, prices, and menu visibility."
             count={products.length}
@@ -653,6 +655,7 @@ export function AdminProductManagement() {
 }
 
 function ManagementSection({
+  id,
   title,
   description,
   count,
@@ -660,6 +663,7 @@ function ManagementSection({
   onCreate,
   children,
 }: {
+  id?: string;
   title: string;
   description: string;
   count: number;
@@ -668,7 +672,10 @@ function ManagementSection({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <section
+      id={id}
+      className="scroll-mt-6 overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
