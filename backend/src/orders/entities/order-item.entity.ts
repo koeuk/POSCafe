@@ -30,6 +30,10 @@ export class OrderItem {
   @Column()
   quantity: number;
 
+  // Chosen size (e.g. S/M/L), null for items without size options.
+  @Column({ nullable: true })
+  size: string | null;
+
   // Price snapshot at order time (product price may change later).
   @Column('decimal', { precision: 10, scale: 2 })
   unitPrice: number;

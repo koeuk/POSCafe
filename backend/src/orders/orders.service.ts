@@ -4,8 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
+import { OrderType } from '../common/enums/order-type.enum';
 import { Product } from '../products/entities/product.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './entities/order-item.entity';
@@ -52,11 +53,31 @@ export class OrdersService {
           );
         }
 
+        // Resolve the base price: from the chosen size if the product has
+        // size options, otherwise the product's own price.
+        let basePrice = Number(product.price);
+        let size: string | null = null;
+        if (product.sizes && product.sizes.length > 0) {
+          if (!line.size) {
+            throw new BadRequestException(
+              `Size is required for "${product.name}"`,
+            );
+          }
+          const match = product.sizes.find((s) => s.size === line.size);
+          if (!match) {
+            throw new BadRequestException(
+              `Invalid size "${line.size}" for "${product.name}"`,
+            );
+          }
+          basePrice = Number(match.price);
+          size = match.size;
+        }
+
         // Apply the product's discount and snapshot the charged price,
         // rounded to cents so the stored total has no float drift.
         const discount = Math.min(Math.max(product.discountPercent ?? 0, 0), 100);
         const unitPrice =
-          Math.round(Number(product.price) * (1 - discount / 100) * 100) / 100;
+          Math.round(basePrice * (1 - discount / 100) * 100) / 100;
         const subtotal = Math.round(unitPrice * line.quantity * 100) / 100;
         total += subtotal;
 
@@ -67,6 +88,7 @@ export class OrdersService {
           manager.create(OrderItem, {
             productId: product.id,
             quantity: line.quantity,
+            size,
             unitPrice,
             subtotal,
           }),
@@ -76,6 +98,7 @@ export class OrdersService {
       const order = manager.create(Order, {
         orderNumber: `ORD-${Date.now()}`,
         status: OrderStatus.PENDING,
+        orderType: dto.orderType ?? OrderType.DINE_IN,
         total,
         userId,
         items, // cascade-inserted
@@ -107,6 +130,44 @@ export class OrdersService {
       relations: { items: { product: true }, user: true },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /**
+   * Cashier "today" snapshot: order/item counts, revenue, and cups by size.
+   * Excludes cancelled orders.
+   */
+  async getTodaySummary() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const orders = await this.repo.find({
+      where: {
+        createdAt: MoreThanOrEqual(start),
+        status: Not(OrderStatus.CANCELLED),
+      },
+      relations: { items: true },
+    });
+
+    let items = 0;
+    let revenue = 0;
+    const cupsBySize: Record<string, number> = {};
+
+    for (const order of orders) {
+      revenue += Number(order.total);
+      for (const item of order.items) {
+        items += item.quantity;
+        if (item.size) {
+          cupsBySize[item.size] = (cupsBySize[item.size] ?? 0) + item.quantity;
+        }
+      }
+    }
+
+    return {
+      orders: orders.length,
+      items,
+      revenue: Math.round(revenue * 100) / 100,
+      cupsBySize,
+    };
   }
 
   async findOne(id: number): Promise<Order> {
