@@ -31,5 +31,5 @@ export default async function MenuPage() {
     );
   }
 
-  return <MenuBrowser menu={menu} />;
+  return <MenuBrowser menu={menu} productHrefBase="/admin/menu" />;
 }

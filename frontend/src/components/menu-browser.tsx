@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
+import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
 
 export function MenuBrowser({
@@ -134,7 +134,7 @@ export function MenuBrowser({
                   {cat.products.map((product) => (
                     <Link
                       key={product.id}
-                      href={`/`}
+                      href={`${productHrefBase}/${product.id}`}
                       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100 transition hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <div className="relative aspect-square w-full bg-stone-100">
@@ -168,9 +168,10 @@ export function MenuBrowser({
                         )}
                         <div className="mt-auto pt-3 flex items-baseline gap-2">
                           <span className="font-bold text-stone-900">
+                            {hasSizes(product) ? "from " : ""}
                             {formatPrice(effectivePrice(product))}
                           </span>
-                          {hasDiscount(product) && (
+                          {hasDiscount(product) && !hasSizes(product) && (
                             <span className="text-xs text-stone-400 line-through">
                               {formatPrice(product.price)}
                             </span>

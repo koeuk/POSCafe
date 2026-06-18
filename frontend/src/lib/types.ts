@@ -78,6 +78,12 @@ export enum OrderType {
   TAKEAWAY = "takeaway",
 }
 
+export enum PaymentMethod {
+  CASH = "cash",
+  QR = "qr",
+  CARD = "card",
+}
+
 export interface OrderItem {
   id: number;
   productId: number;

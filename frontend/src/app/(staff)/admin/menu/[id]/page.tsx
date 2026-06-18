@@ -45,7 +45,7 @@ export default async function ProductDetailPage({
             )}
 
             <Link
-              href="/menu"
+              href="/admin/menu"
               className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-stone-800 shadow backdrop-blur transition hover:bg-white"
               aria-label="Back to menu"
             >
@@ -94,7 +94,7 @@ export default async function ProductDetailPage({
             )}
 
             <Link
-              href="/menu"
+              href="/admin/menu"
               className="mt-10 flex w-full items-center justify-center rounded-xl bg-stone-900 py-3 font-medium text-white transition hover:bg-stone-800 lg:mt-auto"
             >
               ← Back to menu

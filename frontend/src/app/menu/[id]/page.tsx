@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
+import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -73,14 +73,36 @@ export default async function ProductDetailPage({
 
             <div className="mt-3 flex items-baseline gap-3">
               <span className="text-2xl font-bold text-red-600">
+                {hasSizes(product) ? "from " : ""}
                 {formatPrice(effectivePrice(product))}
               </span>
-              {hasDiscount(product) && (
+              {hasDiscount(product) && !hasSizes(product) && (
                 <span className="text-base text-stone-400 line-through">
                   {formatPrice(product.price)}
                 </span>
               )}
             </div>
+
+            {hasSizes(product) && product.sizes && (
+              <div className="mt-6">
+                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-500">
+                  Sizes
+                </h2>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {product.sizes.map((size) => (
+                    <div
+                      key={size.size}
+                      className="flex items-center justify-between rounded-xl border border-stone-200 px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium text-stone-700">{size.size}</span>
+                      <span className="font-semibold text-stone-900">
+                        {formatPrice(effectivePrice(product, size))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {product.description && (
               <div className="mt-6">

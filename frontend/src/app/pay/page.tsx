@@ -11,19 +11,30 @@ import {
 } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
-import type { Order } from "@/lib/types";
+import { PaymentMethod, type Order } from "@/lib/types";
 
 interface Payment {
   id: number;
   orderId: number;
-  method: string;
-  amount: number;
-  tendered: number;
-  change: number;
+  method: PaymentMethod;
+  amount: number | string;
+  tendered: number | string;
+  change: number | string;
   createdAt: string;
 }
 
 const QUICK_CASH = [5, 10, 20, 50];
+
+const METHOD_LABELS: Record<PaymentMethod, string> = {
+  [PaymentMethod.CASH]: "Cash",
+  [PaymentMethod.QR]: "QR",
+  [PaymentMethod.CARD]: "Card",
+};
+
+function money(value: number | string): string {
+  const n = Number(value);
+  return Number.isFinite(n) ? `$${n.toFixed(2)}` : String(value);
+}
 
 function PayScreen() {
   const params = useSearchParams();
@@ -35,6 +46,7 @@ function PayScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [alreadyPaid, setAlreadyPaid] = useState(false);
+  const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [tendered, setTendered] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [paid, setPaid] = useState<Payment | null>(null);
@@ -48,6 +60,7 @@ function PayScreen() {
       setOrder(null);
       setPaid(null);
       setAlreadyPaid(false);
+      setMethod(PaymentMethod.CASH);
       setTendered("");
       try {
         if (orderIdParam) {
@@ -83,7 +96,12 @@ function PayScreen() {
     () => Math.round((tenderedNum - due) * 100) / 100,
     [tenderedNum, due],
   );
-  const canConfirm = !!order && !alreadyPaid && !paid && tenderedNum >= due && due > 0;
+  const canConfirm =
+    !!order &&
+    !alreadyPaid &&
+    !paid &&
+    due > 0 &&
+    (method !== PaymentMethod.CASH || tenderedNum >= due);
 
   const press = useCallback((key: string) => {
     setTendered((prev) => {
@@ -103,7 +121,11 @@ function PayScreen() {
     try {
       const payment = await api<Payment>("/payments", {
         method: "POST",
-        body: { orderId: order.id, method: "cash", tendered: tenderedNum },
+        body: {
+          orderId: order.id,
+          method,
+          ...(method === PaymentMethod.CASH ? { tendered: tenderedNum } : {}),
+        },
       });
       setPaid(payment);
     } catch (err) {
@@ -142,7 +164,7 @@ function PayScreen() {
                     </span>
                   </span>
                   <span className="font-semibold text-stone-900">
-                    ${Number(o.total).toFixed(2)}
+                    {money(o.total)}
                   </span>
                 </Link>
               </li>
@@ -180,11 +202,11 @@ function PayScreen() {
             Payment complete
           </p>
           <p className="mt-1 text-sm text-green-700">
-            {order?.orderNumber} · paid ${paid.amount.toFixed(2)}
+            {order?.orderNumber} · {METHOD_LABELS[paid.method]} paid {money(paid.amount)}
           </p>
-          {paid.change > 0 && (
+          {Number(paid.change) > 0 && (
             <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900">
-              Change ${paid.change.toFixed(2)}
+              Change {money(paid.change)}
             </p>
           )}
         </div>
@@ -225,55 +247,88 @@ function PayScreen() {
                 <span>
                   {it.quantity}× {it.product?.name ?? `#${it.productId}`}
                 </span>
-                <span>${Number(it.subtotal).toFixed(2)}</span>
+                <span>{money(it.subtotal)}</span>
               </li>
             ))}
           </ul>
           <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900">
             <span>Total due</span>
-            <span>${due.toFixed(2)}</span>
+            <span>{money(due)}</span>
           </div>
           <BackLink />
         </div>
 
-        {/* Cash pad */}
+        {/* Payment method */}
         <div>
-          <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-right">
-            <p className="text-xs uppercase tracking-wide text-stone-400">
-              Cash received
-            </p>
-            <p className="text-3xl font-bold text-stone-900">
-              ${tendered === "" ? "0.00" : tendered}
-            </p>
-            <p
-              className={`mt-1 text-sm font-medium ${
-                tenderedNum >= due ? "text-green-600" : "text-stone-400"
-              }`}
-            >
-              Change ${change >= 0 ? change.toFixed(2) : "0.00"}
-            </p>
-          </div>
-
-          <div className="mb-3 grid grid-cols-4 gap-2">
-            <QuickBtn label="Exact" onClick={() => setTendered(due.toFixed(2))} />
-            {QUICK_CASH.map((amt) => (
-              <QuickBtn
-                key={amt}
-                label={`$${amt}`}
-                onClick={() => setTendered(String(amt))}
-              />
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            {Object.values(PaymentMethod).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setMethod(option)}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  method === option
+                    ? "border-stone-900 bg-stone-900 text-white"
+                    : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+                }`}
+              >
+                {METHOD_LABELS[option]}
+              </button>
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"].map(
-              (k) => (
-                <PadBtn key={k} onClick={() => press(k)}>
-                  {k === "back" ? "⌫" : k}
-                </PadBtn>
-              ),
-            )}
-          </div>
+          {method === PaymentMethod.CASH ? (
+            <>
+              <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-right">
+                <p className="text-xs uppercase tracking-wide text-stone-400">
+                  Cash received
+                </p>
+                <p className="text-3xl font-bold text-stone-900">
+                  {money(tendered === "" ? 0 : tendered)}
+                </p>
+                <p
+                  className={`mt-1 text-sm font-medium ${
+                    tenderedNum >= due ? "text-green-600" : "text-stone-400"
+                  }`}
+                >
+                  Change {money(change >= 0 ? change : 0)}
+                </p>
+              </div>
+
+              <div className="mb-3 grid grid-cols-4 gap-2">
+                <QuickBtn label="Exact" onClick={() => setTendered(due.toFixed(2))} />
+                {QUICK_CASH.map((amt) => (
+                  <QuickBtn
+                    key={amt}
+                    label={`$${amt}`}
+                    onClick={() => setTendered(String(amt))}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"].map(
+                  (k) => (
+                    <PadBtn key={k} onClick={() => press(k)}>
+                      {k === "back" ? "Back" : k}
+                    </PadBtn>
+                  ),
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-center">
+              <p className="text-sm font-medium text-stone-500">
+                {METHOD_LABELS[method]} payment
+              </p>
+              <p className="mt-2 text-3xl font-bold text-stone-900">
+                {money(due)}
+              </p>
+              <p className="mt-2 text-sm text-stone-400">
+                Confirm after the terminal or QR transfer succeeds.
+              </p>
+            </div>
+          )}
 
           {error && <div className="mt-3"><ErrorBox>{error}</ErrorBox></div>}
 
@@ -283,8 +338,8 @@ function PayScreen() {
             className="mt-4 w-full rounded-lg bg-stone-900 py-3 font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting
-              ? "Processing…"
-              : `Confirm cash payment · $${due.toFixed(2)}`}
+              ? "Processing..."
+              : `Confirm ${METHOD_LABELS[method].toLowerCase()} payment · ${money(due)}`}
           </button>
         </div>
       </div>
