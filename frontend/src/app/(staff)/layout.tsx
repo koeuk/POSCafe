@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import { RequireAuth } from "@/components/require-auth";
-import { Sidebar } from "@/components/sidebar";
+import { StaffFrame } from "@/components/staff-frame";
 
-// Shared shell for all staff pages (admin, POS, orders): a persistent
-// sidebar on the left, content on the right. URLs are unchanged because
-// (staff) is a route group.
+// Shared auth shell for all staff pages. Admins get the management sidebar;
+// cashier-facing pages use the full viewport for the POS flow.
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <RequireAuth>
