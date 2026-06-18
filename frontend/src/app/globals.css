@@ -24,3 +24,54 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ── iOS / HIG (Liquid Glass) utilities ───────────────────────────── */
+
+/* Genuine SF Pro on Apple devices; Geist (self-hosted) elsewhere. */
+.font-ios {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.011em;
+}
+
+/* Staggered entrance — tiles rise + fade with a gentle iOS spring. */
+@keyframes ios-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ios-rise {
+  opacity: 0;
+  animation: ios-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Slow drifting blobs that give the glass something to refract. */
+@keyframes ios-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3%, -4%, 0) scale(1.08);
+  }
+}
+
+.ios-drift {
+  animation: ios-drift 18s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-rise,
+  .ios-drift {
+    animation: none;
+    opacity: 1;
+  }
+}

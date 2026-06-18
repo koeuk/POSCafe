@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { Public } from '../common/decorators/public.decorator';
 import { MenuService } from './menu.service';
 
@@ -11,5 +11,12 @@ export class MenuController {
   @Get()
   getMenu() {
     return this.menuService.getMenu();
+  }
+
+  // Public: single product detail for the customer detail page.
+  @Public()
+  @Get('product/:id')
+  getProduct(@Param('id', ParseIntPipe) id: number) {
+    return this.menuService.getProduct(id);
   }
 }
