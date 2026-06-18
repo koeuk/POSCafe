@@ -31,7 +31,7 @@ export class OrderItem {
   quantity: number;
 
   // Chosen size (e.g. S/M/L), null for items without size options.
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   size: string | null;
 
   // Price snapshot at order time (product price may change later).
