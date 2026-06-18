@@ -61,6 +61,7 @@ const NAV: NavItem[] = [
   {
     href: { staff: "/pay", admin: "/admin/pay" },
     label: "Payments",
+    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -71,6 +72,7 @@ const NAV: NavItem[] = [
   {
     href: { staff: "/kitchen", admin: "/admin/kitchen" },
     label: "Kitchen",
+    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M6 3v6a3 3 0 1 0 6 0V3" />
@@ -103,9 +105,8 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/admin/orders",
+    href: { staff: "/order-history", admin: "/admin/orders" },
     label: "Order History",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <circle cx="12" cy="12" r="9" />
@@ -128,9 +129,8 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: { staff: "/menu", admin: "/admin/menu" },
+    href: { staff: "/view-menu", admin: "/admin/menu" },
     label: "View Menu",
-    adminOnly: true,
     exact: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
