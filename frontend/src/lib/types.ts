@@ -46,6 +46,16 @@ export interface Product {
   category?: Category;
 }
 
+// Shape returned by the public GET /menu endpoint: active categories,
+// each with their available products only.
+export interface MenuCategory {
+  id: number;
+  name: string;
+  description: string | null;
+  image: string | null;
+  products: Product[];
+}
+
 export enum OrderStatus {
   PENDING = "pending",
   PREPARING = "preparing",
