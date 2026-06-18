@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 interface NavItem {
@@ -11,8 +11,6 @@ interface NavItem {
   icon: ReactNode;
   newTab?: boolean;
   adminOnly?: boolean;
-  activePaths?: string[];
-  defaultActive?: boolean;
   /** Match this exact path only (e.g. /admin shouldn't stay active on /admin/orders). */
   exact?: boolean;
 }
@@ -29,6 +27,7 @@ const NAV: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
+    adminOnly: true,
     exact: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -82,10 +81,9 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/admin/products#categories",
+    href: "/admin/categories",
     label: "Categories",
     adminOnly: true,
-    activePaths: ["/admin/categories"],
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M4 5h16M4 12h16M4 19h16" />
@@ -94,10 +92,9 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/admin/products#products",
+    href: "/admin/products",
     label: "Products",
     adminOnly: true,
-    defaultActive: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" />
@@ -133,6 +130,7 @@ const NAV: NavItem[] = [
   {
     href: { staff: "/menu", admin: "/admin/menu" },
     label: "View Menu",
+    adminOnly: true,
     exact: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -143,6 +141,7 @@ const NAV: NavItem[] = [
   {
     href: { staff: "/menu/qr", admin: "/admin/menu/qr" },
     label: "QR Code",
+    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -154,22 +153,12 @@ const NAV: NavItem[] = [
   },
 ];
 
-function splitHref(href: string) {
-  const [path, fragment] = href.split("#");
-  return {
-    path,
-    hash: fragment ? `#${fragment}` : "",
-  };
-}
-
 function NavLinks({
   pathname,
-  currentHash,
   isAdmin,
   onNavigate,
 }: {
   pathname: string;
-  currentHash: string;
   isAdmin: boolean;
   onNavigate?: () => void;
 }) {
@@ -183,17 +172,7 @@ function NavLinks({
         const href = typeof item.href === "string"
           ? item.href
           : item.href[isAdmin ? "admin" : "staff"];
-        const { path, hash } = splitHref(href);
-        const activePath =
-          matchesPath(path, item.exact) ||
-          item.activePaths?.some((activePath) => matchesPath(activePath)) ||
-          false;
-        const active = hash
-          ? activePath &&
-            (pathname !== path ||
-              currentHash === hash ||
-              (!currentHash && item.defaultActive))
-          : activePath;
+        const active = matchesPath(href, item.exact);
         return (
           <Link
             key={item.label}
@@ -261,17 +240,6 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
-  const [currentHash, setCurrentHash] = useState("");
-
-  useEffect(() => {
-    function updateHash() {
-      setCurrentHash(window.location.hash);
-    }
-
-    updateHash();
-    window.addEventListener("hashchange", updateHash);
-    return () => window.removeEventListener("hashchange", updateHash);
-  }, [pathname]);
 
   return (
     <>
@@ -279,7 +247,7 @@ export function Sidebar() {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-stone-200/70 bg-[#F3ECE3]/90 p-4 backdrop-blur-xl lg:flex">
         <div className="space-y-6">
           <Brand />
-          <NavLinks pathname={pathname} currentHash={currentHash} isAdmin={isAdmin} />
+          <NavLinks pathname={pathname} isAdmin={isAdmin} />
         </div>
         <UserBlock />
       </aside>
@@ -308,7 +276,6 @@ export function Sidebar() {
               <Brand />
               <NavLinks
                 pathname={pathname}
-                currentHash={currentHash}
                 isAdmin={isAdmin}
                 onNavigate={() => setOpen(false)}
               />

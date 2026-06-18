@@ -61,7 +61,24 @@ const EMPTY_PRODUCT_FORM: ProductForm = {
   isAvailable: true,
 };
 
-export function AdminProductManagement() {
+type ManagementView = "categories" | "products";
+
+const VIEW_COPY: Record<ManagementView, { title: string; description: string }> = {
+  categories: {
+    title: "Category Management",
+    description: "Manage menu categories and customer-facing menu sections.",
+  },
+  products: {
+    title: "Product Management",
+    description: "Manage products, prices, stock, sizes, and discounts.",
+  },
+};
+
+export function AdminProductManagement({
+  view = "products",
+}: {
+  view?: ManagementView;
+}) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +88,7 @@ export function AdminProductManagement() {
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(EMPTY_CATEGORY_FORM);
   const [productForm, setProductForm] = useState<ProductForm>(EMPTY_PRODUCT_FORM);
   const [busy, setBusy] = useState(false);
+  const pageCopy = VIEW_COPY[view];
 
   const reload = useCallback(async () => {
     const [nextCategories, nextProducts] = await Promise.all([
@@ -259,10 +277,10 @@ export function AdminProductManagement() {
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900">
-            Menu Management
+            {pageCopy.title}
           </h1>
           <p className="text-sm text-stone-500">
-            Manage menu categories, products, prices, stock, sizes, and discounts.
+            {pageCopy.description}
           </p>
         </div>
         <Link
@@ -283,9 +301,9 @@ export function AdminProductManagement() {
         <p className="text-sm text-stone-500">Loading...</p>
       ) : (
         <div className="space-y-6">
-          <ManagementSection
-            id="categories"
-            title="Menu Categories"
+          {view === "categories" && (
+            <ManagementSection
+              title="Menu Categories"
             description="Group customer-facing products into visible menu sections."
             count={categories.length}
             actionLabel="Create category"
@@ -342,11 +360,12 @@ export function AdminProductManagement() {
                 </table>
               </div>
             )}
-          </ManagementSection>
+            </ManagementSection>
+          )}
 
-          <ManagementSection
-            id="products"
-            title="Products"
+          {view === "products" && (
+            <ManagementSection
+              title="Products"
             description="Control item details, availability, stock, prices, and menu visibility."
             count={products.length}
             actionLabel="Create product"
@@ -433,7 +452,8 @@ export function AdminProductManagement() {
                 </table>
               </div>
             )}
-          </ManagementSection>
+            </ManagementSection>
+          )}
         </div>
       )}
 
@@ -655,7 +675,6 @@ export function AdminProductManagement() {
 }
 
 function ManagementSection({
-  id,
   title,
   description,
   count,
@@ -663,7 +682,6 @@ function ManagementSection({
   onCreate,
   children,
 }: {
-  id?: string;
   title: string;
   description: string;
   count: number;
@@ -672,10 +690,7 @@ function ManagementSection({
   children: ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className="scroll-mt-6 overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-    >
+    <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4">
         <div>
           <div className="flex items-center gap-2">

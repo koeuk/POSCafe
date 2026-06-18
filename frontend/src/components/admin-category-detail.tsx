@@ -24,10 +24,10 @@ export function AdminCategoryDetail({
           </p>
         </div>
         <Link
-          href="/admin/products"
+          href="/admin/categories"
           className="rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
         >
-          Manage menu
+          Categories
         </Link>
       </header>
 

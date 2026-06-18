@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { StaffFrame } from "@/components/staff-frame";
 
-// Shared auth shell for all staff pages. Admins get the management sidebar;
-// cashier-facing pages use the full viewport for the POS flow.
+// Shared auth shell for staff pages. The sidebar is role-aware:
+// cashiers see cashier workflow links, admins see management links too.
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <RequireAuth>
