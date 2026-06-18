@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RequireAuth } from "@/components/require-auth";
+import { StaffShell } from "@/components/staff-shell";
 import { api } from "@/lib/api";
 import { OrderStatus, type Order } from "@/lib/types";
 
@@ -230,8 +230,8 @@ function OrdersQueue() {
 export default function OrdersPage() {
   // Any authenticated staff member (cashier or admin) can view the queue.
   return (
-    <RequireAuth>
+    <StaffShell>
       <OrdersQueue />
-    </RequireAuth>
+    </StaffShell>
   );
 }

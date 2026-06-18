@@ -58,6 +58,28 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    href: "/pay",
+    label: "Payments",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M3 10h18M7 15h3" />
+      </svg>
+    ),
+  },
+  {
+    href: "/kitchen",
+    label: "Kitchen",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
+        <path d="M6 3v6a3 3 0 1 0 6 0V3" />
+        <path d="M9 12v9" />
+        <path d="M17 3v18" />
+        <path d="M14 7h6" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/products",
     label: "Products",
     adminOnly: true,
@@ -76,6 +98,20 @@ const NAV: NavItem[] = [
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/reports",
+    label: "Reports",
+    adminOnly: true,
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
+        <path d="M4 19V5" />
+        <path d="M4 19h16" />
+        <rect x="7" y="11" width="3" height="5" rx="1" />
+        <rect x="12" y="7" width="3" height="9" rx="1" />
+        <rect x="17" y="9" width="3" height="7" rx="1" />
       </svg>
     ),
   },
