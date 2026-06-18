@@ -7,10 +7,7 @@ import { StaffFrame } from "@/components/staff-frame";
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <RequireAuth>
-      <div className="min-h-screen bg-[#F3ECE3]">
-        <Sidebar />
-        <div className="lg:pl-64">{children}</div>
-      </div>
+      <StaffFrame>{children}</StaffFrame>
     </RequireAuth>
   );
 }

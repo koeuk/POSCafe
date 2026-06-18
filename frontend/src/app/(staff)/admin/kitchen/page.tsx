@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { RequireAuth } from "@/components/require-auth";
 import { api, getToken } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
 import { OrderStatus, type Order } from "@/lib/types";
 
 const SOCKET_URL =
@@ -36,7 +35,6 @@ const ACTIVE = new Set<OrderStatus>([
 ]);
 
 function KitchenScreen() {
-  const { logout } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -136,12 +134,6 @@ function KitchenScreen() {
             {connected ? "Live" : "Offline"}
           </span>
         </div>
-        <button
-          onClick={logout}
-          className="rounded-lg border border-stone-600 px-3 py-1.5 text-sm font-medium text-stone-300 transition hover:bg-stone-800"
-        >
-          Logout
-        </button>
       </header>
 
       {error && (
