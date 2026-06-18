@@ -41,7 +41,8 @@
       "Bash(curl -s -o /dev/null -w \"3001 /menu -> %{http_code}\\\\n\" http://localhost:3001/menu)",
       "Bash(PORT=3001 NODE_PATH=/home/koeuk/Projects/POSCAFE/backend/node_modules node /tmp/pcverify/main.js)",
       "Bash(python3 pos_shot2.py)",
-      "Bash(curl -s -o /dev/null -w \"backend: %{http_code}\\\\n\" http://localhost:3001/menu)"
+      "Bash(curl -s -o /dev/null -w \"backend: %{http_code}\\\\n\" http://localhost:3001/menu)",
+      "Bash(python3 pos_dbg.py)"
     ]
   }
 }
