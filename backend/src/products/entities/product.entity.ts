@@ -23,6 +23,10 @@ export class Product {
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
+  // Percentage off the price (0–100). 0 = no discount.
+  @Column({ type: 'int', default: 0 })
+  discountPercent: number;
+
   @Column({ nullable: true })
   image: string;
 

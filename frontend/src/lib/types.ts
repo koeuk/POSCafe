@@ -39,6 +39,8 @@ export interface Product {
   name: string;
   description: string | null;
   price: string;
+  // Percentage off the price (0–100). 0 = no discount.
+  discountPercent: number;
   image: string | null;
   isAvailable: boolean;
   stock: number;

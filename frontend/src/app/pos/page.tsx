@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
+import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
 import type { Category, Order, Product } from "@/lib/types";
 
 interface CartLine {
@@ -66,7 +67,7 @@ function POSScreen() {
   const total = useMemo(
     () =>
       cart.reduce(
-        (sum, line) => sum + Number(line.product.price) * line.quantity,
+        (sum, line) => sum + effectivePrice(line.product) * line.quantity,
         0,
       ),
     [cart],
@@ -206,8 +207,20 @@ function POSScreen() {
                       <span className="font-medium text-gray-900">
                         {product.name}
                       </span>
-                      <span className="mt-1 text-sm text-gray-500">
-                        ${Number(product.price).toFixed(2)}
+                      <span className="mt-1 flex items-center gap-1.5 text-sm">
+                        <span className="font-medium text-gray-900">
+                          {formatPrice(effectivePrice(product))}
+                        </span>
+                        {hasDiscount(product) && (
+                          <>
+                            <span className="text-gray-400 line-through">
+                              {formatPrice(product.price)}
+                            </span>
+                            <span className="rounded bg-red-100 px-1 text-xs font-semibold text-red-700">
+                              -{product.discountPercent}%
+                            </span>
+                          </>
+                        )}
                       </span>
                       <span className="mt-2 text-xs text-gray-400">
                         {soldOut ? "Sold out" : `${product.stock} in stock`}
@@ -265,7 +278,12 @@ function POSScreen() {
                         {line.product.name}
                       </p>
                       <p className="text-sm text-gray-500">
-                        ${Number(line.product.price).toFixed(2)} each
+                        {formatPrice(effectivePrice(line.product))} each
+                        {hasDiscount(line.product) && (
+                          <span className="ml-1 text-gray-400 line-through">
+                            {formatPrice(line.product.price)}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -283,7 +301,7 @@ function POSScreen() {
                       />
                     </div>
                     <div className="w-16 text-right text-sm font-semibold text-gray-900">
-                      ${(Number(line.product.price) * line.quantity).toFixed(2)}
+                      {formatPrice(effectivePrice(line.product) * line.quantity)}
                     </div>
                     <button
                       onClick={() => removeLine(line.product.id)}

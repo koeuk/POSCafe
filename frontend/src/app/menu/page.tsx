@@ -1,3 +1,4 @@
+import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
 
 // Customer-facing menu is always fresh (availability/prices change).
@@ -9,11 +10,6 @@ async function getMenu(): Promise<MenuCategory[]> {
   const res = await fetch(`${API_URL}/menu`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed to load menu (${res.status})`);
   return res.json();
-}
-
-function formatPrice(price: string): string {
-  const n = Number(price);
-  return Number.isFinite(n) ? `$${n.toFixed(2)}` : price;
 }
 
 export default async function MenuPage() {
@@ -33,7 +29,7 @@ export default async function MenuPage() {
         <p className="mt-2 text-sm text-stone-300">Our Menu</p>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8">
         {error && (
           <p className="rounded-xl bg-red-50 px-4 py-6 text-center text-red-600">
             {error}
@@ -58,26 +54,35 @@ export default async function MenuPage() {
                 </p>
               )}
 
-              <ul className="divide-y divide-stone-200 overflow-hidden rounded-2xl bg-white shadow-sm">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {category.products.map((product) => (
-                  <li
+                  <article
                     key={product.id}
-                    className="flex items-center gap-4 px-4 py-4"
+                    className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100"
                   >
-                    {product.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="h-16 w-16 flex-shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-stone-100 text-2xl">
-                        ☕
-                      </div>
-                    )}
+                    {/* Image */}
+                    <div className="relative aspect-square w-full bg-stone-100">
+                      {product.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-5xl">
+                          ☕
+                        </div>
+                      )}
+                      {hasDiscount(product) && (
+                        <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white shadow">
+                          -{product.discountPercent}%
+                        </span>
+                      )}
+                    </div>
 
-                    <div className="min-w-0 flex-1">
+                    {/* Body */}
+                    <div className="flex flex-1 flex-col p-3">
                       <p className="font-medium text-stone-900">
                         {product.name}
                       </p>
@@ -86,14 +91,21 @@ export default async function MenuPage() {
                           {product.description}
                         </p>
                       )}
-                    </div>
 
-                    <span className="flex-shrink-0 font-semibold text-stone-900">
-                      {formatPrice(product.price)}
-                    </span>
-                  </li>
+                      <div className="mt-3 flex items-baseline gap-2">
+                        <span className="font-semibold text-stone-900">
+                          {formatPrice(effectivePrice(product))}
+                        </span>
+                        {hasDiscount(product) && (
+                          <span className="text-xs text-stone-400 line-through">
+                            {formatPrice(product.price)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </article>
                 ))}
-              </ul>
+              </div>
             </section>
           ))}
         </div>
