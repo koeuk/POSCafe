@@ -118,6 +118,7 @@ const NAV: NavItem[] = [
   {
     href: "/admin/menu",
     label: "View Menu",
+    exact: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" />
@@ -155,7 +156,7 @@ function NavLinks({
           : item.href[isAdmin ? "admin" : "staff"];
         const active = item.exact
           ? pathname === href
-          : pathname === href || pathname.startsWith(`/`);
+          : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={item.label}
