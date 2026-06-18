@@ -25,7 +25,7 @@ const sw = {
 
 const NAV: NavItem[] = [
   {
-    href: "/admin",
+    href: "/dashboard",
     label: "Dashboard",
     exact: true,
     icon: (
@@ -116,7 +116,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/admin/menu",
+    href: { staff: "/menu", admin: "/admin/menu" },
     label: "View Menu",
     exact: true,
     icon: (
@@ -126,7 +126,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: "/admin/menu/qr",
+    href: { staff: "/menu/qr", admin: "/admin/menu/qr" },
     label: "QR Code",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Role } from "@/lib/types";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -14,7 +13,7 @@ export default function Home() {
     if (!user) {
       router.replace("/login");
     } else {
-      router.replace(user.role === Role.ADMIN ? "/admin" : "/pos");
+      router.replace("/dashboard");
     }
   }, [user, loading, router]);
 

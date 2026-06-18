@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Role } from "@/lib/types";
 
 export default function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -18,7 +17,7 @@ export default function LoginPage() {
   // Already signed in → send them where they belong.
   useEffect(() => {
     if (!loading && user) {
-      router.replace(user.role === Role.ADMIN ? "/admin" : "/pos");
+      router.replace("/dashboard");
     }
   }, [user, loading, router]);
 
@@ -27,8 +26,8 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const signedIn = await login(username, password);
-      router.replace(signedIn.role === Role.ADMIN ? "/admin" : "/pos");
+      await login(username, password);
+      router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
