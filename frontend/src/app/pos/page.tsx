@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { Fraunces } from "next/font/google";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
 import type { Category, Order, Product } from "@/lib/types";
+
+// Distinctive warm display serif for the brand & headings.
+const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
 interface CartLine {
   product: Product;
@@ -44,7 +48,9 @@ function POSScreen() {
         }
       } catch (err) {
         if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : "Failed to load menu");
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load menu",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -144,37 +150,46 @@ function POSScreen() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
+    <div className="font-ios flex h-screen flex-col bg-[#FBF7F1] text-stone-900">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
-        <h1 className="text-xl font-bold text-gray-900">☕ POSCAFE</h1>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-gray-600">
-            {user?.name}{" "}
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs uppercase text-gray-500">
+      <header className="flex shrink-0 items-center justify-between border-b border-stone-200/80 bg-white/70 px-5 py-3 backdrop-blur-xl sm:px-7">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
+            ☕
+          </span>
+          <span
+            className={`${display.className} text-xl font-semibold tracking-tight`}
+          >
+            POSCAFE
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-sm">
+          <span className="hidden items-center gap-2 text-stone-600 sm:flex">
+            {user?.name}
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
               {user?.role}
             </span>
           </span>
           <Link
             href="/orders"
-            className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium text-gray-700 transition hover:bg-gray-100"
+            className="rounded-full border border-stone-200 bg-white px-3.5 py-1.5 font-medium text-stone-700 shadow-sm transition hover:bg-stone-50 active:scale-95"
           >
             Orders
           </Link>
           <button
             onClick={logout}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium text-gray-700 transition hover:bg-gray-100"
+            className="rounded-full border border-stone-200 bg-white px-3.5 py-1.5 font-medium text-stone-700 shadow-sm transition hover:bg-stone-50 active:scale-95"
           >
             Logout
           </button>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Menu */}
         <main className="flex min-w-0 flex-1 flex-col">
-          {/* Category tabs */}
-          <div className="flex flex-wrap gap-2 border-b border-gray-200 bg-white px-6 py-3">
+          {/* Category pills */}
+          <div className="flex shrink-0 flex-wrap gap-2 px-5 py-4 sm:px-7">
             <CategoryTab
               label="All"
               active={activeCategory === null}
@@ -191,46 +206,80 @@ function POSScreen() {
           </div>
 
           {/* Product grid */}
-          <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
             {loading ? (
-              <p className="text-sm text-gray-500">Loading menu…</p>
+              <GridSkeleton />
             ) : loadError ? (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
                 {loadError}
               </p>
             ) : visibleProducts.length === 0 ? (
-              <p className="text-sm text-gray-500">No products here yet.</p>
+              <p className="mt-10 text-center text-sm text-stone-400">
+                No products here yet.
+              </p>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {visibleProducts.map((product) => {
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                {visibleProducts.map((product, i) => {
                   const soldOut = !product.isAvailable || product.stock <= 0;
                   return (
                     <button
                       key={product.id}
                       disabled={soldOut}
                       onClick={() => addToCart(product)}
-                      className="flex flex-col items-start rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-gray-900 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:shadow-sm"
+                      style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}
+                      className="ios-rise group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-white p-3 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0 disabled:hover:shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     >
-                      <span className="font-medium text-gray-900">
+                      {/* Thumbnail */}
+                      <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100">
+                        {product.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-4xl opacity-70">
+                            ☕
+                          </div>
+                        )}
+                        {hasDiscount(product) && (
+                          <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+                            -{product.discountPercent}%
+                          </span>
+                        )}
+                        {soldOut && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+                            <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">
+                              Sold out
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <span className="line-clamp-1 font-semibold text-stone-900">
                         {product.name}
                       </span>
-                      <span className="mt-1 flex items-center gap-1.5 text-sm">
-                        <span className="font-medium text-gray-900">
+                      <div className="mt-1 flex items-baseline gap-1.5">
+                        <span className="font-semibold text-stone-900">
                           {formatPrice(effectivePrice(product))}
                         </span>
                         {hasDiscount(product) && (
-                          <>
-                            <span className="text-gray-400 line-through">
-                              {formatPrice(product.price)}
-                            </span>
-                            <span className="rounded bg-red-100 px-1 text-xs font-semibold text-red-700">
-                              -{product.discountPercent}%
-                            </span>
-                          </>
+                          <span className="text-xs text-stone-400 line-through">
+                            {formatPrice(product.price)}
+                          </span>
                         )}
-                      </span>
-                      <span className="mt-2 text-xs text-gray-400">
-                        {soldOut ? "Sold out" : `${product.stock} in stock`}
+                      </div>
+                      <span
+                        className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          soldOut
+                            ? "bg-stone-100 text-stone-400"
+                            : product.stock <= 5
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {soldOut ? "Out of stock" : `${product.stock} left`}
                       </span>
                     </button>
                   );
@@ -241,62 +290,95 @@ function POSScreen() {
         </main>
 
         {/* Cart */}
-        <aside className="flex w-96 flex-col border-l border-gray-200 bg-white">
-          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-            <h2 className="font-semibold text-gray-900">
+        <aside className="flex w-full shrink-0 flex-col border-t border-stone-200/80 bg-white lg:w-[26rem] lg:border-l lg:border-t-0">
+          <div className="flex items-center justify-between px-6 pb-3 pt-5">
+            <h2 className={`${display.className} text-lg font-semibold`}>
               Current Order
+            </h2>
+            <div className="flex items-center gap-3">
               {itemCount > 0 && (
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                  ({itemCount} item{itemCount === 1 ? "" : "s"})
+                <span
+                  key={itemCount}
+                  className="pos-pop rounded-full bg-[#2A1D15] px-2.5 py-0.5 text-xs font-semibold text-amber-50"
+                >
+                  {itemCount} item{itemCount === 1 ? "" : "s"}
                 </span>
               )}
-            </h2>
-            {cart.length > 0 && (
-              <button
-                onClick={clearCart}
-                className="text-sm text-gray-400 transition hover:text-red-500"
-              >
-                Clear
-              </button>
-            )}
+              {cart.length > 0 && (
+                <button
+                  onClick={clearCart}
+                  className="text-sm text-stone-400 transition hover:text-red-500"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
             {lastOrder && (
-              <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-                ✅ Order <strong>{lastOrder.orderNumber}</strong> placed —{" "}
-                ${Number(lastOrder.total).toFixed(2)}
-                <Link
-                  href="/orders"
-                  className="ml-1 font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
-                >
-                  View in Orders →
-                </Link>
+              <div className="pos-drop mx-2 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                <div className="flex items-center gap-2 font-semibold">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[11px] text-white">
+                    ✓
+                  </span>
+                  Order {lastOrder.orderNumber} placed
+                </div>
+                <div className="mt-1 flex items-center justify-between pl-7">
+                  <span>{formatPrice(lastOrder.total)}</span>
+                  <Link
+                    href="/orders"
+                    className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
+                  >
+                    View →
+                  </Link>
+                </div>
               </div>
             )}
 
             {cart.length === 0 ? (
-              <p className="mt-8 text-center text-sm text-gray-400">
-                Tap a product to add it to the order.
-              </p>
+              <div className="mt-16 flex flex-col items-center px-6 text-center">
+                <div className="grid h-16 w-16 place-items-center rounded-2xl bg-amber-50 text-3xl">
+                  🧾
+                </div>
+                <p className="mt-4 font-medium text-stone-500">
+                  Your order is empty
+                </p>
+                <p className="mt-1 text-sm text-stone-400">
+                  Tap a product to add it here.
+                </p>
+              </div>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {cart.map((line) => (
                   <li
                     key={line.product.id}
-                    className="flex items-center gap-3"
+                    className="pos-line-in flex items-center gap-3 rounded-xl border border-stone-100 bg-white px-3 py-2.5 transition hover:border-stone-200"
                   >
+                    <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-gradient-to-br from-amber-50 to-stone-100 text-xl">
+                      {line.product.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={line.product.image}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        "☕"
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-gray-900">
+                      <p className="truncate font-medium text-stone-900">
                         {line.product.name}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        {formatPrice(effectivePrice(line.product))} each
-                        {hasDiscount(line.product) && (
-                          <span className="ml-1 text-gray-400 line-through">
-                            {formatPrice(line.product.price)}
-                          </span>
-                        )}
+                      <p className="text-sm text-stone-500">
+                        {formatPrice(effectivePrice(line.product))}
+                        <span className="ml-1.5 font-medium text-stone-900">
+                          ={" "}
+                          {formatPrice(
+                            effectivePrice(line.product) * line.quantity,
+                          )}
+                        </span>
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -304,7 +386,7 @@ function POSScreen() {
                         label="−"
                         onClick={() => changeQty(line.product.id, -1)}
                       />
-                      <span className="w-6 text-center text-sm font-medium text-gray-900">
+                      <span className="w-5 text-center text-sm font-semibold text-stone-900">
                         {line.quantity}
                       </span>
                       <QtyButton
@@ -313,16 +395,6 @@ function POSScreen() {
                         onClick={() => changeQty(line.product.id, 1)}
                       />
                     </div>
-                    <div className="w-16 text-right text-sm font-semibold text-gray-900">
-                      {formatPrice(effectivePrice(line.product) * line.quantity)}
-                    </div>
-                    <button
-                      onClick={() => removeLine(line.product.id)}
-                      className="text-gray-300 transition hover:text-red-500"
-                      aria-label="Remove item"
-                    >
-                      ✕
-                    </button>
                   </li>
                 ))}
               </ul>
@@ -330,24 +402,36 @@ function POSScreen() {
           </div>
 
           {/* Checkout */}
-          <div className="border-t border-gray-200 px-5 py-4">
+          <div className="border-t border-stone-200/80 bg-white px-6 py-5">
             {checkoutError && (
-              <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
                 {checkoutError}
               </p>
             )}
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-gray-600">Total</span>
-              <span className="text-2xl font-bold text-gray-900">
-                ${total.toFixed(2)}
+            <div className="mb-4 flex items-baseline justify-between">
+              <span className="text-stone-500">Total</span>
+              <span
+                key={total}
+                className={`${display.className} pos-pop text-3xl font-bold text-stone-900`}
+              >
+                {formatPrice(total)}
               </span>
             </div>
             <button
               onClick={handleCheckout}
               disabled={cart.length === 0 || placing}
-              className="w-full rounded-lg bg-gray-900 py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2A1D15] py-3.5 font-semibold text-amber-50 shadow-lg shadow-amber-900/10 transition-all hover:bg-[#3b2a1e] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
             >
-              {placing ? "Placing order…" : "Checkout"}
+              {placing ? (
+                "Placing order…"
+              ) : (
+                <>
+                  Checkout
+                  <span className="transition-transform group-hover:translate-x-0.5">
+                    →
+                  </span>
+                </>
+              )}
             </button>
           </div>
         </aside>
@@ -368,10 +452,10 @@ function CategoryTab({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+      className={`rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
         active
-          ? "bg-gray-900 text-white"
-          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          ? "bg-[#2A1D15] text-amber-50 shadow-sm"
+          : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
       }`}
     >
       {label}
@@ -392,10 +476,27 @@ function QtyButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+      className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-white text-base font-medium text-stone-700 transition hover:bg-stone-50 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {label}
     </button>
+  );
+}
+
+function GridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-stone-200/70 bg-white p-3"
+        >
+          <div className="mb-3 aspect-square w-full animate-pulse rounded-xl bg-stone-100" />
+          <div className="h-4 w-2/3 animate-pulse rounded bg-stone-100" />
+          <div className="mt-2 h-4 w-1/3 animate-pulse rounded bg-stone-100" />
+        </div>
+      ))}
+    </div>
   );
 }
 
