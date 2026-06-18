@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { api } from "@/lib/api";
 import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
-import type { Category, Order, Product } from "@/lib/types";
+import type { Category, Order, Product, ProductSize } from "@/lib/types";
 
 // Distinctive warm display serif for the brand & headings.
 const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -14,6 +14,11 @@ const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
 interface CartLine {
   product: Product;
   quantity: number;
+  size: ProductSize | null;
+}
+
+function cartKey(productId: number, sizeName: string | null | undefined) {
+  return `${productId}:${sizeName ?? ""}`;
 }
 
 function POSScreen() {
@@ -71,7 +76,7 @@ function POSScreen() {
   const total = useMemo(
     () =>
       cart.reduce(
-        (sum, line) => sum + effectivePrice(line.product) * line.quantity,
+        (sum, line) => sum + effectivePrice(line.product, line.size) * line.quantity,
         0,
       ),
     [cart],
@@ -82,36 +87,59 @@ function POSScreen() {
     [cart],
   );
 
-  const addToCart = useCallback((product: Product) => {
+  const addToCart = useCallback((product: Product, size: ProductSize | null = null) => {
     setLastOrder(null);
     setCheckoutError(null);
     setCart((prev) => {
-      const existing = prev.find((l) => l.product.id === product.id);
+      const sizeName = size?.size ?? null;
+      // Don't exceed available stock across all size variants of the product.
+      const currentForProduct = prev
+        .filter((l) => l.product.id === product.id)
+        .reduce((sum, l) => sum + l.quantity, 0);
+      if (currentForProduct >= product.stock) return prev;
+
+      const existing = prev.find(
+        (l) => l.product.id === product.id && (l.size?.size ?? null) === sizeName,
+      );
       if (existing) {
-        // Don't exceed available stock.
-        if (existing.quantity >= product.stock) return prev;
         return prev.map((l) =>
-          l.product.id === product.id ? { ...l, quantity: l.quantity + 1 } : l,
+          l.product.id === product.id && (l.size?.size ?? null) === sizeName
+            ? { ...l, quantity: l.quantity + 1 }
+            : l,
         );
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, quantity: 1, size }];
     });
   }, []);
 
-  const changeQty = useCallback((productId: number, delta: number) => {
-    setCart((prev) =>
-      prev.flatMap((l) => {
-        if (l.product.id !== productId) return [l];
-        const next = l.quantity + delta;
-        if (next <= 0) return [];
-        if (next > l.product.stock) return [l];
-        return [{ ...l, quantity: next }];
-      }),
-    );
-  }, []);
+  const changeQty = useCallback(
+    (productId: number, delta: number, sizeName: string | null = null) => {
+      setCart((prev) =>
+        prev.flatMap((l) => {
+          if (l.product.id !== productId || (l.size?.size ?? null) !== sizeName) {
+            return [l];
+          }
+          const next = l.quantity + delta;
+          if (next <= 0) return [];
+          if (delta > 0) {
+            const currentForProduct = prev
+              .filter((line) => line.product.id === productId)
+              .reduce((sum, line) => sum + line.quantity, 0);
+            if (currentForProduct >= l.product.stock) return [l];
+          }
+          return [{ ...l, quantity: next }];
+        }),
+      );
+    },
+    [],
+  );
 
-  const removeLine = useCallback((productId: number) => {
-    setCart((prev) => prev.filter((l) => l.product.id !== productId));
+  const removeLine = useCallback((productId: number, sizeName: string | null = null) => {
+    setCart((prev) =>
+      prev.filter(
+        (l) => l.product.id !== productId || (l.size?.size ?? null) !== sizeName,
+      ),
+    );
   }, []);
 
   const clearCart = useCallback(() => setCart([]), []);
@@ -128,6 +156,7 @@ function POSScreen() {
           items: cart.map((l) => ({
             productId: l.product.id,
             quantity: l.quantity,
+            ...(l.size ? { size: l.size.size } : {}),
           })),
         },
       });
@@ -185,66 +214,13 @@ function POSScreen() {
                 {visibleProducts.map((product, i) => {
                   const soldOut = !product.isAvailable || product.stock <= 0;
                   return (
-                    <button
+                    <ProductCard
                       key={product.id}
-                      disabled={soldOut}
-                      onClick={() => addToCart(product)}
-                      style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}
-                      className="ios-rise group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-white p-3 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0 disabled:hover:shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                    >
-                      {/* Thumbnail */}
-                      <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100">
-                        {product.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-4xl opacity-70">
-                            ☕
-                          </div>
-                        )}
-                        {hasDiscount(product) && (
-                          <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
-                            -{product.discountPercent}%
-                          </span>
-                        )}
-                        {soldOut && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
-                            <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">
-                              Sold out
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <span className="line-clamp-1 font-semibold text-stone-900">
-                        {product.name}
-                      </span>
-                      <div className="mt-1 flex items-baseline gap-1.5">
-                        <span className="font-semibold text-stone-900">
-                          {formatPrice(effectivePrice(product))}
-                        </span>
-                        {hasDiscount(product) && (
-                          <span className="text-xs text-stone-400 line-through">
-                            {formatPrice(product.price)}
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          soldOut
-                            ? "bg-stone-100 text-stone-400"
-                            : product.stock <= 5
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-emerald-50 text-emerald-700"
-                        }`}
-                      >
-                        {soldOut ? "Out of stock" : `${product.stock} left`}
-                      </span>
-                    </button>
+                      product={product}
+                      soldOut={soldOut}
+                      animationDelay={`${Math.min(i * 40, 400)}ms`}
+                      onAdd={addToCart}
+                    />
                   );
                 })}
               </div>
@@ -289,12 +265,20 @@ function POSScreen() {
                 </div>
                 <div className="mt-1 flex items-center justify-between pl-7">
                   <span>{formatPrice(lastOrder.total)}</span>
-                  <Link
-                    href="/orders"
-                    className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
-                  >
-                    View →
-                  </Link>
+                  <div className="flex gap-3">
+                    <Link
+                      href={`/pay?orderId=${lastOrder.id}`}
+                      className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
+                    >
+                      Pay
+                    </Link>
+                    <Link
+                      href="/orders"
+                      className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
+                    >
+                      View
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}
@@ -315,7 +299,7 @@ function POSScreen() {
               <ul className="space-y-2">
                 {cart.map((line) => (
                   <li
-                    key={line.product.id}
+                    key={cartKey(line.product.id, line.size?.size)}
                     className="pos-line-in flex items-center gap-3 rounded-xl border border-stone-100 bg-white px-3 py-2.5 transition hover:border-stone-200"
                   >
                     <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-gradient-to-br from-amber-50 to-stone-100 text-xl">
@@ -333,13 +317,18 @@ function POSScreen() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-stone-900">
                         {line.product.name}
+                        {line.size && (
+                          <span className="ml-1 text-xs font-normal text-stone-400">
+                            {line.size.size}
+                          </span>
+                        )}
                       </p>
                       <p className="text-sm text-stone-500">
-                        {formatPrice(effectivePrice(line.product))}
+                        {formatPrice(effectivePrice(line.product, line.size))}
                         <span className="ml-1.5 font-medium text-stone-900">
                           ={" "}
                           {formatPrice(
-                            effectivePrice(line.product) * line.quantity,
+                            effectivePrice(line.product, line.size) * line.quantity,
                           )}
                         </span>
                       </p>
@@ -347,15 +336,15 @@ function POSScreen() {
                     <div className="flex items-center gap-1.5">
                       <QtyButton
                         label="−"
-                        onClick={() => changeQty(line.product.id, -1)}
+                        onClick={() => changeQty(line.product.id, -1, line.size?.size ?? null)}
                       />
                       <span className="w-5 text-center text-sm font-semibold text-stone-900">
                         {line.quantity}
                       </span>
                       <QtyButton
                         label="+"
-                        disabled={line.quantity >= line.product.stock}
-                        onClick={() => changeQty(line.product.id, 1)}
+                        disabled={cart.filter((l) => l.product.id === line.product.id).reduce((sum, l) => sum + l.quantity, 0) >= line.product.stock}
+                        onClick={() => changeQty(line.product.id, 1, line.size?.size ?? null)}
                       />
                     </div>
                   </li>
@@ -400,6 +389,110 @@ function POSScreen() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function ProductCard({
+  product,
+  soldOut,
+  animationDelay,
+  onAdd,
+}: {
+  product: Product;
+  soldOut: boolean;
+  animationDelay: string;
+  onAdd: (product: Product, size?: ProductSize | null) => void;
+}) {
+  const sizes = product.sizes ?? [];
+  const priceLabel = sizes.length > 0
+    ? `from ${formatPrice(effectivePrice(product))}`
+    : formatPrice(effectivePrice(product));
+
+  return (
+    <article
+      style={{ animationDelay }}
+      className={`ios-rise group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-white p-3 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 ${
+        soldOut
+          ? "opacity-55"
+          : "hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)]"
+      }`}
+    >
+      <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100">
+        {product.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-4xl opacity-70">
+            ☕
+          </div>
+        )}
+        {hasDiscount(product) && (
+          <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+            -{product.discountPercent}%
+          </span>
+        )}
+        {soldOut && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+            <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">
+              Sold out
+            </span>
+          </div>
+        )}
+      </div>
+
+      <span className="line-clamp-1 font-semibold text-stone-900">
+        {product.name}
+      </span>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className="font-semibold text-stone-900">{priceLabel}</span>
+        {hasDiscount(product) && sizes.length === 0 && (
+          <span className="text-xs text-stone-400 line-through">
+            {formatPrice(product.price)}
+          </span>
+        )}
+      </div>
+      <span
+        className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+          soldOut
+            ? "bg-stone-100 text-stone-400"
+            : product.stock <= 5
+              ? "bg-amber-50 text-amber-700"
+              : "bg-emerald-50 text-emerald-700"
+        }`}
+      >
+        {soldOut ? "Out of stock" : `${product.stock} left`}
+      </span>
+
+      {sizes.length > 0 ? (
+        <div className="mt-3 grid grid-cols-1 gap-1.5">
+          {sizes.map((size) => (
+            <button
+              key={size.size}
+              type="button"
+              disabled={soldOut}
+              onClick={() => onAdd(product, size)}
+              className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span>{size.size}</span>
+              <span>{formatPrice(effectivePrice(product, size))}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={soldOut}
+          onClick={() => onAdd(product, null)}
+          className="mt-3 rounded-lg bg-[#2A1D15] px-3 py-2 text-sm font-semibold text-amber-50 transition hover:bg-[#3b2a1e] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+        >
+          Add
+        </button>
+      )}
+    </article>
   );
 }
 

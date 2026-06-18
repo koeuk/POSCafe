@@ -1,4 +1,6 @@
+import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsInt,
   IsNotEmpty,
@@ -7,7 +9,18 @@ import {
   IsString,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
+
+export class ProductSizeDto {
+  @IsString()
+  @IsNotEmpty()
+  size: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  price: number;
+}
 
 export class CreateProductDto {
   @IsString()
@@ -22,7 +35,13 @@ export class CreateProductDto {
   @Min(0)
   price: number;
 
-  // Percentage off the price (0–100). Defaults to 0 (no discount).
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductSizeDto)
+  sizes?: ProductSizeDto[] | null;
+
+  // Percentage off the price (0-100). Defaults to 0 (no discount).
   @IsOptional()
   @IsInt()
   @Min(0)

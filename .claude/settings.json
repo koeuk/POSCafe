@@ -44,7 +44,9 @@
       "Bash(curl -s -o /dev/null -w \"backend: %{http_code}\\\\n\" http://localhost:3001/menu)",
       "Bash(python3 pos_dbg.py)",
       "Bash(mysql -uroot -pkoeuk -D poscafe -e 'UPDATE users SET password='\\\\''__TRACKED_VAR__'\\\\'' WHERE username IN \\('\\\\''cashier1'\\\\'','\\\\''admin'\\\\''\\);')",
-      "Bash(echo \"pid $!\")"
+      "Bash(echo \"pid $!\")",
+      "Bash(python3 sidebar_check.py)",
+      "Bash(python3 sidebar_check_admin.py)"
     ]
   }
 }

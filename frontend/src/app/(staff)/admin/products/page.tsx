@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
-import { Role, type Category, type Product } from "@/lib/types";
+import { formatPrice } from "@/lib/pricing";
+import type { Category, Product, ProductSize } from "@/lib/types";
 
 interface ProductForm {
   id: number | null;
@@ -12,7 +12,10 @@ interface ProductForm {
   categoryId: string;
   price: string;
   stock: string;
+  discountPercent: string;
+  image: string;
   description: string;
+  sizesText: string;
   isAvailable: boolean;
 }
 
@@ -25,7 +28,10 @@ const EMPTY_FORM: ProductForm = {
   categoryId: "",
   price: "",
   stock: "0",
+  discountPercent: "0",
+  image: "",
   description: "",
+  sizesText: "",
   isAvailable: true,
 };
 
@@ -78,10 +84,9 @@ function ProductManagement() {
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name]));
-    return (id: number) => map.get(id) ?? "—";
+    return (id: number) => map.get(id) ?? "-";
   }, [categories]);
 
-  // --- Category actions ---
   async function addCategory(e: FormEvent) {
     e.preventDefault();
     if (!catName.trim()) return;
@@ -108,7 +113,6 @@ function ProductManagement() {
     }
   }
 
-  // --- Product actions ---
   function editProduct(p: Product) {
     setForm({
       id: p.id,
@@ -116,7 +120,10 @@ function ProductManagement() {
       categoryId: String(p.categoryId),
       price: p.price,
       stock: String(p.stock),
+      discountPercent: String(p.discountPercent ?? 0),
+      image: p.image ?? "",
       description: p.description ?? "",
+      sizesText: formatSizes(p.sizes),
       isAvailable: p.isAvailable,
     });
     setError(null);
@@ -132,6 +139,13 @@ function ProductManagement() {
       setError("Pick a category for the product");
       return;
     }
+
+    const parsedSizes = parseSizes(form.sizesText);
+    if (parsedSizes instanceof Error) {
+      setError(parsedSizes.message);
+      return;
+    }
+
     setProdBusy(true);
     setError(null);
     const payload = {
@@ -139,9 +153,13 @@ function ProductManagement() {
       description: form.description.trim() || undefined,
       price: Number(form.price),
       stock: Number(form.stock),
+      discountPercent: Number(form.discountPercent || "0"),
+      image: form.image.trim() || undefined,
+      sizes: parsedSizes,
       categoryId: Number(form.categoryId),
       isAvailable: form.isAvailable,
     };
+
     try {
       if (form.id === null) {
         await api("/products", { method: "POST", body: payload });
@@ -173,17 +191,17 @@ function ProductManagement() {
       <header className="flex items-center justify-between border-b border-stone-200 bg-white px-6 py-4">
         <div>
           <h1 className="text-xl font-bold text-stone-900">Menu Management</h1>
-          <p className="text-sm text-stone-500">Manage categories & products</p>
+          <p className="text-sm text-stone-500">Manage categories, prices, stock, sizes and discounts</p>
         </div>
         <Link
           href="/admin"
           className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
         >
-          ← Dashboard
+          Dashboard
         </Link>
       </header>
 
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-6xl px-6 py-8">
         {error && (
           <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
@@ -191,10 +209,9 @@ function ProductManagement() {
         )}
 
         {loading ? (
-          <p className="text-sm text-stone-500">Loading…</p>
+          <p className="text-sm text-stone-500">Loading...</p>
         ) : (
           <div className="space-y-10">
-            {/* Categories */}
             <section>
               <h2 className="mb-3 text-lg font-semibold text-stone-900">
                 Categories
@@ -221,7 +238,7 @@ function ProductManagement() {
                   {categories.map((c) => (
                     <span
                       key={c.id}
-                      className="inline-flex items-center gap-2 rounded-full bg-white border border-stone-200 px-3 py-1.5 text-sm text-stone-700"
+                      className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-700"
                     >
                       {c.name}
                       <button
@@ -229,7 +246,7 @@ function ProductManagement() {
                         className="text-stone-400 transition hover:text-red-500"
                         aria-label={`Delete ${c.name}`}
                       >
-                        ✕
+                        x
                       </button>
                     </span>
                   ))}
@@ -237,7 +254,6 @@ function ProductManagement() {
               )}
             </section>
 
-            {/* Product form */}
             <section>
               <h2 className="mb-3 text-lg font-semibold text-stone-900">
                 {form.id === null ? "Add product" : "Edit product"}
@@ -257,13 +273,11 @@ function ProductManagement() {
                 <Field label="Category">
                   <select
                     value={form.categoryId}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, categoryId: e.target.value }))
-                    }
+                    onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
                     required
                     className={INPUT_CLASS}
                   >
-                    <option value="">Select…</option>
+                    <option value="">Select...</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -271,7 +285,7 @@ function ProductManagement() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Price ($)">
+                <Field label="Base price ($)">
                   <input
                     type="number"
                     step="0.01"
@@ -289,6 +303,25 @@ function ProductManagement() {
                     value={form.stock}
                     onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
                     required
+                    className={INPUT_CLASS}
+                  />
+                </Field>
+                <Field label="Discount (%)">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={form.discountPercent}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, discountPercent: e.target.value }))
+                    }
+                    className={INPUT_CLASS}
+                  />
+                </Field>
+                <Field label="Image URL (optional)">
+                  <input
+                    value={form.image}
+                    onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
                     className={INPUT_CLASS}
                   />
                 </Field>
@@ -311,6 +344,15 @@ function ProductManagement() {
                   />
                   Available for sale
                 </label>
+                <Field label="Sizes (optional, one per line: Small=2.50)">
+                  <textarea
+                    value={form.sizesText}
+                    onChange={(e) => setForm((f) => ({ ...f, sizesText: e.target.value }))}
+                    rows={4}
+                    className={`${INPUT_CLASS} font-mono text-sm sm:col-span-2`}
+                    placeholder={"Small=2.50\nMedium=3.00\nLarge=3.50"}
+                  />
+                </Field>
 
                 <div className="flex gap-2 sm:col-span-2">
                   <button
@@ -319,7 +361,7 @@ function ProductManagement() {
                     className="rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white transition hover:bg-stone-800 disabled:opacity-50"
                   >
                     {prodBusy
-                      ? "Saving…"
+                      ? "Saving..."
                       : form.id === null
                         ? "Add product"
                         : "Update product"}
@@ -337,7 +379,6 @@ function ProductManagement() {
               </form>
             </section>
 
-            {/* Product list */}
             <section>
               <h2 className="mb-3 text-lg font-semibold text-stone-900">
                 Products ({products.length})
@@ -349,10 +390,11 @@ function ProductManagement() {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-stone-50 text-stone-500">
                       <tr>
-                        <th className="px-4 py-3 font-medium">Name</th>
+                        <th className="px-4 py-3 font-medium">Product</th>
                         <th className="px-4 py-3 font-medium">Category</th>
                         <th className="px-4 py-3 font-medium">Price</th>
                         <th className="px-4 py-3 font-medium">Stock</th>
+                        <th className="px-4 py-3 font-medium">Discount</th>
                         <th className="px-4 py-3 font-medium">Status</th>
                         <th className="px-4 py-3" />
                       </tr>
@@ -360,14 +402,34 @@ function ProductManagement() {
                     <tbody className="divide-y divide-stone-100">
                       {products.map((p) => (
                         <tr key={p.id} className="text-stone-800">
-                          <td className="px-4 py-3 font-medium">{p.name}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-amber-50 text-lg">
+                                {p.image ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={p.image} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  "☕"
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium text-stone-900">{p.name}</p>
+                                {p.sizes && p.sizes.length > 0 && (
+                                  <p className="text-xs text-stone-400">
+                                    {p.sizes.map((size) => `${size.size} ${formatPrice(size.price)}`).join(" / ")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-stone-500">
                             {categoryName(p.categoryId)}
                           </td>
-                          <td className="px-4 py-3">
-                            ${Number(p.price).toFixed(2)}
-                          </td>
+                          <td className="px-4 py-3">{productPriceLabel(p)}</td>
                           <td className="px-4 py-3">{p.stock}</td>
+                          <td className="px-4 py-3">
+                            {p.discountPercent ? `${p.discountPercent}%` : "-"}
+                          </td>
                           <td className="px-4 py-3">
                             {p.isAvailable ? (
                               <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
@@ -379,7 +441,7 @@ function ProductManagement() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <td className="whitespace-nowrap px-4 py-3 text-right">
                             <button
                               onClick={() => editProduct(p)}
                               className="mr-3 text-stone-600 transition hover:text-stone-900"
@@ -407,6 +469,39 @@ function ProductManagement() {
   );
 }
 
+function parseSizes(value: string): ProductSize[] | null | Error {
+  const lines = value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return null;
+
+  const sizes: ProductSize[] = [];
+  for (const line of lines) {
+    const match = line.match(/^(.+?)[=:,]\s*(\d+(?:\.\d{1,2})?)$/);
+    if (!match) {
+      return new Error(`Invalid size row: "${line}". Use Small=2.50`);
+    }
+    sizes.push({ size: match[1].trim(), price: Number(match[2]) });
+  }
+
+  return sizes;
+}
+
+function formatSizes(sizes: ProductSize[] | null): string {
+  if (!sizes || sizes.length === 0) return "";
+  return sizes.map((size) => `${size.size}=${Number(size.price).toFixed(2)}`).join("\n");
+}
+
+function productPriceLabel(product: Product): string {
+  if (product.sizes && product.sizes.length > 0) {
+    const min = Math.min(...product.sizes.map((size) => Number(size.price)));
+    return `from ${formatPrice(min)}`;
+  }
+  return formatPrice(product.price);
+}
+
 function Field({
   label,
   children,
@@ -425,9 +520,5 @@ function Field({
 }
 
 export default function AdminProductsPage() {
-  return (
-    <RequireAuth role={Role.ADMIN}>
-      <ProductManagement />
-    </RequireAuth>
-  );
+  return <ProductManagement />;
 }
