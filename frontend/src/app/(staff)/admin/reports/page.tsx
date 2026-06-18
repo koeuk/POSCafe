@@ -74,7 +74,7 @@ export default function ReportsPage() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900">
             Reports
@@ -101,7 +101,7 @@ export default function ReportsPage() {
         <Metric label="All Orders" value={String(summary?.allTime.orders ?? 0)} loading={loading} />
       </div>
 
-      <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <section className="mt-6 rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-stone-900">Daily Sales</h2>
@@ -144,7 +144,7 @@ export default function ReportsPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <section className="mt-6 rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <h2 className="font-semibold text-stone-900">Best Products</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -197,7 +197,7 @@ function Metric({
   loading: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <p className="text-sm text-stone-400">{label}</p>
       <p className="mt-2 text-2xl font-bold tracking-tight text-stone-900">
         {loading ? "..." : value}

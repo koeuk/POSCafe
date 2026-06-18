@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
 import { OrderStatus, type Order, type Product } from "@/lib/types";
 
-const ACCENT = "#7C5CFC";
+const ACCENT = "#2A1D15";
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string }> = {
   [OrderStatus.PENDING]: { label: "Pending", color: "#F59E0B" },
@@ -134,12 +134,12 @@ function Dashboard() {
   return (
     <div className="font-ios mx-auto max-w-7xl">
       {/* Greeting */}
-      <div className="mb-6">
+      <div className="mb-6 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Hi, {user?.name ?? "there"}
         </h1>
         <p className="mt-1 text-sm text-stone-500">
-          Role-aware staff workspace for today&apos;s cafe operations.
+          Admin command center for today&apos;s cafe operations.
         </p>
       </div>
 

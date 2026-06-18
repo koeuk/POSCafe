@@ -20,7 +20,7 @@ interface ProductForm {
 }
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-stone-900";
+  "w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-[#2A1D15]";
 
 const EMPTY_FORM: ProductForm = {
   id: null,
@@ -187,21 +187,21 @@ function ProductManagement() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50">
-      <header className="flex items-center justify-between border-b border-stone-200 bg-white px-6 py-4">
+    <main className="mx-auto max-w-7xl">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div>
-          <h1 className="text-xl font-bold text-stone-900">Menu Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Menu Management</h1>
           <p className="text-sm text-stone-500">Manage categories, prices, stock, sizes and discounts</p>
         </div>
         <Link
-          href="/admin"
+          href="/dashboard"
           className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
         >
           Dashboard
         </Link>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="space-y-6">
         {error && (
           <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
@@ -211,8 +211,8 @@ function ProductManagement() {
         {loading ? (
           <p className="text-sm text-stone-500">Loading...</p>
         ) : (
-          <div className="space-y-10">
-            <section>
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               <h2 className="mb-3 text-lg font-semibold text-stone-900">
                 Categories
               </h2>
@@ -221,12 +221,12 @@ function ProductManagement() {
                   value={catName}
                   onChange={(e) => setCatName(e.target.value)}
                   placeholder="New category name"
-                  className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-stone-900"
+                  className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-[#2A1D15]"
                 />
                 <button
                   type="submit"
                   disabled={catBusy || !catName.trim()}
-                  className="rounded-lg bg-stone-900 px-4 py-2 font-medium text-white transition hover:bg-stone-800 disabled:opacity-50"
+                  className="rounded-lg bg-[#2A1D15] px-4 py-2 font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
                 >
                   Add
                 </button>
@@ -260,7 +260,7 @@ function ProductManagement() {
               </h2>
               <form
                 onSubmit={submitProduct}
-                className="grid grid-cols-1 gap-4 rounded-2xl border border-stone-200 bg-white p-6 sm:grid-cols-2"
+                className="grid grid-cols-1 gap-4 rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:grid-cols-2"
               >
                 <Field label="Name">
                   <input
@@ -358,7 +358,7 @@ function ProductManagement() {
                   <button
                     type="submit"
                     disabled={prodBusy}
-                    className="rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white transition hover:bg-stone-800 disabled:opacity-50"
+                    className="rounded-lg bg-[#2A1D15] px-5 py-2.5 font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
                   >
                     {prodBusy
                       ? "Saving..."
@@ -386,7 +386,7 @@ function ProductManagement() {
               {products.length === 0 ? (
                 <p className="text-sm text-stone-400">No products yet.</p>
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+                <div className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-stone-50 text-stone-500">
                       <tr>

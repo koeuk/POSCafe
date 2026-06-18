@@ -87,10 +87,10 @@ function OrderHistory() {
   );
 
   return (
-    <main className="min-h-screen bg-stone-50">
-      <header className="flex items-center justify-between border-b border-stone-200 bg-white px-6 py-4">
+    <main className="mx-auto max-w-7xl">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div>
-          <h1 className="text-xl font-bold text-stone-900">Order History</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Order History</h1>
           <p className="text-sm text-stone-500">
             {orders.length} order{orders.length === 1 ? "" : "s"}
             {filter === "all" && revenue > 0 && (
@@ -99,14 +99,14 @@ function OrderHistory() {
           </p>
         </div>
         <Link
-          href="/admin"
+          href="/dashboard"
           className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
         >
           ← Dashboard
         </Link>
       </header>
 
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl">
         {/* Status filter */}
         <div className="mb-6 flex flex-wrap gap-2">
           {STATUS_FILTERS.map((f) => (
@@ -115,7 +115,7 @@ function OrderHistory() {
               onClick={() => setFilter(f.value)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 filter === f.value
-                  ? "bg-stone-900 text-white"
+                  ? "bg-[#2A1D15] text-white"
                   : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-100"
               }`}
             >
@@ -139,7 +139,7 @@ function OrderHistory() {
             {orders.map((order) => (
               <li
                 key={order.id}
-                className="rounded-2xl border border-stone-200 bg-white p-5"
+                className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -163,7 +163,7 @@ function OrderHistory() {
                       onChange={(e) =>
                         changeStatus(order.id, e.target.value as OrderStatus)
                       }
-                      className="rounded-lg border border-stone-300 px-2 py-1 text-sm text-stone-700 outline-none focus:border-stone-900 disabled:opacity-50"
+                      className="rounded-lg border border-stone-300 px-2 py-1 text-sm text-stone-700 outline-none focus:border-[#2A1D15] disabled:opacity-50"
                     >
                       {Object.values(OrderStatus).map((s) => (
                         <option key={s} value={s}>
