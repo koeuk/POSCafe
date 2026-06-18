@@ -39,6 +39,8 @@ export interface Product {
   name: string;
   description: string | null;
   price: string;
+  // Optional size options (S/M/L) with their own prices. null = no sizes.
+  sizes: ProductSize[] | null;
   // Percentage off the price (0–100). 0 = no discount.
   discountPercent: number;
   image: string | null;
@@ -46,6 +48,11 @@ export interface Product {
   stock: number;
   categoryId: number;
   category?: Category;
+}
+
+export interface ProductSize {
+  size: string;
+  price: number;
 }
 
 // Shape returned by the public GET /menu endpoint: active categories,
@@ -66,11 +73,17 @@ export enum OrderStatus {
   CANCELLED = "cancelled",
 }
 
+export enum OrderType {
+  DINE_IN = "dine_in",
+  TAKEAWAY = "takeaway",
+}
+
 export interface OrderItem {
   id: number;
   productId: number;
   product?: Product;
   quantity: number;
+  size: string | null;
   unitPrice: string;
   subtotal: string;
 }
@@ -79,13 +92,23 @@ export interface Order {
   id: number;
   orderNumber: string;
   status: OrderStatus;
+  orderType: OrderType;
   total: string;
   userId: number;
   items: OrderItem[];
   createdAt: string;
 }
 
+// Cashier "today" snapshot from GET /orders/today-summary.
+export interface TodaySummary {
+  orders: number;
+  items: number;
+  revenue: number;
+  cupsBySize: Record<string, number>;
+}
+
 // POST /orders payload.
 export interface CreateOrderPayload {
-  items: { productId: number; quantity: number }[];
+  orderType?: OrderType;
+  items: { productId: number; quantity: number; size?: string }[];
 }
