@@ -6,11 +6,9 @@ import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
 import { OrderStatus, type Order, type Product } from "@/lib/types";
 
-const ACCENT = "#2A1D15";
+import { GLASS } from "@/lib/ui";
 
-// Frosted-glass surface: soft translucent white over the light-gray shell.
-const GLASS =
-  "border border-white/60 bg-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.03] backdrop-blur-xl";
+const ACCENT = "#2A1D15";
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string }> = {
   [OrderStatus.PENDING]: { label: "Pending", color: "#F59E0B" },

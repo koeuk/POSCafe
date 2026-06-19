@@ -168,7 +168,7 @@ function POSScreen() {
   }
 
   return (
-    <div className="font-ios flex h-full flex-col bg-[#FBF7F1] text-stone-900">
+    <div className="font-ios flex h-full flex-col bg-[#F5F5F6] text-stone-900">
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Menu */}
         <main className="flex min-w-0 flex-1 flex-col">
@@ -403,7 +403,7 @@ function ProductCard({
   return (
     <article
       style={{ animationDelay }}
-      className={`ios-rise group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-white p-3 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-200 ${
+      className={`ios-rise group relative flex flex-col overflow-hidden rounded-2xl ${GLASS} p-3 text-left transition-all duration-200 ${
         soldOut
           ? "opacity-55"
           : "hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)]"

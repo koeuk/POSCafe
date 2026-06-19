@@ -14,6 +14,11 @@ interface CategoryForm {
   isActive: boolean;
 }
 
+interface SizeRow {
+  size: string;
+  price: string;
+}
+
 interface ProductForm {
   id: number | null;
   name: string;
@@ -24,7 +29,7 @@ interface ProductForm {
   image: string;
   gallery: string[];
   description: string;
-  sizesText: string;
+  sizes: SizeRow[];
   isAvailable: boolean;
 }
 
@@ -59,7 +64,7 @@ const EMPTY_PRODUCT_FORM: ProductForm = {
   image: "",
   gallery: [],
   description: "",
-  sizesText: "",
+  sizes: [],
   isAvailable: true,
 };
 
@@ -224,13 +229,39 @@ export function AdminProductManagement({
       image: product.image ?? "",
       gallery: product.gallery ?? [],
       description: product.description ?? "",
-      sizesText: formatSizes(product.sizes),
+      sizes: (product.sizes ?? []).map((size) => ({
+        size: size.size,
+        price: String(size.price),
+      })),
       isAvailable: product.isAvailable,
     });
     setImageMode(product.image ? "link" : "upload");
     setGalleryLink("");
     setDrawer({ type: "product", mode: "edit" });
     setError(null);
+  }
+
+  function addSizeRow() {
+    setProductForm((form) => ({
+      ...form,
+      sizes: [...form.sizes, { size: "", price: "" }],
+    }));
+  }
+
+  function updateSizeRow(index: number, key: keyof SizeRow, value: string) {
+    setProductForm((form) => ({
+      ...form,
+      sizes: form.sizes.map((row, i) =>
+        i === index ? { ...row, [key]: value } : row,
+      ),
+    }));
+  }
+
+  function removeSizeRow(index: number) {
+    setProductForm((form) => ({
+      ...form,
+      sizes: form.sizes.filter((_, i) => i !== index),
+    }));
   }
 
   async function submitCategory(event: FormEvent) {
@@ -271,7 +302,7 @@ export function AdminProductManagement({
       return;
     }
 
-    const parsedSizes = parseSizes(productForm.sizesText);
+    const parsedSizes = buildSizes(productForm.sizes);
     if (parsedSizes instanceof Error) {
       setError(parsedSizes.message);
       return;
@@ -336,12 +367,6 @@ export function AdminProductManagement({
             {pageCopy.description}
           </p>
         </div>
-        <Link
-          href="/dashboard"
-          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
-        >
-          Dashboard
-        </Link>
       </header>
 
       {error && (
@@ -787,19 +812,52 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Sizes (optional, one per line: Small=2.50)">
-              <textarea
-                value={productForm.sizesText}
-                onChange={(event) =>
-                  setProductForm((form) => ({
-                    ...form,
-                    sizesText: event.target.value,
-                  }))
-                }
-                rows={4}
-                className={`${INPUT_CLASS} font-mono text-sm`}
-                placeholder={"Small=2.50\nMedium=3.00\nLarge=3.50"}
-              />
+            <Field label="Sizes (optional)">
+              <div className="space-y-2">
+                {productForm.sizes.map((row, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      value={row.size}
+                      onChange={(event) =>
+                        updateSizeRow(index, "size", event.target.value)
+                      }
+                      placeholder="Size (e.g. Small)"
+                      className={`${INPUT_CLASS} flex-1`}
+                    />
+                    <div className="relative w-28 shrink-0">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">
+                        $
+                      </span>
+                      <input
+                        value={row.price}
+                        onChange={(event) =>
+                          updateSizeRow(index, "price", event.target.value)
+                        }
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        className={`${INPUT_CLASS} pl-6`}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSizeRow(index)}
+                      aria-label="Remove size"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addSizeRow}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15]"
+                >
+                  <span className="text-base leading-none">＋</span>
+                  Add size
+                </button>
+              </div>
             </Field>
             <label className="flex items-center gap-2 text-sm text-stone-700">
               <input
@@ -1049,29 +1107,27 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function parseSizes(value: string): ProductSize[] | null | Error {
-  const lines = value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+// Validate the size rows from the form, dropping rows the user left fully blank.
+function buildSizes(rows: SizeRow[]): ProductSize[] | null | Error {
+  const filled = rows
+    .map((row) => ({ size: row.size.trim(), price: row.price.trim() }))
+    .filter((row) => row.size || row.price);
 
-  if (lines.length === 0) return null;
+  if (filled.length === 0) return null;
 
   const sizes: ProductSize[] = [];
-  for (const line of lines) {
-    const match = line.match(/^(.+?)[=:,]\s*(\d+(?:\.\d{1,2})?)$/);
-    if (!match) {
-      return new Error(`Invalid size row: "${line}". Use Small=2.50`);
+  for (const row of filled) {
+    if (!row.size) {
+      return new Error("Each size needs a name.");
     }
-    sizes.push({ size: match[1].trim(), price: Number(match[2]) });
+    const price = Number(row.price);
+    if (!row.price || Number.isNaN(price) || price < 0) {
+      return new Error(`Enter a valid price for size "${row.size}".`);
+    }
+    sizes.push({ size: row.size, price });
   }
 
   return sizes;
-}
-
-function formatSizes(sizes: ProductSize[] | null): string {
-  if (!sizes || sizes.length === 0) return "";
-  return sizes.map((size) => `${size.size}=${Number(size.price).toFixed(2)}`).join("\n");
 }
 
 function productPriceLabel(product: Product): string {
