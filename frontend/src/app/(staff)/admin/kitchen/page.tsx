@@ -142,7 +142,7 @@ function KitchenScreen() {
         </p>
       )}
 
-      <section className="rounded-2xl border border-stone-800 bg-stone-950 p-4 text-stone-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <section className="rounded-2xl border border-stone-200/70 bg-white p-4 text-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="grid min-h-[640px] grid-cols-1 gap-4 sm:grid-cols-3">
         {COLUMNS.map((col) => {
           const list = byStatus.get(col.status) ?? [];
@@ -150,7 +150,7 @@ function KitchenScreen() {
             <section key={col.status} className="flex min-h-0 flex-col">
               <div className="mb-3 flex items-center justify-between px-1">
                 <h2 className="font-semibold">{col.title}</h2>
-                <span className="rounded-full bg-stone-800 px-2 py-0.5 text-xs text-stone-400">
+                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
                   {list.length}
                 </span>
               </div>
@@ -158,12 +158,12 @@ function KitchenScreen() {
                 {loading ? (
                   <p className="px-1 text-sm text-stone-500">Loading…</p>
                 ) : list.length === 0 ? (
-                  <p className="px-1 text-sm text-stone-600">—</p>
+                  <p className="px-1 text-sm text-stone-400">—</p>
                 ) : (
                   list.map((order) => (
                     <article
                       key={order.id}
-                      className={`rounded-xl border-l-4 bg-stone-800 p-4 ${col.accent}`}
+                      className={`rounded-xl border border-stone-200 border-l-4 bg-stone-50 p-4 shadow-sm ${col.accent}`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">
@@ -176,10 +176,10 @@ function KitchenScreen() {
                           })}
                         </span>
                       </div>
-                      <ul className="mt-3 space-y-1 text-sm text-stone-300">
+                      <ul className="mt-3 space-y-1 text-sm text-stone-600">
                         {order.items.map((it) => (
                           <li key={it.id}>
-                            <span className="font-medium text-white">
+                            <span className="font-medium text-stone-900">
                               {it.quantity}×
                             </span>{" "}
                             {it.product?.name ?? `#${it.productId}`}
@@ -188,7 +188,7 @@ function KitchenScreen() {
                       </ul>
                       <button
                         onClick={() => advance(order)}
-                        className="mt-4 w-full rounded-lg bg-stone-100 py-2 text-sm font-semibold text-stone-900 transition hover:bg-white"
+                        className="mt-4 w-full rounded-lg bg-[#2A1D15] py-2 text-sm font-semibold text-white transition hover:bg-[#3a2a1f]"
                       >
                         {NEXT_LABEL[order.status] ?? "Next"}
                       </button>

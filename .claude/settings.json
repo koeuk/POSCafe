@@ -65,7 +65,8 @@
       "Bash(sudo -n chown -R koeuk:koeuk /home/koeuk/Projects/POSCAFE/backend/uploads)",
       "Bash(npx next *)",
       "Bash(sort -t: -k2 -rn)",
-      "Bash(sort -t: -k1)"
+      "Bash(sort -t: -k1)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

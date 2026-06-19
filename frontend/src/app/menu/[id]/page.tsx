@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProductGallery } from "@/components/product-gallery";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { Product } from "@/lib/types";
 
@@ -29,66 +29,13 @@ export default async function ProductDetailPage({
     <main className="min-h-screen bg-amber-50">
       <div className="mx-auto max-w-5xl lg:px-6 lg:py-10">
         <div className="overflow-hidden bg-white shadow-sm lg:grid lg:grid-cols-2 lg:rounded-3xl">
-          {/* Image — full-width on phones, sized panel on laptop */}
-          <div className="bg-stone-50">
-          <div className="relative aspect-square w-full bg-stone-200 lg:aspect-[4/3]">
-            {product.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={product.image}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-7xl">
-                ☕
-              </div>
-            )}
-
-            <Link
-              href="/menu"
-              className="group absolute left-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-md ring-1 ring-black/5 backdrop-blur transition hover:w-auto hover:gap-1.5 hover:bg-white hover:px-4 hover:text-stone-900 active:scale-95"
-              aria-label="Back to menu"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.25"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-5 w-5 shrink-0 transition-transform group-hover:-translate-x-0.5"
-                aria-hidden="true"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-              <span className="hidden text-sm font-medium group-hover:inline">
-                Back
-              </span>
-            </Link>
-
-            {hasDiscount(product) && (
-              <span className="absolute right-4 top-4 rounded-full bg-red-500 px-3 py-1 text-sm font-semibold text-white shadow">
-                -{product.discountPercent}% OFF
-              </span>
-            )}
-          </div>
-
-          {product.gallery && product.gallery.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto p-3">
-              {product.gallery.map((url, index) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={`${url}-${index}`}
-                  src={url}
-                  alt={`${product.name} ${index + 1}`}
-                  className="h-16 w-16 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
-                />
-              ))}
-            </div>
-          )}
-          </div>
+          {/* Image slider — full-width on phones, sized panel on laptop */}
+          <ProductGallery
+            name={product.name}
+            mainImage={product.image}
+            gallery={product.gallery ?? []}
+            discountPercent={hasDiscount(product) ? product.discountPercent : 0}
+          />
 
           {/* Details */}
           <div className="px-5 pb-16 pt-6 lg:flex lg:flex-col lg:p-10">
@@ -146,14 +93,7 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            <Link
-              href="/menu"
-              className="mt-10 flex w-full items-center justify-center rounded-xl bg-stone-900 py-3 font-medium text-white transition hover:bg-stone-800 lg:mt-auto"
-            >
-              ← Back to menu
-            </Link>
-
-            <p className="mt-4 text-center text-xs text-stone-400">
+            <p className="mt-10 text-center text-xs text-stone-400 lg:mt-auto">
               Ask our staff to place your order
             </p>
           </div>
