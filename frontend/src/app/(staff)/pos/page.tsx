@@ -169,7 +169,7 @@ function POSScreen() {
   }
 
   return (
-    <div className="font-ios flex h-full flex-col bg-[#F5F5F6] text-stone-900">
+    <div className="font-ios flex h-full flex-col bg-[#F5F5F6] text-stone-900 dark:bg-stone-950 dark:text-stone-100">
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Menu */}
         <main className="flex min-w-0 flex-1 flex-col">
@@ -195,11 +195,11 @@ function POSScreen() {
             {loading ? (
               <GridSkeleton />
             ) : loadError ? (
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
                 {loadError}
               </p>
             ) : visibleProducts.length === 0 ? (
-              <p className="mt-10 text-center text-sm text-stone-400">
+              <p className="mt-10 text-center text-sm text-stone-400 dark:text-stone-500">
                 No products here yet.
               </p>
             ) : (
@@ -222,7 +222,7 @@ function POSScreen() {
         </main>
 
         {/* Cart */}
-        <aside className="flex w-full shrink-0 flex-col border-t border-stone-200/80 bg-white lg:w-[26rem] lg:border-l lg:border-t-0">
+        <aside className="flex w-full shrink-0 flex-col border-t border-stone-200/80 bg-white dark:border-stone-800 dark:bg-stone-900 lg:w-[26rem] lg:border-l lg:border-t-0">
           <div className="flex items-center justify-between px-6 pb-3 pt-5">
             <h2 className={`${display.className} text-lg font-semibold`}>
               Current Order
@@ -239,7 +239,7 @@ function POSScreen() {
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className="text-sm text-stone-400 transition hover:text-red-500"
+                  className="text-sm text-stone-400 transition hover:text-red-500 dark:text-stone-500"
                 >
                   Clear
                 </button>
@@ -249,7 +249,7 @@ function POSScreen() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
             {lastOrder && (
-              <div className="pos-drop mx-2 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <div className="pos-drop mx-2 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
                 <div className="flex items-center gap-2 font-semibold">
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[11px] text-white">
                     ✓
@@ -261,13 +261,13 @@ function POSScreen() {
                   <div className="flex gap-3">
                     <Link
                       href={`/pay?orderId=${lastOrder.id}`}
-                      className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
+                      className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       Pay
                     </Link>
                     <Link
                       href="/orders"
-                      className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
+                      className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       View
                     </Link>

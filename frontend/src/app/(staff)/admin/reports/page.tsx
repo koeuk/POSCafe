@@ -74,22 +74,22 @@ export default function ReportsPage() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             Reports
           </h1>
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
             Completed order revenue and product performance.
           </p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-500 ring-1 ring-stone-200">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-500 ring-1 ring-stone-200 dark:bg-stone-900 dark:text-stone-400 dark:ring-stone-800">
           Last 14 days
         </span>
       </div>
 
       {error && (
-        <p className="mb-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="mb-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </p>
       )}
@@ -101,27 +101,27 @@ export default function ReportsPage() {
         <Metric label="All Orders" value={String(summary?.allTime.orders ?? 0)} loading={loading} />
       </div>
 
-      <section className="mt-6 rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <section className="mt-6 rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-stone-900">Daily Sales</h2>
-            <p className="text-sm text-stone-400">
+            <h2 className="font-semibold text-stone-900 dark:text-stone-100">Daily Sales</h2>
+            <p className="text-sm text-stone-400 dark:text-stone-500">
               {formatPrice(totalWindowRevenue)} from {totalWindowOrders} orders
             </p>
           </div>
         </div>
 
         {loading ? (
-          <div className="h-56 animate-pulse rounded-xl bg-stone-100" />
+          <div className="h-56 animate-pulse rounded-xl bg-stone-100 dark:bg-stone-800" />
         ) : sortedDaily.length === 0 ? (
-          <p className="py-16 text-center text-sm text-stone-400">
+          <p className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
             No completed sales yet.
           </p>
         ) : (
           <div className="flex h-64 items-end gap-2 overflow-x-auto pb-1">
             {sortedDaily.map((day) => (
               <div key={day.date} className="flex min-w-16 flex-1 flex-col items-center gap-2">
-                <div className="flex h-48 w-full items-end rounded-xl bg-stone-50 px-2 pb-2">
+                <div className="flex h-48 w-full items-end rounded-xl bg-stone-50 px-2 pb-2 dark:bg-stone-800/50">
                   <div
                     className="w-full rounded-lg bg-[#2A1D15] transition-all"
                     style={{

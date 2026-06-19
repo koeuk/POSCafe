@@ -139,31 +139,31 @@ function PayScreen() {
   if (!orderIdParam) {
     return (
       <Shell>
-        <h1 className="mb-1 text-2xl font-bold text-stone-900">Take Payment</h1>
-        <p className="mb-6 text-sm text-stone-500">Pick an unpaid order</p>
+        <h1 className="mb-1 text-2xl font-bold text-stone-900 dark:text-stone-100">Take Payment</h1>
+        <p className="mb-6 text-sm text-stone-500 dark:text-stone-400">Pick an unpaid order</p>
         {loading ? (
-          <p className="text-sm text-stone-500">Loading…</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>
         ) : error ? (
           <ErrorBox>{error}</ErrorBox>
         ) : pending.length === 0 ? (
-          <p className="text-sm text-stone-400">No unpaid orders right now.</p>
+          <p className="text-sm text-stone-400 dark:text-stone-500">No unpaid orders right now.</p>
         ) : (
           <ul className="space-y-3">
             {pending.map((o) => (
               <li key={o.id}>
                 <Link
                   href={`/admin/pay?orderId=${o.id}`}
-                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-4 transition hover:border-[#2A1D15]"
+                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-4 transition hover:border-[#2A1D15] dark:border-stone-800 dark:bg-stone-900"
                 >
                   <span>
-                    <span className="font-semibold text-stone-900">
+                    <span className="font-semibold text-stone-900 dark:text-stone-100">
                       {o.orderNumber}
                     </span>
-                    <span className="ml-2 text-sm text-stone-500">
+                    <span className="ml-2 text-sm text-stone-500 dark:text-stone-400">
                       {o.items.length} item{o.items.length === 1 ? "" : "s"}
                     </span>
                   </span>
-                  <span className="font-semibold text-stone-900">
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">
                     {money(o.total)}
                   </span>
                 </Link>
@@ -179,7 +179,7 @@ function PayScreen() {
   if (loading) {
     return (
       <Shell>
-        <p className="text-sm text-stone-500">Loading order…</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">Loading order…</p>
       </Shell>
     );
   }
@@ -196,16 +196,16 @@ function PayScreen() {
   if (paid) {
     return (
       <Shell>
-        <div className="rounded-2xl bg-green-50 p-8 text-center">
+        <div className="rounded-2xl bg-green-50 p-8 text-center dark:bg-green-500/15">
           <p className="text-5xl">✅</p>
-          <p className="mt-4 text-lg font-semibold text-green-800">
+          <p className="mt-4 text-lg font-semibold text-green-800 dark:text-green-300">
             Payment complete
           </p>
-          <p className="mt-1 text-sm text-green-700">
+          <p className="mt-1 text-sm text-green-700 dark:text-green-300">
             {order?.orderNumber} · {METHOD_LABELS[paid.method]} paid {money(paid.amount)}
           </p>
           {Number(paid.change) > 0 && (
-            <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900">
+            <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900 dark:bg-stone-900 dark:text-stone-100">
               Change {money(paid.change)}
             </p>
           )}

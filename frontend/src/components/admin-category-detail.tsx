@@ -13,13 +13,13 @@ export function AdminCategoryDetail({
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div>
-          <p className="text-sm font-medium text-stone-400">Menu Category</p>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+          <p className="text-sm font-medium text-stone-400 dark:text-stone-500">Menu Category</p>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             {category.name}
           </h1>
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
             {category.description || "No category description has been added."}
           </p>
         </div>

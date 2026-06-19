@@ -44,7 +44,7 @@ type DeleteTarget =
   | null;
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-[#2A1D15]";
+  "w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-[#2A1D15] dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-amber-400";
 
 const EMPTY_CATEGORY_FORM: CategoryForm = {
   id: null,
@@ -377,25 +377,25 @@ export function AdminProductManagement({
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             {pageCopy.title}
           </h1>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             {pageCopy.description}
           </p>
         </div>
       </header>
 
       {error && (
-        <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-stone-500">Loading...</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">Loading...</p>
       ) : (
         <div className="space-y-6">
           {view === "categories" && (
@@ -411,7 +411,7 @@ export function AdminProductManagement({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-stone-50 text-stone-500">
+                  <thead className="bg-stone-50 text-stone-500 dark:bg-stone-800/50 dark:text-stone-400">
                     <tr>
                       <th className="px-4 py-3 font-medium">Category</th>
                       <th className="px-4 py-3 font-medium">Products</th>
@@ -420,22 +420,22 @@ export function AdminProductManagement({
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-100">
+                  <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                     {categories.map((category) => (
-                      <tr key={category.id} className="text-stone-800">
+                      <tr key={category.id} className="text-stone-800 dark:text-stone-200">
                         <td className="px-4 py-3">
-                          <p className="font-medium text-stone-900">{category.name}</p>
-                          <p className="mt-0.5 max-w-md truncate text-xs text-stone-400">
+                          <p className="font-medium text-stone-900 dark:text-stone-100">{category.name}</p>
+                          <p className="mt-0.5 max-w-md truncate text-xs text-stone-400 dark:text-stone-500">
                             {category.description || "No description"}
                           </p>
                         </td>
-                        <td className="px-4 py-3 text-stone-600">
+                        <td className="px-4 py-3 text-stone-600 dark:text-stone-400">
                           {productCountByCategory.get(category.id) ?? 0}
                         </td>
                         <td className="px-4 py-3">
                           <StatusPill active={category.isActive} activeLabel="Active" inactiveLabel="Hidden" />
                         </td>
-                        <td className="px-4 py-3 text-stone-500">
+                        <td className="px-4 py-3 text-stone-500 dark:text-stone-400">
                           {category.image ? "Attached" : "-"}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -473,7 +473,7 @@ export function AdminProductManagement({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-stone-50 text-stone-500">
+                  <thead className="bg-stone-50 text-stone-500 dark:bg-stone-800/50 dark:text-stone-400">
                     <tr>
                       <th className="px-4 py-3 font-medium">Product</th>
                       <th className="px-4 py-3 font-medium">Category</th>
@@ -484,12 +484,12 @@ export function AdminProductManagement({
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-100">
+                  <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                     {products.map((product) => (
-                      <tr key={product.id} className="text-stone-800">
+                      <tr key={product.id} className="text-stone-800 dark:text-stone-200">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-stone-100 text-lg">
+                            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-stone-100 text-lg dark:bg-stone-800">
                               {product.image ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
@@ -502,11 +502,11 @@ export function AdminProductManagement({
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate font-medium text-stone-900">
+                              <p className="truncate font-medium text-stone-900 dark:text-stone-100">
                                 {product.name}
                               </p>
                               {product.sizes && product.sizes.length > 0 && (
-                                <p className="truncate text-xs text-stone-400">
+                                <p className="truncate text-xs text-stone-400 dark:text-stone-500">
                                   {product.sizes
                                     .map((size) => `${size.size} ${formatPrice(size.price)}`)
                                     .join(" / ")}
@@ -515,7 +515,7 @@ export function AdminProductManagement({
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-stone-500">
+                        <td className="px-4 py-3 text-stone-500 dark:text-stone-400">
                           {categoryName(product.categoryId)}
                         </td>
                         <td className="px-4 py-3">{productPriceLabel(product)}</td>

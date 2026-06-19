@@ -45,10 +45,10 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
       <header className={`mb-6 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
               Menu Preview
             </h1>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               Admin view of published categories, availability, pricing, and discounts.
             </p>
           </div>
@@ -85,13 +85,13 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
               />
             ))}
           </div>
-          <label className="flex min-w-0 items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 lg:w-80">
-            <span className="text-stone-400">Search</span>
+          <label className="flex min-w-0 items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 lg:w-80 dark:border-stone-800 dark:bg-stone-800/50">
+            <span className="text-stone-400 dark:text-stone-500">Search</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Product or category"
-              className="min-w-0 flex-1 bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400"
+              className="min-w-0 flex-1 bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
           </label>
         </div>
