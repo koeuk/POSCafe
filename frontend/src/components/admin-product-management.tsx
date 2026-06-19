@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product, ProductSize } from "@/lib/types";
@@ -614,24 +614,13 @@ export function AdminProductManagement({
               />
             </Field>
             <Field label="Category">
-              <select
+              <CategoryCombobox
+                categories={categories}
                 value={productForm.categoryId}
-                onChange={(event) =>
-                  setProductForm((form) => ({
-                    ...form,
-                    categoryId: event.target.value,
-                  }))
+                onChange={(categoryId) =>
+                  setProductForm((form) => ({ ...form, categoryId }))
                 }
-                required
-                className={INPUT_CLASS}
-              >
-                <option value="">Select...</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Base price ($)">
@@ -1104,6 +1093,127 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       </span>
       {children}
     </label>
+  );
+}
+
+// Searchable category picker — keeps the visible option list short (Hicks' Law)
+// by letting the user type to filter instead of scanning every category.
+function CategoryCombobox({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: Category[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selected = categories.find((category) => String(category.id) === value);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((category) =>
+      category.name.toLowerCase().includes(q),
+    );
+  }, [categories, query]);
+
+  // Close on outside click; reset the search when it closes.
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      return;
+    }
+    function handleClick(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  function pick(id: string) {
+    onChange(id);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`${INPUT_CLASS} flex items-center justify-between text-left`}
+      >
+        <span className={selected ? "text-stone-900" : "text-stone-400"}>
+          {selected ? selected.name : "Select..."}
+        </span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`h-4 w-4 shrink-0 text-stone-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg">
+          <div className="border-b border-stone-100 p-2">
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search category…"
+              className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-sm text-stone-900 outline-none focus:border-[#2A1D15]"
+            />
+          </div>
+          <ul role="listbox" className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-stone-400">
+                No categories found
+              </li>
+            ) : (
+              filtered.map((category) => {
+                const isSelected = String(category.id) === value;
+                return (
+                  <li key={category.id} role="option" aria-selected={isSelected}>
+                    <button
+                      type="button"
+                      onClick={() => pick(String(category.id))}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition hover:bg-stone-50 ${
+                        isSelected
+                          ? "font-medium text-[#2A1D15]"
+                          : "text-stone-700"
+                      }`}
+                    >
+                      {category.name}
+                      {isSelected && <span className="text-[#2A1D15]">✓</span>}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 

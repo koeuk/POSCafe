@@ -109,7 +109,7 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                   {cat.products.map((product) => (
                     <article
                       key={product.id}
-                      className={`group grid grid-cols-[72px_1fr] overflow-hidden rounded-2xl ${GLASS} transition hover:border-[#2A1D15]/30 hover:shadow-md`}
+                      className={`group grid grid-cols-[128px_1fr] overflow-hidden rounded-2xl ${GLASS} transition hover:border-[#2A1D15]/30 hover:shadow-md`}
                     >
                       <div className="relative h-full min-h-24 bg-stone-100">
                         {product.image ? (
