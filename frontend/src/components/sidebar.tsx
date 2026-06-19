@@ -328,9 +328,18 @@ function UserBlock() {
         aria-expanded={open}
         className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-stone-900/5 dark:hover:bg-white/5"
       >
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-amber-200 text-sm font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">
-          {initial}
-        </span>
+        {user?.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.avatar}
+            alt={user.name}
+            className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-amber-200 text-sm font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">
+            {initial}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
             {user?.name}
