@@ -49,6 +49,19 @@ export function AdminProductDetail({ product }: { product: Product }) {
               </div>
             )}
           </div>
+          {product.gallery && product.gallery.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto p-3">
+              {product.gallery.map((url, index) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={`${url}-${index}`}
+                  src={url}
+                  alt={`${product.name} ${index + 1}`}
+                  className="h-16 w-16 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">

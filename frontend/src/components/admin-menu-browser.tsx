@@ -166,6 +166,24 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                             {product.isAvailable ? "Visible" : "Hidden"}
                           </span>
                         </div>
+                        {product.gallery && product.gallery.length > 0 && (
+                          <div className="mt-3 flex gap-1.5">
+                            {product.gallery.slice(0, 4).map((url, index) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={`${url}-${index}`}
+                                src={url}
+                                alt=""
+                                className="h-9 w-9 shrink-0 rounded-md object-cover ring-1 ring-stone-200"
+                              />
+                            ))}
+                            {product.gallery.length > 4 && (
+                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-stone-100 text-xs font-medium text-stone-500">
+                                +{product.gallery.length - 4}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </Link>
                   ))}
