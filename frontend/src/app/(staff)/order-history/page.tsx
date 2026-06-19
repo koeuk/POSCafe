@@ -5,6 +5,7 @@ import { StaffShell } from "@/components/staff-shell";
 import { StatusDropdown } from "@/components/status-dropdown";
 import { api } from "@/lib/api";
 import { OrderStatus, type Order } from "@/lib/types";
+import { GLASS } from "@/lib/ui";
 
 // The orders endpoint joins the cashier; extend locally to avoid editing
 // the shared types.ts (kept minimal to prevent collisions).
@@ -80,7 +81,7 @@ function OrderHistory() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Order History</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">
@@ -125,7 +126,7 @@ function OrderHistory() {
             {orders.map((order) => (
               <li
                 key={order.id}
-                className="rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                className={`rounded-2xl p-5 ${GLASS}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
