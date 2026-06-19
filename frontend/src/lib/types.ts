@@ -10,6 +10,7 @@ export interface User {
   name: string;
   username: string;
   role: Role;
+  avatar?: string | null;
 }
 
 // Response shape from POST /auth/login and /auth/register.

@@ -10,6 +10,7 @@ export interface CreateUserData {
   username: string;
   password: string; // already hashed
   role?: Role;
+  avatar?: string;
 }
 
 export interface NewUserInput {
@@ -17,6 +18,7 @@ export interface NewUserInput {
   username: string;
   password: string; // plain text — hashed here
   role: Role;
+  avatar?: string;
 }
 
 @Injectable()
@@ -67,6 +69,7 @@ export class UsersService {
       username: input.username,
       password,
       role: input.role,
+      avatar: input.avatar,
     });
     // Never leak the (hashed) password back to the client.
     return this.repo.create({ ...user, password: undefined });

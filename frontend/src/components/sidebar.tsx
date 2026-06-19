@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { ThemeToggle } from "./theme-toggle";
+import { useTheme, type Theme } from "@/lib/theme-context";
 
 interface NavItem {
   href: string | { staff: string; admin: string };
@@ -238,12 +238,96 @@ function Brand() {
   );
 }
 
-function UserBlock() {
-  const { user, logout } = useAuth();
-  const initial = (user?.name ?? "?").charAt(0).toUpperCase();
+// Three-way theme control: Light / System / Dark.
+function ThemeSwitch() {
+  const { theme, setTheme } = useTheme();
+  const options: { value: Theme; label: string; icon: ReactNode }[] = [
+    {
+      value: "light",
+      label: "Light",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </svg>
+      ),
+    },
+    {
+      value: "system",
+      label: "System",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+          <rect x="3" y="4" width="18" height="12" rx="2" />
+          <path d="M8 20h8M12 16v4" />
+        </svg>
+      ),
+    },
+    {
+      value: "dark",
+      label: "Dark",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
-    <div className="border-t border-stone-200/70 pt-3 dark:border-stone-800">
-      <div className="flex items-center gap-3 px-2 py-1">
+    <div className="flex items-center gap-0.5 rounded-full border border-stone-200 bg-white p-0.5 dark:border-stone-700 dark:bg-stone-800">
+      {options.map((o) => {
+        const active = theme === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => setTheme(o.value)}
+            aria-label={`${o.label} theme`}
+            aria-pressed={active}
+            title={o.label}
+            className={`grid h-7 w-7 place-items-center rounded-full transition ${
+              active
+                ? "bg-[#2A1D15] text-amber-50 dark:bg-amber-500 dark:text-stone-950"
+                : "text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+            }`}
+          >
+            {o.icon}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function UserBlock() {
+  const { user, logout, isAdmin } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const initial = (user?.name ?? "?").charAt(0).toUpperCase();
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div
+      ref={ref}
+      className="relative border-t border-stone-200/70 pt-3 dark:border-stone-800"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-stone-900/5 dark:hover:bg-white/5"
+      >
         <span className="grid h-9 w-9 place-items-center rounded-full bg-amber-200 text-sm font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">
           {initial}
         </span>
@@ -255,14 +339,56 @@ function UserBlock() {
             {user?.role}
           </p>
         </div>
-        <ThemeToggle />
-      </div>
-      <button
-        onClick={logout}
-        className="mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
-      >
-        Log out
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-4 w-4 shrink-0 text-stone-400 transition-transform dark:text-stone-500 ${
+            open ? "rotate-180" : ""
+          }`}
+          {...sw}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
       </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="pos-drop absolute bottom-full left-0 mb-2 w-full overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
+        >
+          <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+            <span className="text-xs font-medium text-stone-500 dark:text-stone-400">
+              Appearance
+            </span>
+            <ThemeSwitch />
+          </div>
+          <div className="my-1 border-t border-stone-100 dark:border-stone-800" />
+          {isAdmin && (
+            <Link
+              href="/admin/settings"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-stone-700 transition hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+              </svg>
+              Settings
+            </Link>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={logout}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+            Log out
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -287,7 +413,7 @@ export function Sidebar() {
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-white/70 px-4 py-3 backdrop-blur-xl lg:hidden dark:border-stone-800/60 dark:bg-stone-900/70">
         <Brand />
         <div className="flex items-center gap-2">
-          <ThemeToggle />
+          <ThemeSwitch />
           <button
             onClick={() => setOpen(true)}
             aria-label="Open menu"

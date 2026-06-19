@@ -22,6 +22,10 @@ export class User {
   @Column({ select: false })
   password: string;
 
+  // Profile picture URL (uploaded via /uploads/image). null = use initial.
+  @Column({ nullable: true })
+  avatar: string | null;
+
   @Column({ type: 'enum', enum: Role, default: Role.CASHIER })
   role: Role;
 
