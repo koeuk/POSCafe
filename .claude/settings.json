@@ -74,7 +74,8 @@
       "Bash(pkill -f \"nest start\")",
       "Bash(pkill -f \"node .*dist/main\")",
       "Bash(pkill -f \"node .*dist-dev/main\")",
-      "Bash(awk '{print $2,$11,$12,$13}')"
+      "Bash(awk '{print $2,$11,$12,$13}')",
+      "Bash(ps -o pid,user,cmd -p 48628,48629,49711,49712)"
     ]
   }
 }
