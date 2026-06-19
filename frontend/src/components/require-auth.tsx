@@ -30,7 +30,7 @@ export function RequireAuth({ children, role }: RequireAuthProps) {
 
   if (loading || !user || (role && user.role !== role)) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-gray-500">
+      <div className="flex min-h-screen items-center justify-center text-sm text-gray-500 dark:text-gray-400">
         Loading…
       </div>
     );

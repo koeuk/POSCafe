@@ -20,11 +20,11 @@ const STATUS_FILTERS: { label: string; value: OrderStatus | "all" }[] = [
 ];
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
-  [OrderStatus.PENDING]: "bg-amber-50 text-amber-700",
-  [OrderStatus.PREPARING]: "bg-blue-50 text-blue-700",
-  [OrderStatus.READY]: "bg-violet-50 text-violet-700",
-  [OrderStatus.COMPLETED]: "bg-green-50 text-green-700",
-  [OrderStatus.CANCELLED]: "bg-stone-100 text-stone-500",
+  [OrderStatus.PENDING]: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  [OrderStatus.PREPARING]: "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
+  [OrderStatus.READY]: "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  [OrderStatus.COMPLETED]: "bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300",
+  [OrderStatus.CANCELLED]: "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400",
 };
 
 // The next step in the fulfilment flow → a one-tap "advance" button.
@@ -101,16 +101,16 @@ function OrdersQueue() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Orders</h1>
-          <p className="text-sm text-stone-500">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Orders</h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             {activeCount} active · {orders.length} total · live
           </p>
         </div>
       </header>
 
-      <section className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <section className="rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         {/* Status filter */}
         <div className="mb-6 flex flex-wrap gap-2">
           {STATUS_FILTERS.map((f) => (
@@ -120,7 +120,7 @@ function OrdersQueue() {
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 filter === f.value
                   ? "bg-[#2A1D15] text-white"
-                  : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-100"
+                  : "border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
               }`}
             >
               {f.label}
@@ -129,15 +129,15 @@ function OrdersQueue() {
         </div>
 
         {error && (
-          <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+          <p className="mb-6 rounded-lg bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
             {error}
           </p>
         )}
 
         {loading ? (
-          <p className="text-sm text-stone-500">Loading orders…</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">Loading orders…</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-stone-400">No orders here yet.</p>
+          <p className="text-sm text-stone-400 dark:text-stone-500">No orders here yet.</p>
         ) : (
           <ul className="space-y-4">
             {orders.map((order) => {
@@ -150,14 +150,14 @@ function OrdersQueue() {
               return (
                 <li
                   key={order.id}
-                  className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                  className="rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-stone-900">
+                      <p className="font-semibold text-stone-900 dark:text-stone-100">
                         {order.orderNumber}
                       </p>
-                      <p className="text-sm text-stone-500">
+                      <p className="text-sm text-stone-500 dark:text-stone-400">
                         {new Date(order.createdAt).toLocaleString()}
                         {order.user && <> · {order.user.name}</>}
                       </p>
@@ -169,11 +169,11 @@ function OrdersQueue() {
                     </span>
                   </div>
 
-                  <ul className="mt-4 space-y-1 border-t border-stone-100 pt-3 text-sm">
+                  <ul className="mt-4 space-y-1 border-t border-stone-100 dark:border-stone-800 pt-3 text-sm">
                     {order.items.map((item) => (
                       <li
                         key={item.id}
-                        className="flex justify-between text-stone-600"
+                        className="flex justify-between text-stone-600 dark:text-stone-400"
                       >
                         <span>
                           {item.quantity}× {item.product?.name ?? `#${item.productId}`}
@@ -183,8 +183,8 @@ function OrdersQueue() {
                     ))}
                   </ul>
 
-                  <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-3">
-                    <span className="font-semibold text-stone-900">
+                  <div className="mt-3 flex items-center justify-between border-t border-stone-100 dark:border-stone-800 pt-3">
+                    <span className="font-semibold text-stone-900 dark:text-stone-100">
                       Total ${Number(order.total).toFixed(2)}
                     </span>
                     <div className="flex gap-2">
@@ -194,7 +194,7 @@ function OrdersQueue() {
                             changeStatus(order.id, OrderStatus.CANCELLED)
                           }
                           disabled={busy}
-                          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-100 disabled:opacity-50"
+                          className="rounded-lg border border-stone-300 dark:border-stone-700 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-400 transition hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-50"
                         >
                           Cancel
                         </button>

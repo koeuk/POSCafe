@@ -238,12 +238,12 @@ function PayScreen() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Order summary */}
         <div>
-          <h1 className="text-xl font-bold text-stone-900">
+          <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
             {order?.orderNumber}
           </h1>
           <ul className="mt-4 space-y-1 text-sm">
             {order?.items.map((it) => (
-              <li key={it.id} className="flex justify-between text-stone-600">
+              <li key={it.id} className="flex justify-between text-stone-600 dark:text-stone-400">
                 <span>
                   {it.quantity}× {it.product?.name ?? `#${it.productId}`}
                 </span>
@@ -251,7 +251,7 @@ function PayScreen() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900">
+          <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900 dark:border-stone-800 dark:text-stone-100">
             <span>Total due</span>
             <span>{money(due)}</span>
           </div>
@@ -269,7 +269,7 @@ function PayScreen() {
                 className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                   method === option
                     ? "border-[#2A1D15] bg-[#2A1D15] text-white"
-                    : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+                    : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
                 }`}
               >
                 {METHOD_LABELS[option]}
@@ -279,16 +279,16 @@ function PayScreen() {
 
           {method === PaymentMethod.CASH ? (
             <>
-              <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-right">
-                <p className="text-xs uppercase tracking-wide text-stone-400">
+              <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-right dark:border-stone-800 dark:bg-stone-800/50">
+                <p className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
                   Cash received
                 </p>
-                <p className="text-3xl font-bold text-stone-900">
+                <p className="text-3xl font-bold text-stone-900 dark:text-stone-100">
                   {money(tendered === "" ? 0 : tendered)}
                 </p>
                 <p
                   className={`mt-1 text-sm font-medium ${
-                    tenderedNum >= due ? "text-green-600" : "text-stone-400"
+                    tenderedNum >= due ? "text-green-600 dark:text-green-400" : "text-stone-400 dark:text-stone-500"
                   }`}
                 >
                   Change {money(change >= 0 ? change : 0)}
@@ -317,14 +317,14 @@ function PayScreen() {
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-center">
-              <p className="text-sm font-medium text-stone-500">
+            <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-center dark:border-stone-800 dark:bg-stone-800/50">
+              <p className="text-sm font-medium text-stone-500 dark:text-stone-400">
                 {METHOD_LABELS[method]} payment
               </p>
-              <p className="mt-2 text-3xl font-bold text-stone-900">
+              <p className="mt-2 text-3xl font-bold text-stone-900 dark:text-stone-100">
                 {money(due)}
               </p>
-              <p className="mt-2 text-sm text-stone-400">
+              <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
                 Confirm after the terminal or QR transfer succeeds.
               </p>
             </div>
@@ -356,24 +356,24 @@ function Shell({
 }) {
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             Payments
           </h1>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             Settle unpaid orders and record cash, QR, or card payments.
           </p>
         </div>
         <Link
           href="/orders"
-          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
         >
           View orders
         </Link>
       </header>
       <section
-        className={`mx-auto rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${
+        className={`mx-auto rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900 ${
           wide ? "max-w-5xl" : "max-w-2xl"
         }`}
       >
@@ -385,7 +385,7 @@ function Shell({
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+    <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
       {children}
     </p>
   );
@@ -395,7 +395,7 @@ function BackLink() {
   return (
     <Link
       href="/admin/pay"
-      className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-900"
+      className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
     >
       ← All unpaid orders
     </Link>
@@ -406,7 +406,7 @@ function QuickBtn({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-lg border border-stone-300 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+      className="rounded-lg border border-stone-300 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
     >
       {label}
     </button>
@@ -423,7 +423,7 @@ function PadBtn({
   return (
     <button
       onClick={onClick}
-      className="rounded-lg border border-stone-200 bg-white py-4 text-xl font-semibold text-stone-900 transition hover:bg-stone-100 active:bg-stone-200"
+      className="rounded-lg border border-stone-200 bg-white py-4 text-xl font-semibold text-stone-900 transition hover:bg-stone-100 active:bg-stone-200 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800 dark:active:bg-stone-700"
     >
       {children}
     </button>
@@ -435,7 +435,7 @@ export default function PayPage() {
     <RequireAuth>
       <Suspense
         fallback={
-          <div className="flex min-h-screen items-center justify-center text-sm text-stone-500">
+          <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
             Loading…
           </div>
         }

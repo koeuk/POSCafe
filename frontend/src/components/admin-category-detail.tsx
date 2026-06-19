@@ -32,8 +32,8 @@ export function AdminCategoryDetail({
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <div className="aspect-video bg-stone-100 lg:aspect-square">
+        <section className="overflow-hidden rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="aspect-video bg-stone-100 dark:bg-stone-800 lg:aspect-square">
             {category.image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -58,24 +58,24 @@ export function AdminCategoryDetail({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <div className="border-b border-stone-100 px-5 py-4">
-            <h2 className="text-lg font-semibold text-stone-900">
+        <section className="overflow-hidden rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="border-b border-stone-100 dark:border-stone-800 px-5 py-4">
+            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
               Products in this category
             </h2>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               Review the products that will appear under this menu category.
             </p>
           </div>
 
           {products.length === 0 ? (
-            <p className="px-5 py-12 text-center text-sm text-stone-400">
+            <p className="px-5 py-12 text-center text-sm text-stone-400 dark:text-stone-500">
               No products in this category yet.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-stone-50 text-stone-500">
+                <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400">
                   <tr>
                     <th className="px-4 py-3 font-medium">Product</th>
                     <th className="px-4 py-3 font-medium">Price</th>
@@ -84,12 +84,12 @@ export function AdminCategoryDetail({
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100">
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                   {products.map((product) => (
-                    <tr key={product.id} className="text-stone-800">
+                    <tr key={product.id} className="text-stone-800 dark:text-stone-200">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-stone-900">{product.name}</p>
-                        <p className="mt-0.5 max-w-md truncate text-xs text-stone-400">
+                        <p className="font-medium text-stone-900 dark:text-stone-100">{product.name}</p>
+                        <p className="mt-0.5 max-w-md truncate text-xs text-stone-400 dark:text-stone-500">
                           {product.description || "No description"}
                         </p>
                       </td>
@@ -97,11 +97,11 @@ export function AdminCategoryDetail({
                       <td className="px-4 py-3">{product.stock}</td>
                       <td className="px-4 py-3">
                         {product.isAvailable ? (
-                          <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
+                          <span className="rounded-full bg-green-50 dark:bg-green-500/15 px-2 py-0.5 text-xs text-green-700 dark:text-green-300">
                             Available
                           </span>
                         ) : (
-                          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+                          <span className="rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-xs text-stone-500 dark:text-stone-400">
                             Hidden
                           </span>
                         )}
@@ -109,7 +109,7 @@ export function AdminCategoryDetail({
                       <td className="px-4 py-3 text-right">
                         <Link
                           href={`/admin/menu/${product.id}`}
-                          className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+                          className="rounded-lg border border-stone-200 dark:border-stone-800 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-400 transition hover:bg-stone-50 dark:hover:bg-stone-800"
                         >
                           View
                         </Link>
@@ -136,11 +136,11 @@ function Info({
   className?: string;
 }) {
   return (
-    <div className={`rounded-xl border border-stone-200/70 bg-stone-50 px-4 py-3 ${className}`}>
-      <p className="text-xs font-medium uppercase tracking-wide text-stone-400">
+    <div className={`rounded-xl border border-stone-200/70 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50 px-4 py-3 ${className}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold text-stone-900">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-stone-900 dark:text-stone-100">{value}</p>
     </div>
   );
 }

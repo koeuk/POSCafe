@@ -131,10 +131,10 @@ export default function ReportsPage() {
                   />
                 </div>
                 <div className="text-center leading-tight">
-                  <p className="text-xs font-medium text-stone-600">
+                  <p className="text-xs font-medium text-stone-600 dark:text-stone-400">
                     {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </p>
-                  <p className="text-[11px] text-stone-400">
+                  <p className="text-[11px] text-stone-400 dark:text-stone-500">
                     {formatPrice(day.revenue)}
                   </p>
                 </div>
@@ -144,36 +144,36 @@ export default function ReportsPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <h2 className="font-semibold text-stone-900">Best Products</h2>
+      <section className="mt-6 rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+        <h2 className="font-semibold text-stone-900 dark:text-stone-100">Best Products</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-stone-400">
+            <thead className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
               <tr>
                 <th className="pb-3 font-medium">Product</th>
                 <th className="pb-3 font-medium">Sold</th>
                 <th className="pb-3 font-medium">Revenue</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="py-3"><span className="block h-4 w-40 animate-pulse rounded bg-stone-100" /></td>
-                    <td className="py-3"><span className="block h-4 w-12 animate-pulse rounded bg-stone-100" /></td>
-                    <td className="py-3"><span className="block h-4 w-20 animate-pulse rounded bg-stone-100" /></td>
+                    <td className="py-3"><span className="block h-4 w-40 animate-pulse rounded bg-stone-100 dark:bg-stone-800" /></td>
+                    <td className="py-3"><span className="block h-4 w-12 animate-pulse rounded bg-stone-100 dark:bg-stone-800" /></td>
+                    <td className="py-3"><span className="block h-4 w-20 animate-pulse rounded bg-stone-100 dark:bg-stone-800" /></td>
                   </tr>
                 ))
               ) : bestProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-8 text-center text-stone-400">
+                  <td colSpan={3} className="py-8 text-center text-stone-400 dark:text-stone-500">
                     No completed product sales yet.
                   </td>
                 </tr>
               ) : (
                 bestProducts.map((product) => (
-                  <tr key={product.productId} className="text-stone-700">
-                    <td className="py-3 font-medium text-stone-900">{product.name}</td>
+                  <tr key={product.productId} className="text-stone-700 dark:text-stone-300">
+                    <td className="py-3 font-medium text-stone-900 dark:text-stone-100">{product.name}</td>
                     <td className="py-3">{product.quantitySold}</td>
                     <td className="py-3 font-medium">{formatPrice(product.revenue)}</td>
                   </tr>
@@ -197,9 +197,9 @@ function Metric({
   loading: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-      <p className="text-sm text-stone-400">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-stone-900">
+    <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+      <p className="text-sm text-stone-400 dark:text-stone-500">{label}</p>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
         {loading ? "..." : value}
       </p>
     </div>

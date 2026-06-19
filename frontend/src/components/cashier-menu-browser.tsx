@@ -44,10 +44,10 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
       <header className={`mb-6 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
               View Menu
             </h1>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               Cashier view of published categories, availability, pricing, and stock.
             </p>
           </div>
@@ -78,19 +78,19 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
               />
             ))}
           </div>
-          <label className="flex min-w-0 items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 lg:w-80">
-            <span className="text-stone-400">Search</span>
+          <label className="flex min-w-0 items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800 lg:w-80">
+            <span className="text-stone-400 dark:text-stone-500">Search</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Product or category"
-              className="min-w-0 flex-1 bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400"
+              className="min-w-0 flex-1 bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
           </label>
         </div>
 
         {visible.length === 0 ? (
-          <p className="py-16 text-center text-sm text-stone-400">
+          <p className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
             No menu items match this view.
           </p>
         ) : (
@@ -98,10 +98,10 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
             {visible.map((cat) => (
               <section key={cat.id}>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-semibold text-stone-900">
+                  <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
                     {cat.name}
                   </h2>
-                  <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
+                  <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
                     {cat.products.length} item{cat.products.length === 1 ? "" : "s"}
                   </span>
                 </div>
@@ -111,7 +111,7 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                       key={product.id}
                       className={`group grid grid-cols-[128px_1fr] overflow-hidden rounded-2xl ${GLASS} transition hover:border-[#2A1D15]/30 hover:shadow-md`}
                     >
-                      <div className="relative h-full min-h-24 bg-stone-100">
+                      <div className="relative h-full min-h-24 bg-stone-100 dark:bg-stone-800">
                         {product.image ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -128,32 +128,32 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                       <div className="min-w-0 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate font-semibold text-stone-900 group-hover:text-[#2A1D15]">
+                            <p className="truncate font-semibold text-stone-900 group-hover:text-[#2A1D15] dark:text-stone-100 dark:group-hover:text-amber-300">
                               {product.name}
                             </p>
-                            <p className="mt-1 line-clamp-2 text-sm text-stone-500">
+                            <p className="mt-1 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">
                               {product.description || "No description"}
                             </p>
                           </div>
                           {hasDiscount(product) && (
-                            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+                            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400">
                               -{product.discountPercent}%
                             </span>
                           )}
                         </div>
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                          <span className="font-bold text-stone-900">
+                          <span className="font-bold text-stone-900 dark:text-stone-100">
                             {hasSizes(product) ? "from " : ""}
                             {formatPrice(effectivePrice(product))}
                           </span>
-                          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+                          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
                             Stock {product.stock}
                           </span>
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs ${
                               product.isAvailable
-                                ? "bg-green-50 text-green-700"
-                                : "bg-stone-100 text-stone-500"
+                                ? "bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300"
+                                : "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400"
                             }`}
                           >
                             {product.isAvailable ? "Visible" : "Hidden"}
@@ -167,11 +167,11 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                                 key={`${url}-${index}`}
                                 src={url}
                                 alt=""
-                                className="h-9 w-9 shrink-0 rounded-md object-cover ring-1 ring-stone-200"
+                                className="h-9 w-9 shrink-0 rounded-md object-cover ring-1 ring-stone-200 dark:ring-stone-700"
                               />
                             ))}
                             {product.gallery.length > 4 && (
-                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-stone-100 text-xs font-medium text-stone-500">
+                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-stone-100 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
                                 +{product.gallery.length - 4}
                               </span>
                             )}
@@ -192,11 +192,11 @@ export function CashierMenuBrowser({ menu }: { menu: MenuCategory[] }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-stone-200/70 bg-stone-50 px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-stone-400">
+    <div className="rounded-xl border border-stone-200/70 bg-stone-50 px-4 py-3 dark:border-stone-800 dark:bg-stone-800/50">
+      <p className="text-xs font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
         {label}
       </p>
-      <p className="mt-1 text-xl font-bold text-stone-900">{value}</p>
+      <p className="mt-1 text-xl font-bold text-stone-900 dark:text-stone-100">{value}</p>
     </div>
   );
 }
@@ -217,7 +217,7 @@ function FilterChip({
       className={`rounded-full px-4 py-2 text-sm font-medium transition ${
         active
           ? "bg-[#2A1D15] text-white"
-          : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+          : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
       }`}
     >
       {label}

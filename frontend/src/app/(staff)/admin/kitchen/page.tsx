@@ -116,9 +116,9 @@ function KitchenScreen() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900">👨‍🍳 Kitchen</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">👨‍🍳 Kitchen</h1>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
               connected
@@ -137,12 +137,12 @@ function KitchenScreen() {
       </header>
 
       {error && (
-        <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="mb-6 rounded-lg bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
 
-      <section className="rounded-2xl border border-stone-200/70 bg-white p-4 text-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <section className="rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-stone-900 dark:text-stone-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="grid min-h-[640px] grid-cols-1 gap-4 sm:grid-cols-3">
         {COLUMNS.map((col) => {
           const list = byStatus.get(col.status) ?? [];
@@ -150,36 +150,36 @@ function KitchenScreen() {
             <section key={col.status} className="flex min-h-0 flex-col">
               <div className="mb-3 flex items-center justify-between px-1">
                 <h2 className="font-semibold">{col.title}</h2>
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+                <span className="rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-xs text-stone-500 dark:text-stone-400">
                   {list.length}
                 </span>
               </div>
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {loading ? (
-                  <p className="px-1 text-sm text-stone-500">Loading…</p>
+                  <p className="px-1 text-sm text-stone-500 dark:text-stone-400">Loading…</p>
                 ) : list.length === 0 ? (
-                  <p className="px-1 text-sm text-stone-400">—</p>
+                  <p className="px-1 text-sm text-stone-400 dark:text-stone-500">—</p>
                 ) : (
                   list.map((order) => (
                     <article
                       key={order.id}
-                      className={`rounded-xl border border-stone-200 border-l-4 bg-stone-50 p-4 shadow-sm ${col.accent}`}
+                      className={`rounded-xl border border-stone-200 dark:border-stone-800 border-l-4 bg-stone-50 dark:bg-stone-800 p-4 shadow-sm ${col.accent}`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">
                           {order.orderNumber}
                         </span>
-                        <span className="text-xs text-stone-400">
+                        <span className="text-xs text-stone-400 dark:text-stone-500">
                           {new Date(order.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
                       </div>
-                      <ul className="mt-3 space-y-1 text-sm text-stone-600">
+                      <ul className="mt-3 space-y-1 text-sm text-stone-600 dark:text-stone-400">
                         {order.items.map((it) => (
                           <li key={it.id}>
-                            <span className="font-medium text-stone-900">
+                            <span className="font-medium text-stone-900 dark:text-stone-100">
                               {it.quantity}×
                             </span>{" "}
                             {it.product?.name ?? `#${it.productId}`}

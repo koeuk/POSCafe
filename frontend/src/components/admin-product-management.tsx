@@ -585,14 +585,14 @@ export function AdminProductManagement({
               />
             </Field>
             <Field label="Image">
-              <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm">
+              <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm dark:bg-stone-800">
                 <button
                   type="button"
                   onClick={() => setCategoryImageMode("upload")}
                   className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
                     categoryImageMode === "upload"
-                      ? "bg-white text-stone-900 shadow-sm"
-                      : "text-stone-500"
+                      ? "bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100"
+                      : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
                   Upload
@@ -602,8 +602,8 @@ export function AdminProductManagement({
                   onClick={() => setCategoryImageMode("link")}
                   className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
                     categoryImageMode === "link"
-                      ? "bg-white text-stone-900 shadow-sm"
-                      : "text-stone-500"
+                      ? "bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100"
+                      : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
                   Use link
@@ -645,14 +645,14 @@ export function AdminProductManagement({
                     onClick={() =>
                       setCategoryForm((form) => ({ ...form, image: "" }))
                     }
-                    className="text-sm text-red-600 hover:underline"
+                    className="text-sm text-red-600 hover:underline dark:text-red-400"
                   >
                     Remove
                   </button>
                 </div>
               )}
             </Field>
-            <label className="flex items-center gap-2 text-sm text-stone-700">
+            <label className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
               <input
                 type="checkbox"
                 checked={categoryForm.isActive}
@@ -749,14 +749,14 @@ export function AdminProductManagement({
               />
             </Field>
             <Field label="Main image">
-              <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm">
+              <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm dark:bg-stone-800">
                 <button
                   type="button"
                   onClick={() => setImageMode("upload")}
                   className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
                     imageMode === "upload"
-                      ? "bg-white text-stone-900 shadow-sm"
-                      : "text-stone-500"
+                      ? "bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100"
+                      : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
                   Upload
@@ -766,8 +766,8 @@ export function AdminProductManagement({
                   onClick={() => setImageMode("link")}
                   className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
                     imageMode === "link"
-                      ? "bg-white text-stone-900 shadow-sm"
-                      : "text-stone-500"
+                      ? "bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100"
+                      : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
                   Use link
@@ -806,7 +806,7 @@ export function AdminProductManagement({
                     onClick={() =>
                       setProductForm((form) => ({ ...form, image: "" }))
                     }
-                    className="text-sm text-red-600 hover:underline"
+                    className="text-sm text-red-600 hover:underline dark:text-red-400"
                   >
                     Remove
                   </button>
@@ -838,7 +838,7 @@ export function AdminProductManagement({
                 <button
                   type="button"
                   onClick={addGalleryLink}
-                  className="shrink-0 rounded-lg bg-stone-800 px-3 py-2 text-sm font-medium text-white"
+                  className="shrink-0 rounded-lg bg-stone-800 px-3 py-2 text-sm font-medium text-white dark:bg-stone-700"
                 >
                   Add
                 </button>
@@ -892,7 +892,7 @@ export function AdminProductManagement({
                       className={`${INPUT_CLASS} flex-1`}
                     />
                     <div className="relative w-28 shrink-0">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
                         $
                       </span>
                       <input
@@ -909,7 +909,7 @@ export function AdminProductManagement({
                       type="button"
                       onClick={() => removeSizeRow(index)}
                       aria-label="Remove size"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:text-stone-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                     >
                       ✕
                     </button>
@@ -919,14 +919,14 @@ export function AdminProductManagement({
                 <button
                   type="button"
                   onClick={addSizeRow}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15]"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] dark:border-stone-700 dark:text-stone-400 dark:hover:border-amber-400 dark:hover:text-amber-400"
                 >
                   <span className="text-base leading-none">＋</span>
                   Add size
                 </button>
               </div>
             </Field>
-            <label className="flex items-center gap-2 text-sm text-stone-700">
+            <label className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
               <input
                 type="checkbox"
                 checked={productForm.isAvailable}
@@ -977,16 +977,16 @@ function ManagementSection({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4 dark:border-stone-800">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
-            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-500">
+            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">{title}</h2>
+            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
               {count}
             </span>
           </div>
-          <p className="mt-1 text-sm text-stone-500">{description}</p>
+          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{description}</p>
         </div>
         <button
           onClick={onCreate}
@@ -1013,19 +1013,19 @@ function RowActions({
     <div className="inline-flex items-center gap-2">
       <Link
         href={viewHref}
-        className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+        className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
       >
         View
       </Link>
       <button
         onClick={onEdit}
-        className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+        className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
       >
         Edit
       </button>
       <button
         onClick={onDelete}
-        className="rounded-lg border border-red-100 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
+        className="rounded-lg border border-red-100 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
       >
         Delete
       </button>
@@ -1047,18 +1047,18 @@ function SidePanel({
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-stone-950/30" onClick={onClose} />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl">
-        <header className="border-b border-stone-200 px-6 py-5">
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-stone-900">
+        <header className="border-b border-stone-200 px-6 py-5 dark:border-stone-800">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-stone-900">
+              <h2 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
                 {title}
               </h2>
-              <p className="mt-1 text-sm text-stone-500">{description}</p>
+              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{description}</p>
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+              className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
             >
               Close
             </button>
@@ -1085,14 +1085,14 @@ function ConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-stone-900">{title}</h2>
-        <p className="mt-2 text-sm text-stone-500">{message}</p>
+      <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
+        <h2 className="text-lg font-bold text-stone-900 dark:text-stone-100">{title}</h2>
+        <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">{message}</p>
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onCancel}
             disabled={busy}
-            className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+            className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
             Cancel
           </button>
@@ -1119,12 +1119,12 @@ function PanelActions({
   onCancel: () => void;
 }) {
   return (
-    <div className="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-2 border-t border-stone-200 bg-white px-6 py-4">
+    <div className="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-2 border-t border-stone-200 bg-white px-6 py-4 dark:border-stone-800 dark:bg-stone-900">
       <button
         type="button"
         onClick={onCancel}
         disabled={busy}
-        className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+        className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
       >
         Cancel
       </button>
@@ -1149,24 +1149,24 @@ function StatusPill({
   inactiveLabel: string;
 }) {
   return active ? (
-    <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
+    <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700 dark:bg-green-500/15 dark:text-green-300">
       {activeLabel}
     </span>
   ) : (
-    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
       {inactiveLabel}
     </span>
   );
 }
 
 function EmptyState({ message }: { message: string }) {
-  return <p className="px-5 py-12 text-center text-sm text-stone-400">{message}</p>;
+  return <p className="px-5 py-12 text-center text-sm text-stone-400 dark:text-stone-500">{message}</p>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-stone-700">
+      <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
         {label}
       </span>
       {children}
@@ -1234,7 +1234,7 @@ function CategoryCombobox({
         aria-expanded={open}
         className={`${INPUT_CLASS} flex items-center justify-between text-left`}
       >
-        <span className={selected ? "text-stone-900" : "text-stone-400"}>
+        <span className={selected ? "text-stone-900 dark:text-stone-100" : "text-stone-400 dark:text-stone-500"}>
           {selected ? selected.name : "Select..."}
         </span>
         <svg
@@ -1245,7 +1245,7 @@ function CategoryCombobox({
           strokeWidth="2.25"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`h-4 w-4 shrink-0 text-stone-400 transition-transform ${
+          className={`h-4 w-4 shrink-0 text-stone-400 transition-transform dark:text-stone-500 ${
             open ? "rotate-180" : ""
           }`}
           aria-hidden="true"
@@ -1255,19 +1255,19 @@ function CategoryCombobox({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg">
-          <div className="border-b border-stone-100 p-2">
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-800 dark:bg-stone-900">
+          <div className="border-b border-stone-100 p-2 dark:border-stone-800">
             <input
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search category…"
-              className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-sm text-stone-900 outline-none focus:border-[#2A1D15]"
+              className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-sm text-stone-900 outline-none focus:border-[#2A1D15] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-amber-400"
             />
           </div>
           <ul role="listbox" className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-stone-400">
+              <li className="px-3 py-2 text-sm text-stone-400 dark:text-stone-500">
                 No categories found
               </li>
             ) : (
@@ -1278,14 +1278,14 @@ function CategoryCombobox({
                     <button
                       type="button"
                       onClick={() => pick(String(category.id))}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition hover:bg-stone-50 ${
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition hover:bg-stone-50 dark:hover:bg-stone-800 ${
                         isSelected
-                          ? "font-medium text-[#2A1D15]"
-                          : "text-stone-700"
+                          ? "font-medium text-[#2A1D15] dark:text-amber-400"
+                          : "text-stone-700 dark:text-stone-300"
                       }`}
                     >
                       {category.name}
-                      {isSelected && <span className="text-[#2A1D15]">✓</span>}
+                      {isSelected && <span className="text-[#2A1D15] dark:text-amber-400">✓</span>}
                     </button>
                   </li>
                 );

@@ -139,31 +139,31 @@ function PayScreen() {
   if (!orderIdParam) {
     return (
       <Shell>
-        <h1 className="mb-1 text-2xl font-bold text-stone-900">Take Payment</h1>
-        <p className="mb-6 text-sm text-stone-500">Pick an unpaid order</p>
+        <h1 className="mb-1 text-2xl font-bold text-stone-900 dark:text-stone-100">Take Payment</h1>
+        <p className="mb-6 text-sm text-stone-500 dark:text-stone-400">Pick an unpaid order</p>
         {loading ? (
-          <p className="text-sm text-stone-500">Loading…</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>
         ) : error ? (
           <ErrorBox>{error}</ErrorBox>
         ) : pending.length === 0 ? (
-          <p className="text-sm text-stone-400">No unpaid orders right now.</p>
+          <p className="text-sm text-stone-400 dark:text-stone-500">No unpaid orders right now.</p>
         ) : (
           <ul className="space-y-3">
             {pending.map((o) => (
               <li key={o.id}>
                 <Link
                   href={`/pay?orderId=${o.id}`}
-                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-4 transition hover:border-stone-900"
+                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-4 transition hover:border-stone-900 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-100"
                 >
                   <span>
-                    <span className="font-semibold text-stone-900">
+                    <span className="font-semibold text-stone-900 dark:text-stone-100">
                       {o.orderNumber}
                     </span>
-                    <span className="ml-2 text-sm text-stone-500">
+                    <span className="ml-2 text-sm text-stone-500 dark:text-stone-400">
                       {o.items.length} item{o.items.length === 1 ? "" : "s"}
                     </span>
                   </span>
-                  <span className="font-semibold text-stone-900">
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">
                     {money(o.total)}
                   </span>
                 </Link>
@@ -179,7 +179,7 @@ function PayScreen() {
   if (loading) {
     return (
       <Shell>
-        <p className="text-sm text-stone-500">Loading order…</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">Loading order…</p>
       </Shell>
     );
   }
@@ -196,16 +196,16 @@ function PayScreen() {
   if (paid) {
     return (
       <Shell>
-        <div className="rounded-2xl bg-green-50 p-8 text-center">
+        <div className="rounded-2xl bg-green-50 p-8 text-center dark:bg-green-500/15">
           <p className="text-5xl">✅</p>
-          <p className="mt-4 text-lg font-semibold text-green-800">
+          <p className="mt-4 text-lg font-semibold text-green-800 dark:text-green-300">
             Payment complete
           </p>
-          <p className="mt-1 text-sm text-green-700">
+          <p className="mt-1 text-sm text-green-700 dark:text-green-300">
             {order?.orderNumber} · {METHOD_LABELS[paid.method]} paid {money(paid.amount)}
           </p>
           {Number(paid.change) > 0 && (
-            <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900">
+            <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900 dark:bg-stone-900 dark:text-stone-100">
               Change {money(paid.change)}
             </p>
           )}
@@ -238,12 +238,12 @@ function PayScreen() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Order summary */}
         <div>
-          <h1 className="text-xl font-bold text-stone-900">
+          <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
             {order?.orderNumber}
           </h1>
           <ul className="mt-4 space-y-1 text-sm">
             {order?.items.map((it) => (
-              <li key={it.id} className="flex justify-between text-stone-600">
+              <li key={it.id} className="flex justify-between text-stone-600 dark:text-stone-400">
                 <span>
                   {it.quantity}× {it.product?.name ?? `#${it.productId}`}
                 </span>
@@ -251,7 +251,7 @@ function PayScreen() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900">
+          <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900 dark:border-stone-800 dark:text-stone-100">
             <span>Total due</span>
             <span>{money(due)}</span>
           </div>
@@ -268,8 +268,8 @@ function PayScreen() {
                 onClick={() => setMethod(option)}
                 className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                   method === option
-                    ? "border-stone-900 bg-stone-900 text-white"
-                    : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+                    ? "border-stone-900 bg-stone-900 text-white dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900"
+                    : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
                 }`}
               >
                 {METHOD_LABELS[option]}
@@ -279,16 +279,16 @@ function PayScreen() {
 
           {method === PaymentMethod.CASH ? (
             <>
-              <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-right">
-                <p className="text-xs uppercase tracking-wide text-stone-400">
+              <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-right dark:border-stone-800 dark:bg-stone-800/50">
+                <p className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
                   Cash received
                 </p>
-                <p className="text-3xl font-bold text-stone-900">
+                <p className="text-3xl font-bold text-stone-900 dark:text-stone-100">
                   {money(tendered === "" ? 0 : tendered)}
                 </p>
                 <p
                   className={`mt-1 text-sm font-medium ${
-                    tenderedNum >= due ? "text-green-600" : "text-stone-400"
+                    tenderedNum >= due ? "text-green-600 dark:text-green-400" : "text-stone-400 dark:text-stone-500"
                   }`}
                 >
                   Change {money(change >= 0 ? change : 0)}
@@ -317,14 +317,14 @@ function PayScreen() {
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-center">
-              <p className="text-sm font-medium text-stone-500">
+            <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-center dark:border-stone-800 dark:bg-stone-800/50">
+              <p className="text-sm font-medium text-stone-500 dark:text-stone-400">
                 {METHOD_LABELS[method]} payment
               </p>
-              <p className="mt-2 text-3xl font-bold text-stone-900">
+              <p className="mt-2 text-3xl font-bold text-stone-900 dark:text-stone-100">
                 {money(due)}
               </p>
-              <p className="mt-2 text-sm text-stone-400">
+              <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
                 Confirm after the terminal or QR transfer succeeds.
               </p>
             </div>
@@ -355,9 +355,9 @@ function Shell({
   wide?: boolean;
 }) {
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-10">
+    <main className="min-h-screen bg-stone-50 px-4 py-10 dark:bg-stone-950">
       <div
-        className={`mx-auto rounded-2xl border border-stone-200 bg-white p-6 ${
+        className={`mx-auto rounded-2xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900 ${
           wide ? "max-w-3xl" : "max-w-md"
         }`}
       >
@@ -369,7 +369,7 @@ function Shell({
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+    <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
       {children}
     </p>
   );
@@ -379,7 +379,7 @@ function BackLink() {
   return (
     <Link
       href="/pay"
-      className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-900"
+      className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
     >
       ← All unpaid orders
     </Link>
@@ -390,7 +390,7 @@ function QuickBtn({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-lg border border-stone-300 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+      className="rounded-lg border border-stone-300 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
     >
       {label}
     </button>
@@ -407,7 +407,7 @@ function PadBtn({
   return (
     <button
       onClick={onClick}
-      className="rounded-lg border border-stone-200 bg-white py-4 text-xl font-semibold text-stone-900 transition hover:bg-stone-100 active:bg-stone-200"
+      className="rounded-lg border border-stone-200 bg-white py-4 text-xl font-semibold text-stone-900 transition hover:bg-stone-100 active:bg-stone-200 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800 dark:active:bg-stone-700"
     >
       {children}
     </button>
@@ -419,7 +419,7 @@ export default function PayPage() {
     <RequireAuth>
       <Suspense
         fallback={
-          <div className="flex min-h-screen items-center justify-center text-sm text-stone-500">
+          <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
             Loading…
           </div>
         }

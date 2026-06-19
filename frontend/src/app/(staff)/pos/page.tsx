@@ -278,13 +278,13 @@ function POSScreen() {
 
             {cart.length === 0 ? (
               <div className="mt-16 flex flex-col items-center px-6 text-center">
-                <div className="grid h-16 w-16 place-items-center rounded-2xl bg-amber-50 text-3xl">
+                <div className="grid h-16 w-16 place-items-center rounded-2xl bg-amber-50 text-3xl dark:bg-amber-500/15">
                   🧾
                 </div>
-                <p className="mt-4 font-medium text-stone-500">
+                <p className="mt-4 font-medium text-stone-500 dark:text-stone-400">
                   Your order is empty
                 </p>
-                <p className="mt-1 text-sm text-stone-400">
+                <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
                   Tap a product to add it here.
                 </p>
               </div>
@@ -293,9 +293,9 @@ function POSScreen() {
                 {cart.map((line) => (
                   <li
                     key={cartKey(line.product.id, line.size?.size)}
-                    className="pos-line-in flex items-center gap-3 rounded-xl border border-stone-100 bg-white px-3 py-2.5 transition hover:border-stone-200"
+                    className="pos-line-in flex items-center gap-3 rounded-xl border border-stone-100 bg-white px-3 py-2.5 transition hover:border-stone-200 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-700"
                   >
-                    <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-gradient-to-br from-amber-50 to-stone-100 text-xl">
+                    <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-gradient-to-br from-amber-50 to-stone-100 text-xl dark:from-amber-500/15 dark:to-stone-800">
                       {line.product.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -308,17 +308,17 @@ function POSScreen() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-stone-900">
+                      <p className="truncate font-medium text-stone-900 dark:text-stone-100">
                         {line.product.name}
                         {line.size && (
-                          <span className="ml-1 text-xs font-normal text-stone-400">
+                          <span className="ml-1 text-xs font-normal text-stone-400 dark:text-stone-500">
                             {line.size.size}
                           </span>
                         )}
                       </p>
-                      <p className="text-sm text-stone-500">
+                      <p className="text-sm text-stone-500 dark:text-stone-400">
                         {formatPrice(effectivePrice(line.product, line.size))}
-                        <span className="ml-1.5 font-medium text-stone-900">
+                        <span className="ml-1.5 font-medium text-stone-900 dark:text-stone-100">
                           ={" "}
                           {formatPrice(
                             effectivePrice(line.product, line.size) * line.quantity,
@@ -331,7 +331,7 @@ function POSScreen() {
                         label="−"
                         onClick={() => changeQty(line.product.id, -1, line.size?.size ?? null)}
                       />
-                      <span className="w-5 text-center text-sm font-semibold text-stone-900">
+                      <span className="w-5 text-center text-sm font-semibold text-stone-900 dark:text-stone-100">
                         {line.quantity}
                       </span>
                       <QtyButton
@@ -347,17 +347,17 @@ function POSScreen() {
           </div>
 
           {/* Checkout */}
-          <div className="border-t border-stone-200/80 bg-white px-6 py-5">
+          <div className="border-t border-stone-200/80 bg-white px-6 py-5 dark:border-stone-800 dark:bg-stone-900">
             {checkoutError && (
-              <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
                 {checkoutError}
               </p>
             )}
             <div className="mb-4 flex items-baseline justify-between">
-              <span className="text-stone-500">Total</span>
+              <span className="text-stone-500 dark:text-stone-400">Total</span>
               <span
                 key={total}
-                className={`${display.className} pos-pop text-3xl font-bold text-stone-900`}
+                className={`${display.className} pos-pop text-3xl font-bold text-stone-900 dark:text-stone-100`}
               >
                 {formatPrice(total)}
               </span>
@@ -410,7 +410,7 @@ function ProductCard({
           : "hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)]"
       }`}
     >
-      <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100">
+      <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100 dark:from-amber-500/15 dark:to-stone-800">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -429,7 +429,7 @@ function ProductCard({
           </span>
         )}
         {soldOut && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-stone-950/60">
             <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">
               Sold out
             </span>
@@ -437,13 +437,13 @@ function ProductCard({
         )}
       </div>
 
-      <span className="line-clamp-1 font-semibold text-stone-900">
+      <span className="line-clamp-1 font-semibold text-stone-900 dark:text-stone-100">
         {product.name}
       </span>
       <div className="mt-1 flex items-baseline gap-1.5">
-        <span className="font-semibold text-stone-900">{priceLabel}</span>
+        <span className="font-semibold text-stone-900 dark:text-stone-100">{priceLabel}</span>
         {hasDiscount(product) && sizes.length === 0 && (
-          <span className="text-xs text-stone-400 line-through">
+          <span className="text-xs text-stone-400 line-through dark:text-stone-500">
             {formatPrice(product.price)}
           </span>
         )}
@@ -451,10 +451,10 @@ function ProductCard({
       <span
         className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
           soldOut
-            ? "bg-stone-100 text-stone-400"
+            ? "bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500"
             : product.stock <= 5
-              ? "bg-amber-50 text-amber-700"
-              : "bg-emerald-50 text-emerald-700"
+              ? "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
         }`}
       >
         {soldOut ? "Out of stock" : `${product.stock} left`}
@@ -468,7 +468,7 @@ function ProductCard({
               type="button"
               disabled={soldOut}
               onClick={() => onAdd(product, size)}
-              className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
             >
               <span>{size.size}</span>
               <span>{formatPrice(effectivePrice(product, size))}</span>
@@ -504,7 +504,7 @@ function CategoryTab({
       className={`rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
         active
           ? "bg-[#2A1D15] text-amber-50 shadow-sm"
-          : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50"
+          : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
       }`}
     >
       {label}
@@ -525,7 +525,7 @@ function QtyButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-white text-base font-medium text-stone-700 transition hover:bg-stone-50 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
+      className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-white text-base font-medium text-stone-700 transition hover:bg-stone-50 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
     >
       {label}
     </button>
@@ -538,11 +538,11 @@ function GridSkeleton() {
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-stone-200/70 bg-white p-3"
+          className="rounded-2xl border border-stone-200/70 bg-white p-3 dark:border-stone-800 dark:bg-stone-900"
         >
-          <div className="mb-3 aspect-square w-full animate-pulse rounded-xl bg-stone-100" />
-          <div className="h-4 w-2/3 animate-pulse rounded bg-stone-100" />
-          <div className="mt-2 h-4 w-1/3 animate-pulse rounded bg-stone-100" />
+          <div className="mb-3 aspect-square w-full animate-pulse rounded-xl bg-stone-100 dark:bg-stone-800" />
+          <div className="h-4 w-2/3 animate-pulse rounded bg-stone-100 dark:bg-stone-800" />
+          <div className="mt-2 h-4 w-1/3 animate-pulse rounded bg-stone-100 dark:bg-stone-800" />
         </div>
       ))}
     </div>
