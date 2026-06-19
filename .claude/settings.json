@@ -54,7 +54,14 @@
       "Bash(curl -s -m 5 -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
       "Bash(curl -s -m 5 -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"cashier\",\"password\":\"cashier123\"}')",
       "Bash(node -e \"console.log\\(require\\('bcrypt'\\).hashSync\\('admin123',10\\)\\)\")",
-      "Bash(mysql -uroot -pkoeuk poscafe -e 'UPDATE users SET password='\\\\''__CMDSUB_OUTPUT__'\\\\'', isActive=1 WHERE username='\\\\''admin'\\\\''; SELECT id,name,username,role,isActive FROM users;')"
+      "Bash(mysql -uroot -pkoeuk poscafe -e 'UPDATE users SET password='\\\\''__CMDSUB_OUTPUT__'\\\\'', isActive=1 WHERE username='\\\\''admin'\\\\''; SELECT id,name,username,role,isActive FROM users;')",
+      "Bash(ls node_modules/@types/multer)",
+      "Bash(ls node_modules/multer)",
+      "Bash(ls node_modules/@nestjs/platform-express/node_modules/multer)",
+      "Bash(mkdir -p uploads)",
+      "Bash(touch uploads/.gitkeep)",
+      "Bash(grep -q \"^/uploads\" .gitignore)",
+      "Bash(printf '\\\\n# Uploaded files \\(keep the folder, ignore contents\\)\\\\n/uploads/*\\\\n!/uploads/.gitkeep\\\\n')"
     ]
   }
 }

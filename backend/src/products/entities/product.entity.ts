@@ -35,6 +35,10 @@ export class Product {
   @Column({ nullable: true })
   image: string;
 
+  // Additional gallery images (URLs or uploaded paths). null = none.
+  @Column({ type: 'json', nullable: true })
+  gallery: string[] | null;
+
   @Column({ default: true })
   isAvailable: boolean;
 

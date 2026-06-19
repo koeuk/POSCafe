@@ -53,6 +53,11 @@ export class CreateProductDto {
   image?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  gallery?: string[] | null;
+
+  @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
 

@@ -12,3 +12,7 @@
 
 # OS
 .DS_Store
+
+# Uploaded files (keep the folder, ignore contents)
+/uploads/*
+!/uploads/.gitkeep
