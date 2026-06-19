@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
+import { StatusDropdown } from "@/components/status-dropdown";
 import { api } from "@/lib/api";
 import { OrderStatus, type Order } from "@/lib/types";
 
@@ -19,14 +20,6 @@ const STATUS_FILTERS: { label: string; value: OrderStatus | "all" }[] = [
   { label: "Completed", value: OrderStatus.COMPLETED },
   { label: "Cancelled", value: OrderStatus.CANCELLED },
 ];
-
-const STATUS_STYLES: Record<OrderStatus, string> = {
-  [OrderStatus.PENDING]: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  [OrderStatus.PREPARING]: "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-  [OrderStatus.READY]: "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
-  [OrderStatus.COMPLETED]: "bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300",
-  [OrderStatus.CANCELLED]: "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400",
-};
 
 function OrderHistory() {
   const [orders, setOrders] = useState<OrderWithUser[]>([]);
