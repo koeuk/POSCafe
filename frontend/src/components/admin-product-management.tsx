@@ -96,6 +96,9 @@ export function AdminProductManagement({
   const [productForm, setProductForm] = useState<ProductForm>(EMPTY_PRODUCT_FORM);
   const [busy, setBusy] = useState(false);
   const [imageMode, setImageMode] = useState<"upload" | "link">("upload");
+  const [categoryImageMode, setCategoryImageMode] = useState<"upload" | "link">(
+    "upload",
+  );
   const [uploading, setUploading] = useState(false);
   const [galleryLink, setGalleryLink] = useState("");
   const pageCopy = VIEW_COPY[view];
@@ -107,6 +110,20 @@ export function AdminProductManagement({
     try {
       const url = await uploadImage(file);
       setProductForm((form) => ({ ...form, image: url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleCategoryImageUpload(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await uploadImage(file);
+      setCategoryForm((form) => ({ ...form, image: url }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -194,6 +211,7 @@ export function AdminProductManagement({
 
   function openCategoryCreate() {
     setCategoryForm(EMPTY_CATEGORY_FORM);
+    setCategoryImageMode("upload");
     setDrawer({ type: "category", mode: "create" });
     setError(null);
   }
@@ -206,6 +224,7 @@ export function AdminProductManagement({
       image: category.image ?? "",
       isActive: category.isActive,
     });
+    setCategoryImageMode(category.image ? "link" : "upload");
     setDrawer({ type: "category", mode: "edit" });
     setError(null);
   }
@@ -565,14 +584,73 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Image URL">
-              <input
-                value={categoryForm.image}
-                onChange={(event) =>
-                  setCategoryForm((form) => ({ ...form, image: event.target.value }))
-                }
-                className={INPUT_CLASS}
-              />
+            <Field label="Image">
+              <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setCategoryImageMode("upload")}
+                  className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
+                    categoryImageMode === "upload"
+                      ? "bg-white text-stone-900 shadow-sm"
+                      : "text-stone-500"
+                  }`}
+                >
+                  Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryImageMode("link")}
+                  className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
+                    categoryImageMode === "link"
+                      ? "bg-white text-stone-900 shadow-sm"
+                      : "text-stone-500"
+                  }`}
+                >
+                  Use link
+                </button>
+              </div>
+              {categoryImageMode === "upload" ? (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    handleCategoryImageUpload(event.target.files?.[0])
+                  }
+                  disabled={uploading}
+                  className={INPUT_CLASS}
+                />
+              ) : (
+                <input
+                  value={categoryForm.image}
+                  onChange={(event) =>
+                    setCategoryForm((form) => ({
+                      ...form,
+                      image: event.target.value,
+                    }))
+                  }
+                  placeholder="https://…"
+                  className={INPUT_CLASS}
+                />
+              )}
+              {categoryForm.image && (
+                <div className="mt-2 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={categoryForm.image}
+                    alt=""
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCategoryForm((form) => ({ ...form, image: "" }))
+                    }
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
             </Field>
             <label className="flex items-center gap-2 text-sm text-stone-700">
               <input
@@ -1121,27 +1199,30 @@ function CategoryCombobox({
     );
   }, [categories, query]);
 
-  // Close on outside click; reset the search when it closes.
+  // Close the dropdown and reset the search in one step.
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery("");
+  }, []);
+
+  // Close on outside click while open.
   useEffect(() => {
-    if (!open) {
-      setQuery("");
-      return;
-    }
+    if (!open) return;
     function handleClick(event: MouseEvent) {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        setOpen(false);
+        close();
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  }, [open, close]);
 
   function pick(id: string) {
     onChange(id);
-    setOpen(false);
+    close();
   }
 
   return (

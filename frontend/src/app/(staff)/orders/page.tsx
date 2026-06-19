@@ -110,7 +110,7 @@ function OrdersQueue() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-4xl rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <section className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         {/* Status filter */}
         <div className="mb-6 flex flex-wrap gap-2">
           {STATUS_FILTERS.map((f) => (
