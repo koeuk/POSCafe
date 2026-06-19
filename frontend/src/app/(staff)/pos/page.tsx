@@ -404,10 +404,10 @@ function ProductCard({
   return (
     <article
       style={{ animationDelay }}
-      className={`ios-rise group relative flex flex-col overflow-hidden rounded-2xl ${GLASS} p-3 text-left transition-all duration-200 ${
+      className={`ios-rise relative flex flex-col overflow-hidden rounded-2xl ${GLASS} p-3 text-left transition-shadow duration-200 ${
         soldOut
           ? "opacity-55"
-          : "hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)]"
+          : "hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)]"
       }`}
     >
       <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100 dark:from-amber-500/15 dark:to-stone-800">
@@ -416,7 +416,7 @@ function ProductCard({
           <img
             src={product.image}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-4xl opacity-70">
