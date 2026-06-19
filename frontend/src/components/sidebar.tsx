@@ -244,7 +244,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop: fixed sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-stone-200/70 bg-[#F3ECE3]/90 p-4 backdrop-blur-xl lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-white/60 bg-white/70 p-4 backdrop-blur-xl lg:flex">
         <div className="space-y-6">
           <Brand />
           <NavLinks pathname={pathname} isAdmin={isAdmin} />
@@ -253,7 +253,7 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile: top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-stone-200/70 bg-[#F3ECE3]/90 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-white/70 px-4 py-3 backdrop-blur-xl lg:hidden">
         <Brand />
         <button
           onClick={() => setOpen(true)}
@@ -271,7 +271,7 @@ export function Sidebar() {
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-stone-200/70 bg-[#F3ECE3] p-4">
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-white/60 bg-white/85 p-4 backdrop-blur-xl">
             <div className="space-y-6">
               <Brand />
               <NavLinks

@@ -8,6 +8,10 @@ import { OrderStatus, type Order, type Product } from "@/lib/types";
 
 const ACCENT = "#2A1D15";
 
+// Frosted-glass surface: soft translucent white over the light-gray shell.
+const GLASS =
+  "border border-white/60 bg-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.03] backdrop-blur-xl";
+
 const STATUS_META: Record<OrderStatus, { label: string; color: string }> = {
   [OrderStatus.PENDING]: { label: "Pending", color: "#F59E0B" },
   [OrderStatus.PREPARING]: { label: "Preparing", color: "#3B82F6" },
@@ -134,7 +138,7 @@ function Dashboard() {
   return (
     <div className="font-ios mx-auto mt-6 max-w-7xl">
       {/* Greeting */}
-      <div className="mb-6 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className={`mb-6 rounded-2xl px-5 py-5 ${GLASS}`}>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Hi, {user?.name ?? "there"}
         </h1>
@@ -351,7 +355,7 @@ function Card({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${className}`}
+      className={`rounded-2xl p-5 ${GLASS} ${className}`}
     >
       {children}
     </div>
@@ -372,7 +376,7 @@ function StatCard({
   loading: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className={`rounded-2xl p-5 ${GLASS}`}>
       <span
         className="grid h-10 w-10 place-items-center rounded-xl"
         style={{ color: tone, background: `${tone}1A` }}
