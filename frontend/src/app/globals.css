@@ -25,6 +25,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Tailwind v4's Preflight no longer sets cursor:pointer on buttons.
+   Restore it for every button (disabled buttons keep the default). */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
 /* ── iOS / HIG (Liquid Glass) utilities ───────────────────────────── */
 
 /* Genuine SF Pro on Apple devices; Geist (self-hosted) elsewhere. */

@@ -24,7 +24,7 @@ export default async function MenuPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F3ECE3] px-4">
+      <main className="flex min-h-screen items-center justify-center bg-[#F5F5F6] px-4">
         <p className="rounded-xl bg-red-50 px-6 py-8 text-center text-red-600">
           {error}
         </p>
