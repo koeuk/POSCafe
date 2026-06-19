@@ -7,6 +7,7 @@ import { StaffShell } from "@/components/staff-shell";
 import { api } from "@/lib/api";
 import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
 import type { Category, Order, Product, ProductSize } from "@/lib/types";
+import { GLASS } from "@/lib/ui";
 
 // Distinctive warm display serif for the brand & headings.
 const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
