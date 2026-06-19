@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
   const [query, setQuery] = useState("");
@@ -47,24 +48,29 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
   const hasResults = visible.length > 0;
 
   return (
-    <div className="flex h-screen flex-col bg-amber-50">
+    <div className="flex h-screen flex-col bg-amber-50 dark:bg-stone-950">
       {/* Header (pinned) */}
-      <header className="flex-shrink-0 bg-amber-400 px-5 pb-6 pt-8 text-stone-900">
-        <h1 className="text-2xl font-extrabold tracking-tight">☕ POSCAFE</h1>
-        <p className="text-sm font-medium text-amber-900/80">
-          Browse our menu
-        </p>
+      <header className="flex-shrink-0 bg-amber-400 px-5 pb-6 pt-8 text-stone-900 dark:bg-stone-900 dark:text-amber-50">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight">☕ POSCAFE</h1>
+            <p className="text-sm font-medium text-amber-900/80 dark:text-amber-200/70">
+              Browse our menu
+            </p>
+          </div>
+          <ThemeToggle />
+        </div>
 
         {/* Search */}
         <div className="mt-4">
-          <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 shadow-sm">
+          <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 shadow-sm dark:bg-stone-800">
             <span className="text-stone-400">🔍</span>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search product or category…"
-              className="w-full bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400"
+              className="w-full bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
             {query && (
               <button
@@ -116,14 +122,14 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
 
         {/* Results */}
         {!hasResults ? (
-          <p className="px-4 py-16 text-center text-stone-400">
+          <p className="px-4 py-16 text-center text-stone-400 dark:text-stone-500">
             No items match “{query}”.
           </p>
         ) : (
           <div className="mt-6 space-y-8">
             {visible.map((cat) => (
               <section key={cat.id}>
-                <h2 className="mb-3 text-lg font-bold text-stone-900">
+                <h2 className="mb-3 text-lg font-bold text-stone-900 dark:text-stone-100">
                   {cat.name}
                 </h2>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -131,9 +137,9 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                     <Link
                       key={product.id}
                       href={`/menu/${product.id}`}
-                      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100 transition hover:-translate-y-0.5 hover:shadow-md"
+                      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100 transition hover:-translate-y-0.5 hover:shadow-md dark:bg-stone-900 dark:ring-stone-800"
                     >
-                      <div className="relative aspect-square w-full bg-stone-100">
+                      <div className="relative aspect-square w-full bg-stone-100 dark:bg-stone-800">
                         {product.image ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -154,16 +160,16 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                       </div>
 
                       <div className="flex flex-1 flex-col p-3">
-                        <p className="font-medium text-stone-900 group-hover:text-red-600">
+                        <p className="font-medium text-stone-900 group-hover:text-red-600 dark:text-stone-100 dark:group-hover:text-red-400">
                           {product.name}
                         </p>
                         {product.description && (
-                          <p className="mt-0.5 line-clamp-2 text-sm text-stone-500">
+                          <p className="mt-0.5 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">
                             {product.description}
                           </p>
                         )}
                         <div className="mt-auto pt-3 flex items-baseline gap-2">
-                          <span className="font-bold text-stone-900">
+                          <span className="font-bold text-stone-900 dark:text-stone-100">
                             {hasSizes(product) ? "from " : ""}
                             {formatPrice(effectivePrice(product))}
                           </span>
@@ -182,7 +188,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
           </div>
         )}
 
-        <footer className="mt-12 text-center text-xs text-stone-400">
+        <footer className="mt-12 text-center text-xs text-stone-400 dark:text-stone-500">
           Prices in USD · Ask our staff to place your order
         </footer>
         </div>
@@ -206,7 +212,7 @@ function Chip({
       className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
         active
           ? "bg-red-500 text-white shadow"
-          : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+          : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50 dark:bg-stone-800 dark:text-stone-300 dark:ring-stone-700 dark:hover:bg-stone-700"
       }`}
     >
       {label}

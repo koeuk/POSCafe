@@ -46,6 +46,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
     if (stored === "light" || stored === "dark" || stored === "system") {
+      // Intentional: the initial render stays "system" to match the SSR
+      // output and the inline no-flash script; we sync the stored preference
+      // into state only after hydration, so this is not a render-time update.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(stored);
     }
   }, []);

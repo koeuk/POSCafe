@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { ThemeToggle } from "./theme-toggle";
 
 interface NavItem {
   href: string | { staff: string; admin: string };
@@ -181,8 +182,8 @@ function NavLinks({
             onClick={onNavigate}
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
               active
-                ? "bg-[#2A1D15] text-amber-50 shadow-sm"
-                : "text-stone-600 hover:bg-stone-900/5"
+                ? "bg-[#2A1D15] text-amber-50 shadow-sm dark:bg-amber-500 dark:text-stone-950"
+                : "text-stone-600 hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/5"
             }`}
           >
             {item.icon}
@@ -201,7 +202,7 @@ function Brand() {
       <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
         ☕
       </span>
-      <span className="text-lg font-bold tracking-tight text-stone-900">
+      <span className="text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100">
         POSCAFE
       </span>
     </div>
@@ -212,23 +213,24 @@ function UserBlock() {
   const { user, logout } = useAuth();
   const initial = (user?.name ?? "?").charAt(0).toUpperCase();
   return (
-    <div className="border-t border-stone-200/70 pt-3">
+    <div className="border-t border-stone-200/70 pt-3 dark:border-stone-800">
       <div className="flex items-center gap-3 px-2 py-1">
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-amber-200 text-sm font-semibold text-amber-900">
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-amber-200 text-sm font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">
           {initial}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-stone-900">
+          <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
             {user?.name}
           </p>
-          <p className="text-xs uppercase tracking-wide text-stone-400">
+          <p className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
             {user?.role}
           </p>
         </div>
+        <ThemeToggle />
       </div>
       <button
         onClick={logout}
-        className="mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+        className="mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
       >
         Log out
       </button>
@@ -244,7 +246,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop: fixed sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-white/60 bg-white/70 p-4 backdrop-blur-xl lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-white/60 bg-white/70 p-4 backdrop-blur-xl lg:flex dark:border-stone-800/60 dark:bg-stone-900/70">
         <div className="space-y-6">
           <Brand />
           <NavLinks pathname={pathname} isAdmin={isAdmin} />
@@ -253,15 +255,18 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile: top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-white/70 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-white/70 px-4 py-3 backdrop-blur-xl lg:hidden dark:border-stone-800/60 dark:bg-stone-900/70">
         <Brand />
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="grid h-9 w-9 place-items-center rounded-lg border border-stone-200 bg-white text-stone-700"
-        >
-          ☰
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-stone-200 bg-white text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
+          >
+            ☰
+          </button>
+        </div>
       </div>
 
       {/* Mobile: slide-over drawer */}
@@ -271,7 +276,7 @@ export function Sidebar() {
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-white/60 bg-white/85 p-4 backdrop-blur-xl">
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-white/60 bg-white/85 p-4 backdrop-blur-xl dark:border-stone-800/60 dark:bg-stone-900/90">
             <div className="space-y-6">
               <Brand />
               <NavLinks
