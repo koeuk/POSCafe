@@ -144,60 +144,11 @@ function OrderHistory() {
                       {order.user && <> · {order.user.name}</>}
                     </p>
                   </div>
-                  <div className="relative">
-                    <select
-                      value={order.status}
-                      disabled={updatingId === order.id}
-                      onChange={(e) =>
-                        changeStatus(order.id, e.target.value as OrderStatus)
-                      }
-                      aria-label="Order status"
-                      className={`cursor-pointer appearance-none rounded-full py-1.5 pl-3.5 pr-9 text-xs font-semibold capitalize outline-none ring-1 ring-inset ring-black/5 transition focus:ring-2 focus:ring-[#2A1D15]/30 disabled:cursor-not-allowed disabled:opacity-50 ${STATUS_STYLES[order.status]}`}
-                    >
-                      {Object.values(OrderStatus).map((s) => (
-                        <option key={s} value={s} className="bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300">
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                    {updatingId === order.id ? (
-                      <svg
-                        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin opacity-60"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="9"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          className="opacity-25"
-                        />
-                        <path
-                          d="M21 12a9 9 0 0 0-9-9"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.25"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 opacity-60"
-                        aria-hidden="true"
-                      >
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
-                    )}
-                  </div>
+                  <StatusDropdown
+                    value={order.status}
+                    busy={updatingId === order.id}
+                    onChange={(status) => changeStatus(order.id, status)}
+                  />
                 </div>
 
                 <ul className="mt-4 space-y-1 border-t border-stone-100 dark:border-stone-800 pt-3 text-sm">

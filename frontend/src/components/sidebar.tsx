@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -163,35 +163,64 @@ function NavLinks({
   isAdmin: boolean;
   onNavigate?: () => void;
 }) {
+  const navRef = useRef<HTMLElement>(null);
+  // The active "pill" position — slides between links as the route changes.
+  const [pill, setPill] = useState<{ top: number; height: number } | null>(null);
+
   function matchesPath(path: string, exact?: boolean) {
     return exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
   }
 
+  const items = NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
+    const href =
+      typeof item.href === "string"
+        ? item.href
+        : item.href[isAdmin ? "admin" : "staff"];
+    return { item, href, active: matchesPath(href, item.exact) };
+  });
+
+  // Measure the active link and move the pill to it (re-runs on route change
+  // and window resize so it always lines up).
+  useEffect(() => {
+    function place() {
+      const el = navRef.current?.querySelector<HTMLElement>(
+        '[data-active="true"]',
+      );
+      setPill(el ? { top: el.offsetTop, height: el.offsetHeight } : null);
+    }
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [pathname, isAdmin]);
+
   return (
-    <nav className="flex flex-col gap-1">
-      {NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
-        const href = typeof item.href === "string"
-          ? item.href
-          : item.href[isAdmin ? "admin" : "staff"];
-        const active = matchesPath(href, item.exact);
-        return (
-          <Link
-            key={item.label}
-            href={href}
-            target={item.newTab ? "_blank" : undefined}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-              active
-                ? "bg-[#2A1D15] text-amber-50 shadow-sm dark:bg-amber-500 dark:text-stone-950"
-                : "text-stone-600 hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/5"
-            }`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-            {item.newTab && <span className="ml-auto text-xs opacity-50">↗</span>}
-          </Link>
-        );
-      })}
+    <nav ref={navRef} className="relative flex flex-col gap-1">
+      {/* Sliding active highlight (sits behind the links). */}
+      {pill && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 rounded-xl bg-[#2A1D15] shadow-sm transition-[transform,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-amber-500"
+          style={{ transform: `translateY(${pill.top}px)`, height: pill.height }}
+        />
+      )}
+      {items.map(({ item, href, active }) => (
+        <Link
+          key={item.label}
+          href={href}
+          data-active={active}
+          target={item.newTab ? "_blank" : undefined}
+          onClick={onNavigate}
+          className={`relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300 ${
+            active
+              ? "text-amber-50 dark:text-stone-950"
+              : "text-stone-600 hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/5"
+          }`}
+        >
+          {item.icon}
+          <span>{item.label}</span>
+          {item.newTab && <span className="ml-auto text-xs opacity-50">↗</span>}
+        </Link>
+      ))}
     </nav>
   );
 }

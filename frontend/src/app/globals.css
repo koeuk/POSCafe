@@ -61,6 +61,30 @@ button:not(:disabled),
   animation: ios-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Route change — content fades + drifts up so navigating feels seamless. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  /* No fill-mode: the transform reverts to none when done, so it never leaves a
+     containing block that would trap position:fixed descendants (POS cart). */
+  animation: page-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}
+
 /* Slow drifting blobs that give the glass something to refract. */
 @keyframes ios-drift {
   0%,
@@ -137,5 +161,35 @@ button:not(:disabled),
   .pos-pop,
   .pos-drop {
     animation: none;
+  }
+}
+
+/* ── Smooth, tactile interactions ─────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Animate state changes on anything clickable. Elements that declare
+     their own Tailwind `transition` keep it (v4 includes `scale` in its
+     default property list, so the press below stays smooth there too). */
+  button,
+  a,
+  summary,
+  [role="button"] {
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease,
+      transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      scale 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Gentle press feedback. Uses the standalone `scale` property so it
+     composes with transform-based hover utilities instead of clobbering
+     them, and never fires on disabled controls. */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active,
+  a:active {
+    scale: 0.97;
   }
 }

@@ -460,31 +460,33 @@ function ProductCard({
         {soldOut ? "Out of stock" : `${product.stock} left`}
       </span>
 
-      {sizes.length > 0 ? (
-        <div className="mt-3 grid grid-cols-1 gap-1.5">
-          {sizes.map((size) => (
-            <button
-              key={size.size}
-              type="button"
-              disabled={soldOut}
-              onClick={() => onAdd(product, size)}
-              className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
-            >
-              <span>{size.size}</span>
-              <span>{formatPrice(effectivePrice(product, size))}</span>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <button
-          type="button"
-          disabled={soldOut}
-          onClick={() => onAdd(product, null)}
-          className="mt-3 rounded-lg bg-[#2A1D15] px-3 py-2 text-sm font-semibold text-amber-50 transition hover:bg-[#3b2a1e] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
-        >
-          Add
-        </button>
-      )}
+      <div className="mt-auto pt-3">
+        {sizes.length > 0 ? (
+          <div className="grid grid-cols-1 gap-1.5">
+            {sizes.map((size) => (
+              <button
+                key={size.size}
+                type="button"
+                disabled={soldOut}
+                onClick={() => onAdd(product, size)}
+                className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
+              >
+                <span>{size.size}</span>
+                <span>{formatPrice(effectivePrice(product, size))}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={soldOut}
+            onClick={() => onAdd(product, null)}
+            className="w-full rounded-lg bg-[#2A1D15] px-3 py-2 text-sm font-semibold text-amber-50 transition hover:bg-[#3b2a1e] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+          >
+            Add
+          </button>
+        )}
+      </div>
     </article>
   );
 }

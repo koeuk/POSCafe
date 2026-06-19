@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { RequireAuth } from "@/components/require-auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { api, getToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { OrderStatus, type Order } from "@/lib/types";
@@ -117,15 +118,15 @@ function KitchenScreen() {
   }, [orders]);
 
   return (
-    <div className="flex h-screen flex-col bg-stone-900 text-stone-100">
-      <header className="flex items-center justify-between border-b border-stone-700 px-6 py-3">
+    <div className="flex h-screen flex-col bg-[#F5F5F6] text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+      <header className="flex items-center justify-between border-b border-stone-200 px-6 py-3 dark:border-stone-800">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">👨‍🍳 Kitchen</h1>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
               connected
-                ? "bg-green-500/15 text-green-400"
-                : "bg-red-500/15 text-red-400"
+                ? "bg-green-500/15 text-green-600 dark:text-green-400"
+                : "bg-red-500/15 text-red-600 dark:text-red-400"
             }`}
           >
             <span
@@ -136,16 +137,19 @@ function KitchenScreen() {
             {connected ? "Live" : "Offline"}
           </span>
         </div>
-        <button
-          onClick={logout}
-          className="rounded-lg border border-stone-600 px-3 py-1.5 text-sm font-medium text-stone-300 transition hover:bg-stone-800"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={logout}
+            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       {error && (
-        <p className="mx-6 mt-3 rounded-lg bg-red-500/15 px-4 py-2 text-sm text-red-300">
+        <p className="mx-6 mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 dark:bg-red-500/15 dark:text-red-300">
           {error}
         </p>
       )}
@@ -157,36 +161,36 @@ function KitchenScreen() {
             <section key={col.status} className="flex min-h-0 flex-col">
               <div className="mb-3 flex items-center justify-between px-1">
                 <h2 className="font-semibold">{col.title}</h2>
-                <span className="rounded-full bg-stone-800 px-2 py-0.5 text-xs text-stone-400">
+                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
                   {list.length}
                 </span>
               </div>
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {loading ? (
-                  <p className="px-1 text-sm text-stone-500">Loading…</p>
+                  <p className="px-1 text-sm text-stone-500 dark:text-stone-400">Loading…</p>
                 ) : list.length === 0 ? (
-                  <p className="px-1 text-sm text-stone-600">—</p>
+                  <p className="px-1 text-sm text-stone-400 dark:text-stone-500">—</p>
                 ) : (
                   list.map((order) => (
                     <article
                       key={order.id}
-                      className={`rounded-xl border-l-4 bg-stone-800 p-4 ${col.accent}`}
+                      className={`rounded-xl border border-stone-200 border-l-4 bg-white p-4 shadow-sm dark:border-stone-800 dark:bg-stone-800 ${col.accent}`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">
                           {order.orderNumber}
                         </span>
-                        <span className="text-xs text-stone-400">
+                        <span className="text-xs text-stone-500 dark:text-stone-400">
                           {new Date(order.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
                       </div>
-                      <ul className="mt-3 space-y-1 text-sm text-stone-300">
+                      <ul className="mt-3 space-y-1 text-sm text-stone-600 dark:text-stone-400">
                         {order.items.map((it) => (
                           <li key={it.id}>
-                            <span className="font-medium text-white">
+                            <span className="font-medium text-stone-900 dark:text-stone-100">
                               {it.quantity}×
                             </span>{" "}
                             {it.product?.name ?? `#${it.productId}`}
@@ -195,7 +199,7 @@ function KitchenScreen() {
                       </ul>
                       <button
                         onClick={() => advance(order)}
-                        className="mt-4 w-full rounded-lg bg-stone-100 py-2 text-sm font-semibold text-stone-900 transition hover:bg-white"
+                        className="mt-4 w-full rounded-lg bg-[#2A1D15] py-2 text-sm font-semibold text-white transition hover:bg-[#3a2a1f]"
                       >
                         {NEXT_LABEL[order.status] ?? "Next"}
                       </button>
