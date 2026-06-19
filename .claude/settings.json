@@ -61,7 +61,9 @@
       "Bash(mkdir -p uploads)",
       "Bash(touch uploads/.gitkeep)",
       "Bash(grep -q \"^/uploads\" .gitignore)",
-      "Bash(printf '\\\\n# Uploaded files \\(keep the folder, ignore contents\\)\\\\n/uploads/*\\\\n!/uploads/.gitkeep\\\\n')"
+      "Bash(printf '\\\\n# Uploaded files \\(keep the folder, ignore contents\\)\\\\n/uploads/*\\\\n!/uploads/.gitkeep\\\\n')",
+      "Bash(sudo -n chown -R koeuk:koeuk /home/koeuk/Projects/POSCAFE/backend/uploads)",
+      "Bash(npx next *)"
     ]
   }
 }

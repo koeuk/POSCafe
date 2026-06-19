@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { api } from "@/lib/api";
+import { api, uploadImage } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product, ProductSize } from "@/lib/types";
 
@@ -22,6 +22,7 @@ interface ProductForm {
   stock: string;
   discountPercent: string;
   image: string;
+  gallery: string[];
   description: string;
   sizesText: string;
   isAvailable: boolean;
@@ -56,6 +57,7 @@ const EMPTY_PRODUCT_FORM: ProductForm = {
   stock: "0",
   discountPercent: "0",
   image: "",
+  gallery: [],
   description: "",
   sizesText: "",
   isAvailable: true,
@@ -88,7 +90,52 @@ export function AdminProductManagement({
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(EMPTY_CATEGORY_FORM);
   const [productForm, setProductForm] = useState<ProductForm>(EMPTY_PRODUCT_FORM);
   const [busy, setBusy] = useState(false);
+  const [imageMode, setImageMode] = useState<"upload" | "link">("upload");
+  const [uploading, setUploading] = useState(false);
+  const [galleryLink, setGalleryLink] = useState("");
   const pageCopy = VIEW_COPY[view];
+
+  async function handleMainImageUpload(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await uploadImage(file);
+      setProductForm((form) => ({ ...form, image: url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleGalleryUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const urls = await Promise.all(Array.from(files).map((file) => uploadImage(file)));
+      setProductForm((form) => ({ ...form, gallery: [...form.gallery, ...urls] }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function addGalleryLink() {
+    const url = galleryLink.trim();
+    if (!url) return;
+    setProductForm((form) => ({ ...form, gallery: [...form.gallery, url] }));
+    setGalleryLink("");
+  }
+
+  function removeGalleryImage(index: number) {
+    setProductForm((form) => ({
+      ...form,
+      gallery: form.gallery.filter((_, i) => i !== index),
+    }));
+  }
 
   const reload = useCallback(async () => {
     const [nextCategories, nextProducts] = await Promise.all([
@@ -160,6 +207,8 @@ export function AdminProductManagement({
 
   function openProductCreate() {
     setProductForm(EMPTY_PRODUCT_FORM);
+    setImageMode("upload");
+    setGalleryLink("");
     setDrawer({ type: "product", mode: "create" });
     setError(null);
   }
@@ -173,10 +222,13 @@ export function AdminProductManagement({
       stock: String(product.stock),
       discountPercent: String(product.discountPercent ?? 0),
       image: product.image ?? "",
+      gallery: product.gallery ?? [],
       description: product.description ?? "",
       sizesText: formatSizes(product.sizes),
       isAvailable: product.isAvailable,
     });
+    setImageMode(product.image ? "link" : "upload");
+    setGalleryLink("");
     setDrawer({ type: "product", mode: "edit" });
     setError(null);
   }
@@ -234,6 +286,7 @@ export function AdminProductManagement({
       stock: Number(productForm.stock),
       discountPercent: Number(productForm.discountPercent || "0"),
       image: productForm.image.trim() || undefined,
+      gallery: productForm.gallery.length > 0 ? productForm.gallery : null,
       sizes: parsedSizes,
       categoryId: Number(productForm.categoryId),
       isAvailable: productForm.isAvailable,
@@ -603,14 +656,123 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Image URL">
+            <Field label="Main image">
+              <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setImageMode("upload")}
+                  className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
+                    imageMode === "upload"
+                      ? "bg-white text-stone-900 shadow-sm"
+                      : "text-stone-500"
+                  }`}
+                >
+                  Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageMode("link")}
+                  className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${
+                    imageMode === "link"
+                      ? "bg-white text-stone-900 shadow-sm"
+                      : "text-stone-500"
+                  }`}
+                >
+                  Use link
+                </button>
+              </div>
+              {imageMode === "upload" ? (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    handleMainImageUpload(event.target.files?.[0])
+                  }
+                  disabled={uploading}
+                  className={INPUT_CLASS}
+                />
+              ) : (
+                <input
+                  value={productForm.image}
+                  onChange={(event) =>
+                    setProductForm((form) => ({ ...form, image: event.target.value }))
+                  }
+                  placeholder="https://…"
+                  className={INPUT_CLASS}
+                />
+              )}
+              {productForm.image && (
+                <div className="mt-2 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={productForm.image}
+                    alt=""
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setProductForm((form) => ({ ...form, image: "" }))
+                    }
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </Field>
+            <Field label="Gallery (extra images)">
               <input
-                value={productForm.image}
-                onChange={(event) =>
-                  setProductForm((form) => ({ ...form, image: event.target.value }))
-                }
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(event) => handleGalleryUpload(event.target.files)}
+                disabled={uploading}
                 className={INPUT_CLASS}
               />
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={galleryLink}
+                  onChange={(event) => setGalleryLink(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addGalleryLink();
+                    }
+                  }}
+                  placeholder="…or paste an image link"
+                  className={INPUT_CLASS}
+                />
+                <button
+                  type="button"
+                  onClick={addGalleryLink}
+                  className="shrink-0 rounded-lg bg-stone-800 px-3 py-2 text-sm font-medium text-white"
+                >
+                  Add
+                </button>
+              </div>
+              {productForm.gallery.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {productForm.gallery.map((url, index) => (
+                    <div key={`${url}-${index}`} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt=""
+                        className="h-16 w-16 rounded-lg object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeGalleryImage(index)}
+                        className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-red-600 text-xs leading-none text-white"
+                        aria-label="Remove image"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Field>
             <Field label="Description">
               <textarea

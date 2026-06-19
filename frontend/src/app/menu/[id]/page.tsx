@@ -30,6 +30,7 @@ export default async function ProductDetailPage({
       <div className="mx-auto max-w-5xl lg:px-6 lg:py-10">
         <div className="overflow-hidden bg-white shadow-sm lg:grid lg:grid-cols-2 lg:rounded-3xl">
           {/* Image — full-width on phones, sized panel on laptop */}
+          <div className="bg-stone-50">
           <div className="relative aspect-square w-full bg-stone-200 lg:aspect-[4/3]">
             {product.image ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -57,6 +58,21 @@ export default async function ProductDetailPage({
                 -{product.discountPercent}% OFF
               </span>
             )}
+          </div>
+
+          {product.gallery && product.gallery.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto p-3">
+              {product.gallery.map((url, index) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={`${url}-${index}`}
+                  src={url}
+                  alt={`${product.name} ${index + 1}`}
+                  className="h-16 w-16 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+                />
+              ))}
+            </div>
+          )}
           </div>
 
           {/* Details */}

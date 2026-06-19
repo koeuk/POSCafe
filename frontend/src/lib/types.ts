@@ -44,6 +44,8 @@ export interface Product {
   // Percentage off the price (0–100). 0 = no discount.
   discountPercent: number;
   image: string | null;
+  // Additional gallery images (URLs or uploaded paths). null = none.
+  gallery: string[] | null;
   isAvailable: boolean;
   stock: number;
   categoryId: number;
