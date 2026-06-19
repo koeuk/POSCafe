@@ -23,7 +23,8 @@ export class User {
   password: string;
 
   // Profile picture URL (uploaded via /uploads/image). null = use initial.
-  @Column({ nullable: true })
+  // Explicit type: TypeORM can't infer a column type from a `string | null` union.
+  @Column({ type: 'varchar', nullable: true })
   avatar: string | null;
 
   @Column({ type: 'enum', enum: Role, default: Role.CASHIER })

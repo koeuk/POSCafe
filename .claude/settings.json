@@ -68,7 +68,13 @@
       "Bash(sort -t: -k1)",
       "Bash(echo \"exit: $?\")",
       "Bash(sort -t: -k2)",
-      "Bash(grep -n \"function StatCard\\\\|function Card\\\\|rounded-2xl p-5\\\\|\\\\${GLASS}\\\\|hover:\" \"src/app/\\(staff\\)/dashboard/page.tsx\")"
+      "Bash(grep -n \"function StatCard\\\\|function Card\\\\|rounded-2xl p-5\\\\|\\\\${GLASS}\\\\|hover:\" \"src/app/\\(staff\\)/dashboard/page.tsx\")",
+      "Bash(awk '{print $2, $11, $12, $13}')",
+      "Bash(curl -s -o /dev/null -w \"GET /menu -> %{http_code}\\\\n\" http://localhost:3001/menu)",
+      "Bash(pkill -f \"nest start\")",
+      "Bash(pkill -f \"node .*dist/main\")",
+      "Bash(pkill -f \"node .*dist-dev/main\")",
+      "Bash(awk '{print $2,$11,$12,$13}')"
     ]
   }
 }
