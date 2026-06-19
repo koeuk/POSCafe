@@ -99,7 +99,7 @@ function OrderHistory() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl">
+      <div>
         {/* Status filter */}
         <div className="mb-6 flex flex-wrap gap-2">
           {STATUS_FILTERS.map((f) => (
