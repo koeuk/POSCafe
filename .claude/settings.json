@@ -46,7 +46,15 @@
       "Bash(mysql -uroot -pkoeuk -D poscafe -e 'UPDATE users SET password='\\\\''__TRACKED_VAR__'\\\\'' WHERE username IN \\('\\\\''cashier1'\\\\'','\\\\''admin'\\\\''\\);')",
       "Bash(echo \"pid $!\")",
       "Bash(python3 sidebar_check.py)",
-      "Bash(python3 sidebar_check_admin.py)"
+      "Bash(python3 sidebar_check_admin.py)",
+      "Bash(curl -s -m 3 -o /dev/null -w \"%{http_code}\" http://localhost:3001/auth/me)",
+      "Bash(curl -s -m 3 -o /dev/null -w \"%{http_code}\" http://localhost:3000/auth/me)",
+      "Bash(curl -s -m 5 -X POST http://localhost:3001/auth/register -H \"Content-Type: application/json\" -d '{\"name\":\"Admin\",\"username\":\"admin\",\"password\":\"admin123\",\"role\":\"admin\"}')",
+      "Bash(curl -s -m 5 -X POST http://localhost:3001/auth/register -H \"Content-Type: application/json\" -d '{\"name\":\"Cashier\",\"username\":\"cashier\",\"password\":\"cashier123\",\"role\":\"cashier\"}')",
+      "Bash(curl -s -m 5 -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(curl -s -m 5 -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"cashier\",\"password\":\"cashier123\"}')",
+      "Bash(node -e \"console.log\\(require\\('bcrypt'\\).hashSync\\('admin123',10\\)\\)\")",
+      "Bash(mysql -uroot -pkoeuk poscafe -e 'UPDATE users SET password='\\\\''__CMDSUB_OUTPUT__'\\\\'', isActive=1 WHERE username='\\\\''admin'\\\\''; SELECT id,name,username,role,isActive FROM users;')"
     ]
   }
 }

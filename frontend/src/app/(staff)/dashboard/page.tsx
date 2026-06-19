@@ -132,7 +132,7 @@ function Dashboard() {
   }, [breakdown, totalForDonut]);
 
   return (
-    <div className="font-ios mx-auto max-w-7xl">
+    <div className="font-ios mx-auto mt-6 max-w-7xl">
       {/* Greeting */}
       <div className="mb-6 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
