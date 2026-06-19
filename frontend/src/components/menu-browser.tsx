@@ -47,9 +47,9 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
   const hasResults = visible.length > 0;
 
   return (
-    <div className="min-h-screen bg-amber-50">
-      {/* Header */}
-      <header className="bg-amber-400 px-5 pb-6 pt-8 text-stone-900">
+    <div className="flex h-screen flex-col bg-amber-50">
+      {/* Header (pinned) */}
+      <header className="flex-shrink-0 bg-amber-400 px-5 pb-6 pt-8 text-stone-900">
         <h1 className="text-2xl font-extrabold tracking-tight">☕ POSCAFE</h1>
         <p className="text-sm font-medium text-amber-900/80">
           Browse our menu
@@ -79,7 +79,9 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 pb-16">
+      {/* Scrollable content (fills the height below the header) */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-6xl px-4 pb-16">
         {/* Promo banner */}
         {topDiscount > 0 && (
           <div className="mt-5 flex items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 px-5 py-5 text-white shadow-sm">
@@ -128,7 +130,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                   {cat.products.map((product) => (
                     <Link
                       key={product.id}
-                      href={`/menu/`}
+                      href={`/menu/${product.id}`}
                       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100 transition hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <div className="relative aspect-square w-full bg-stone-100">
@@ -183,6 +185,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
         <footer className="mt-12 text-center text-xs text-stone-400">
           Prices in USD · Ask our staff to place your order
         </footer>
+        </div>
       </div>
     </div>
   );

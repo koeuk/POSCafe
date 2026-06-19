@@ -47,10 +47,25 @@ export default async function ProductDetailPage({
 
             <Link
               href="/menu"
-              className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-stone-800 shadow backdrop-blur transition hover:bg-white"
+              className="group absolute left-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-md ring-1 ring-black/5 backdrop-blur transition hover:w-auto hover:gap-1.5 hover:bg-white hover:px-4 hover:text-stone-900 active:scale-95"
               aria-label="Back to menu"
             >
-              ←
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5 shrink-0 transition-transform group-hover:-translate-x-0.5"
+                aria-hidden="true"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              <span className="hidden text-sm font-medium group-hover:inline">
+                Back
+              </span>
             </Link>
 
             {hasDiscount(product) && (
