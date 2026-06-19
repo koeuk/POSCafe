@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
+import { GLASS } from "@/lib/ui";
 
 export function AdminCategoryDetail({
   category,
@@ -13,7 +14,7 @@ export function AdminCategoryDetail({
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <p className="text-sm font-medium text-stone-400 dark:text-stone-500">Menu Category</p>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
@@ -32,7 +33,7 @@ export function AdminCategoryDetail({
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <section className="overflow-hidden rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <section className={`overflow-hidden rounded-2xl ${GLASS}`}>
           <div className="aspect-video bg-stone-100 dark:bg-stone-800 lg:aspect-square">
             {category.image ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -58,7 +59,7 @@ export function AdminCategoryDetail({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <section className={`overflow-hidden rounded-2xl ${GLASS}`}>
           <div className="border-b border-stone-100 dark:border-stone-800 px-5 py-4">
             <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
               Products in this category
@@ -86,7 +87,7 @@ export function AdminCategoryDetail({
                 </thead>
                 <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                   {products.map((product) => (
-                    <tr key={product.id} className="text-stone-800 dark:text-stone-200">
+                    <tr key={product.id} className="text-stone-800 transition-colors hover:bg-stone-50/70 dark:text-stone-200 dark:hover:bg-stone-800/40">
                       <td className="px-4 py-3">
                         <p className="font-medium text-stone-900 dark:text-stone-100">{product.name}</p>
                         <p className="mt-0.5 max-w-md truncate text-xs text-stone-400 dark:text-stone-500">

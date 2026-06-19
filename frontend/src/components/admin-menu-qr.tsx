@@ -2,6 +2,7 @@
 
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
+import { GLASS } from "@/lib/ui";
 
 export function AdminMenuQr() {
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -22,7 +23,7 @@ export function AdminMenuQr() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             Menu QR Code
@@ -39,7 +40,7 @@ export function AdminMenuQr() {
         </button>
       </header>
 
-      <section className="grid gap-6 rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:grid-cols-[320px_1fr] dark:border-stone-800 dark:bg-stone-900">
+      <section className={`grid gap-6 rounded-2xl p-6 lg:grid-cols-[320px_1fr] ${GLASS}`}>
         <div className="flex justify-center">
           {qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

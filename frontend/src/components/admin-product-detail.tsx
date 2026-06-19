@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { Product } from "@/lib/types";
+import { GLASS } from "@/lib/ui";
 
 export function AdminProductDetail({ product }: { product: Product }) {
   const status = product.isAvailable ? "Visible on customer menu" : "Hidden from customer menu";
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <p className="text-sm font-medium text-stone-400">Menu Preview</p>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900">
@@ -34,7 +35,7 @@ export function AdminProductDetail({ product }: { product: Product }) {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(280px,420px)_1fr]">
-        <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <section className={`overflow-hidden rounded-2xl ${GLASS}`}>
           <div className="aspect-square bg-stone-100">
             {product.image ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -64,7 +65,7 @@ export function AdminProductDetail({ product }: { product: Product }) {
           )}
         </section>
 
-        <section className="rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <section className={`rounded-2xl p-6 ${GLASS}`}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               {product.category && (

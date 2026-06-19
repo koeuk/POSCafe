@@ -12,6 +12,7 @@ import {
 import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
 import { PaymentMethod, type Order } from "@/lib/types";
+import { GLASS } from "@/lib/ui";
 
 interface Payment {
   id: number;
@@ -356,7 +357,7 @@ function Shell({
 }) {
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             Payments
@@ -373,7 +374,7 @@ function Shell({
         </Link>
       </header>
       <section
-        className={`mx-auto rounded-2xl border border-stone-200/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900 ${
+        className={`mx-auto rounded-2xl p-6 ${GLASS} ${
           wide ? "max-w-5xl" : "max-w-2xl"
         }`}
       >

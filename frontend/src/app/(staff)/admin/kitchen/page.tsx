@@ -5,6 +5,7 @@ import { io, type Socket } from "socket.io-client";
 import { RequireAuth } from "@/components/require-auth";
 import { api, getToken } from "@/lib/api";
 import { OrderStatus, type Order } from "@/lib/types";
+import { GLASS } from "@/lib/ui";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:3001";
@@ -116,7 +117,7 @@ function KitchenScreen() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">👨‍🍳 Kitchen</h1>
           <span
@@ -142,7 +143,7 @@ function KitchenScreen() {
         </p>
       )}
 
-      <section className="rounded-2xl border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 text-stone-900 dark:text-stone-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <section className={`rounded-2xl p-4 text-stone-900 dark:text-stone-100 ${GLASS}`}>
         <div className="grid min-h-[640px] grid-cols-1 gap-4 sm:grid-cols-3">
         {COLUMNS.map((col) => {
           const list = byStatus.get(col.status) ?? [];

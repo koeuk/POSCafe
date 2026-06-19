@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { api, uploadImage } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product, ProductSize } from "@/lib/types";
+import { GLASS } from "@/lib/ui";
 
 interface CategoryForm {
   id: number | null;
@@ -377,7 +378,7 @@ export function AdminProductManagement({
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200/70 bg-white px-5 py-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             {pageCopy.title}
@@ -422,7 +423,7 @@ export function AdminProductManagement({
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                     {categories.map((category) => (
-                      <tr key={category.id} className="text-stone-800 dark:text-stone-200">
+                      <tr key={category.id} className="text-stone-800 transition-colors hover:bg-stone-50/70 dark:text-stone-200 dark:hover:bg-stone-800/40">
                         <td className="px-4 py-3">
                           <p className="font-medium text-stone-900 dark:text-stone-100">{category.name}</p>
                           <p className="mt-0.5 max-w-md truncate text-xs text-stone-400 dark:text-stone-500">
@@ -486,7 +487,7 @@ export function AdminProductManagement({
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                     {products.map((product) => (
-                      <tr key={product.id} className="text-stone-800 dark:text-stone-200">
+                      <tr key={product.id} className="text-stone-800 transition-colors hover:bg-stone-50/70 dark:text-stone-200 dark:hover:bg-stone-800/40">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-stone-100 text-lg dark:bg-stone-800">
@@ -977,7 +978,7 @@ function ManagementSection({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+    <section className={`overflow-hidden rounded-2xl ${GLASS}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4 dark:border-stone-800">
         <div>
           <div className="flex items-center gap-2">
