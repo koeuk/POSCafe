@@ -67,7 +67,8 @@
       "Bash(sort -t: -k2 -rn)",
       "Bash(sort -t: -k1)",
       "Bash(echo \"exit: $?\")",
-      "Bash(sort -t: -k2)"
+      "Bash(sort -t: -k2)",
+      "Bash(grep -n \"function StatCard\\\\|function Card\\\\|rounded-2xl p-5\\\\|\\\\${GLASS}\\\\|hover:\" \"src/app/\\(staff\\)/dashboard/page.tsx\")"
     ]
   }
 }

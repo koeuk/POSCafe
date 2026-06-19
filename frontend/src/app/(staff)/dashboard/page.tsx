@@ -391,11 +391,11 @@ function StatCard({
 }) {
   return (
     <div
-      className={`ios-rise group rounded-2xl p-5 transition duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] ${GLASS}`}
+      className={`ios-rise rounded-2xl p-5 transition-shadow duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] ${GLASS}`}
       style={{ animationDelay: `${80 + index * 70}ms` }}
     >
       <span
-        className="grid h-10 w-10 place-items-center rounded-xl transition-transform duration-300 group-hover:scale-110"
+        className="grid h-10 w-10 place-items-center rounded-xl"
         style={{ color: tone, background: `${tone}1A` }}
       >
         {icon}
