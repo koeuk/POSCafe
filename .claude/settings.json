@@ -75,7 +75,9 @@
       "Bash(pkill -f \"node .*dist/main\")",
       "Bash(pkill -f \"node .*dist-dev/main\")",
       "Bash(awk '{print $2,$11,$12,$13}')",
-      "Bash(ps -o pid,user,cmd -p 48628,48629,49711,49712)"
+      "Bash(ps -o pid,user,cmd -p 48628,48629,49711,49712)",
+      "Bash(curl -s -o /dev/null -w \"GET /menu -> %{http_code} \\(000 = down\\)\\\\n\" --max-time 4 http://localhost:3001/menu)",
+      "Bash(curl -s -o /dev/null -w \"POST /auth/login \\(bad creds\\) -> %{http_code}\\\\n\" --max-time 5 -X POST http://localhost:3001/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"__nope__\",\"password\":\"wrongwrong\"}')"
     ]
   }
 }

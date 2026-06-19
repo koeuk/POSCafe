@@ -53,6 +53,9 @@ function Settings() {
   }, []);
 
   useEffect(() => {
+    // Mount fetch: loading the staff list after mount is intentional, not a
+    // render-time state update.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadUsers();
   }, [loadUsers]);
 
