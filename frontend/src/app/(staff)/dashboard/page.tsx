@@ -134,7 +134,7 @@ function Dashboard() {
   }, [breakdown, totalForDonut]);
 
   return (
-    <div className="font-ios mx-auto mt-6 max-w-7xl">
+    <div className="font-ios mx-auto mt-6 max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
       {/* Greeting */}
       <div
         className={`ios-rise mb-6 rounded-2xl px-5 py-5 ${GLASS}`}
