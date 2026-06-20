@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
 import { sizeStock, totalStock } from "@/lib/pricing";
@@ -324,20 +324,23 @@ function ProductStock({
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(lines.map((l) => [l.key, String(l.current)])),
   );
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const dirty = lines.some((l) => Number(values[l.key]) !== l.current);
 
+  function cancelEdit() {
+    setValues(Object.fromEntries(lines.map((l) => [l.key, String(l.current)])));
+    setEditing(false);
+    setError(null);
+    setSaved(false);
+  }
+
   async function remove() {
-    if (
-      !window.confirm(
-        `Delete "${product.name}"? This removes the product entirely.`,
-      )
-    )
-      return;
     setDeleting(true);
     setError(null);
     try {
@@ -346,6 +349,7 @@ function ProductStock({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
       setDeleting(false);
+      setConfirmOpen(false);
     }
   }
 
@@ -370,6 +374,7 @@ function ProductStock({
         : { stock: Math.max(0, Number(values["__base__"] || "0")) };
       await api(`/products/${product.id}`, { method: "PATCH", body });
       setSaved(true);
+      setEditing(false);
       await onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -435,27 +440,43 @@ function ProductStock({
           );
         })()}
         <div className="flex items-center gap-2">
-          <Link
-            href={`/admin/products?edit=${product.id}`}
-            className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
-          >
-            Edit
-          </Link>
+          {editing ? (
+            <>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={saving}
+                className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={!dirty || saving}
+                className="rounded-lg bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-amber-500 dark:text-stone-950"
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+            >
+              {saved ? "Saved ✓" : "Edit"}
+            </button>
+          )}
           <button
             type="button"
-            onClick={remove}
+            onClick={() => setConfirmOpen(true)}
             disabled={deleting}
-            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+            aria-label={`Delete ${product.name}`}
+            title="Delete product"
+            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg border border-stone-200 text-stone-400 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-500 dark:hover:border-red-500/40 dark:hover:bg-red-500/10 dark:hover:text-red-400"
           >
-            {deleting ? "Deleting…" : "Delete"}
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            disabled={!dirty || saving}
-            className="rounded-lg bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-amber-500 dark:text-stone-950"
-          >
-            {saving ? "Saving…" : saved && !dirty ? "Saved ✓" : "Save"}
+            ✕
           </button>
         </div>
       </div>
@@ -496,7 +517,8 @@ function ProductStock({
                 value={values[l.key]}
                 onChange={(e) => set(l.key, e.target.value)}
                 inputMode="numeric"
-                className={`${INPUT} w-20 text-right`}
+                disabled={!editing}
+                className={`${INPUT} w-20 text-right disabled:cursor-not-allowed disabled:opacity-60`}
               />
             </div>
           );
@@ -505,6 +527,16 @@ function ProductStock({
 
       {error && (
         <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+      )}
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title="Delete product"
+          message={`Delete "${product.name}"? This permanently removes the product and its stock.`}
+          busy={deleting}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={remove}
+        />
       )}
     </li>
   );
