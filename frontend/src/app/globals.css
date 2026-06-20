@@ -193,3 +193,56 @@ button:not(:disabled),
     scale: 0.97;
   }
 }
+
+/* ── Promo banner motion ──────────────────────────────────────────── */
+
+/* A light sweep that travels across the banner like a loading shimmer. */
+@keyframes promo-shimmer {
+  0% {
+    transform: translateX(-130%) skewX(-12deg);
+  }
+  60%,
+  100% {
+    transform: translateX(230%) skewX(-12deg);
+  }
+}
+
+.promo-shimmer {
+  position: relative;
+}
+.promo-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 65%
+  );
+  transform: translateX(-130%) skewX(-12deg);
+  animation: promo-shimmer 2.8s ease-in-out infinite;
+}
+
+/* Playful bob + tilt for the promo icon. */
+@keyframes promo-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(5deg);
+  }
+}
+.promo-bob {
+  display: inline-block;
+  animation: promo-bob 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-shimmer::after,
+  .promo-bob {
+    animation: none;
+  }
+}

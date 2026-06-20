@@ -90,8 +90,8 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
         <div className="mx-auto max-w-6xl px-4 pb-16">
         {/* Promo banner */}
         {topDiscount > 0 && (
-          <div className="mt-5 flex items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 px-5 py-5 text-white shadow-sm">
-            <div>
+          <div className="promo-shimmer mt-5 flex items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 px-5 py-5 text-white shadow-sm">
+            <div className="relative z-10">
               <p className="text-3xl font-extrabold leading-none">
                 {topDiscount}% OFF
               </p>
@@ -99,7 +99,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                 On selected items today
               </p>
             </div>
-            <span className="text-5xl">🍰</span>
+            <span className="promo-bob relative z-10 text-5xl">🍰</span>
           </div>
         )}
 

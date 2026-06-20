@@ -71,7 +71,8 @@ function PayScreen() {
           );
           if (!cancelled) {
             setOrder(ord);
-            setAlreadyPaid(existing !== null);
+            // Loose check: an unpaid order yields null/undefined (empty body).
+            setAlreadyPaid(existing != null);
           }
         } else {
           const list = await api<Order[]>("/orders?status=pending");

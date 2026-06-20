@@ -50,9 +50,11 @@ export async function api<T = unknown>(
     throw new Error(message);
   }
 
-  // 204 No Content
+  // 204 No Content, or an empty body (e.g. an endpoint that returned null —
+  // Nest serializes null to an empty response, which res.json() can't parse).
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 // Uploads a single image file (multipart) and returns its absolute URL.
