@@ -75,7 +75,7 @@ function Stock() {
   }, [products, query, outOnly]);
 
   return (
-    <main className="mx-auto max-w-4xl">
+    <main className="mx-auto max-w-7xl">
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
           Stock
@@ -149,7 +149,9 @@ function Stock() {
               key={p.id}
               product={p}
               catalog={sizes}
-              onSaved={loadProducts}
+              onSaved={async () => {
+                await Promise.all([loadProducts(), loadSizes()]);
+              }}
             />
           ))}
         </ul>
@@ -354,7 +356,6 @@ function ProductStock({
       ]),
     [product.sizes, newRows],
   );
-  const available = catalog.filter((s) => !usedSizes.has(s.name));
 
   const dirty =
     lines.some((l) => Number(values[l.key]) !== l.current) || newRows.length > 0;
@@ -412,16 +413,36 @@ function ProductStock({
         stock: Math.max(0, Number(r.stock || "0")),
       }))
       .filter((r) => r.size);
+    const existingNames = (product.sizes ?? []).map((s) => s.size.toLowerCase());
+    const seen = new Set(existingNames);
     for (const r of added) {
       if (!r.price || Number.isNaN(r.price) || r.price < 0) {
         setError(`Enter a valid price for size "${r.size}".`);
         return;
       }
+      const key = r.size.toLowerCase();
+      if (seen.has(key)) {
+        setError(`Size "${r.size}" is already on this product.`);
+        return;
+      }
+      seen.add(key);
     }
 
     setSaving(true);
     setError(null);
     try {
+      // Create any brand-new size names in the global catalog so they show up
+      // in the top "Cup sizes" list and other products' pickers.
+      const known = new Set(catalog.map((c) => c.name.toLowerCase()));
+      const brandNew = added.filter((r) => !known.has(r.size.toLowerCase()));
+      await Promise.all(
+        brandNew.map((r) =>
+          api("/sizes", { method: "POST", body: { name: r.size } }).catch(
+            () => undefined, // ignore if it already exists
+          ),
+        ),
+      );
+
       const sized = product.sizes && product.sizes.length > 0;
       // Adding a size to an unsized product converts it to a sized product.
       const body =
@@ -601,7 +622,7 @@ function ProductStock({
       {editing && (
         <div className="mt-2 space-y-2">
           {newRows.map((row, index) => {
-            // Options: catalog sizes not used elsewhere, plus this row's own.
+            // Suggest catalog sizes not already used; typing a new name is fine.
             const options = catalog.filter(
               (s) => s.name === row.size || !usedSizes.has(s.name),
             );
@@ -610,18 +631,18 @@ function ProductStock({
                 key={index}
                 className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-stone-300 bg-stone-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800/50"
               >
-                <select
+                <input
                   value={row.size}
                   onChange={(e) => updateRow(index, { size: e.target.value })}
+                  list={`sizes-${product.id}`}
+                  placeholder="Size name (e.g. XL)"
                   className={`${INPUT} flex-1`}
-                >
-                  {options.length === 0 && <option value="">No sizes left</option>}
+                />
+                <datalist id={`sizes-${product.id}`}>
                   {options.map((s) => (
-                    <option key={s.id} value={s.name}>
-                      {s.name}
-                    </option>
+                    <option key={s.id} value={s.name} />
                   ))}
-                </select>
+                </datalist>
                 <div className="relative w-24">
                   <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-stone-400">
                     $
@@ -663,11 +684,10 @@ function ProductStock({
           <button
             type="button"
             onClick={addRow}
-            disabled={available.length === 0}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-300 dark:hover:border-amber-400 dark:hover:text-amber-400"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] dark:border-stone-700 dark:text-stone-300 dark:hover:border-amber-400 dark:hover:text-amber-400"
           >
             <span className="text-base leading-none">＋</span>
-            {available.length === 0 ? "All sizes added" : "Add size"}
+            Add size
           </button>
         </div>
       )}

@@ -35,6 +35,7 @@ function POSScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
 
@@ -76,13 +77,22 @@ function POSScreen() {
     };
   }, []);
 
-  const visibleProducts = useMemo(
-    () =>
-      activeCategory === null
-        ? products
-        : products.filter((p) => p.categoryId === activeCategory),
-    [products, activeCategory],
-  );
+  const visibleProducts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return products.filter((p) => {
+      if (activeCategory !== null && p.categoryId !== activeCategory) {
+        return false;
+      }
+      if (
+        q &&
+        !p.name.toLowerCase().includes(q) &&
+        !(p.description ?? "").toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [products, activeCategory, query]);
 
   const total = useMemo(
     () =>
@@ -209,6 +219,45 @@ function POSScreen() {
                 onClick={() => setActiveCategory(c.id)}
               />
             ))}
+          </div>
+
+          {/* Search */}
+          <div className="shrink-0 px-5 pb-3 sm:px-7">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search product…"
+                aria-label="Search product"
+                className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-10 pr-10 text-sm text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-700"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Product grid */}
