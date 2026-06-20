@@ -33,6 +33,39 @@ button:not(:disabled),
   cursor: pointer;
 }
 
+/* ── Right slide-over drawer ──────────────────────────────────────── */
+
+@keyframes drawer-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.drawer-overlay-in {
+  animation: drawer-overlay-in 0.25s ease forwards;
+}
+
+@keyframes drawer-panel-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.drawer-panel-in {
+  animation: drawer-panel-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-overlay-in,
+  .drawer-panel-in {
+    animation: none;
+  }
+}
+
 /* ── iOS / HIG (Liquid Glass) utilities ───────────────────────────── */
 
 /* Genuine SF Pro on Apple devices; Geist (self-hosted) elsewhere. */

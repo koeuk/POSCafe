@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fraunces } from "next/font/google";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
+import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
 import type { Category, Order, Product, ProductSize } from "@/lib/types";
@@ -23,6 +24,7 @@ function cartKey(productId: number, sizeName: string | null | undefined) {
 }
 
 function POSScreen() {
+  const { isAdmin } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
@@ -260,7 +262,7 @@ function POSScreen() {
                   <span>{formatPrice(lastOrder.total)}</span>
                   <div className="flex gap-3">
                     <Link
-                      href={`/pay?orderId=${lastOrder.id}`}
+                      href={`${isAdmin ? "/admin/pay" : "/pay"}?orderId=${lastOrder.id}`}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       Pay
@@ -428,6 +430,28 @@ function ProductCard({
             -{product.discountPercent}%
           </span>
         )}
+        <Link
+          href={`/menu/${product.id}`}
+          target="_blank"
+          aria-label={`View ${product.name} details`}
+          title="View details"
+          className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/85 text-stone-700 shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white hover:text-stone-900 dark:bg-stone-900/80 dark:text-stone-300 dark:ring-white/10 dark:hover:bg-stone-900"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </Link>
         {soldOut && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-stone-950/60">
             <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">

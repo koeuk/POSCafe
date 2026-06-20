@@ -612,6 +612,7 @@ export function AdminProductManagement({
               </div>
               {categoryImageMode === "upload" ? (
                 <input
+                  key="category-image-upload"
                   type="file"
                   accept="image/*"
                   onChange={(event) =>
@@ -622,6 +623,7 @@ export function AdminProductManagement({
                 />
               ) : (
                 <input
+                  key="category-image-link"
                   value={categoryForm.image}
                   onChange={(event) =>
                     setCategoryForm((form) => ({
@@ -776,6 +778,7 @@ export function AdminProductManagement({
               </div>
               {imageMode === "upload" ? (
                 <input
+                  key="product-image-upload"
                   type="file"
                   accept="image/*"
                   onChange={(event) =>
@@ -786,6 +789,7 @@ export function AdminProductManagement({
                 />
               ) : (
                 <input
+                  key="product-image-link"
                   value={productForm.image}
                   onChange={(event) =>
                     setProductForm((form) => ({ ...form, image: event.target.value }))

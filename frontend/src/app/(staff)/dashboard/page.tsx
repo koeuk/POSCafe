@@ -73,7 +73,7 @@ function Dashboard() {
     };
   }, [orders, products]);
 
-  // Revenue for the last 7 days (from completed + non-cancelled orders).
+  // Revenue for the last 7 days — completed orders only, matching the KPI card.
   const daily = useMemo(() => {
     const days: { label: string; value: number }[] = [];
     const now = new Date();
@@ -84,7 +84,7 @@ function Dashboard() {
       const value = orders
         .filter(
           (o) =>
-            o.status !== OrderStatus.CANCELLED &&
+            o.status === OrderStatus.COMPLETED &&
             new Date(o.createdAt).toDateString() === key,
         )
         .reduce((s, o) => s + Number(o.total), 0);
@@ -224,10 +224,10 @@ function Dashboard() {
           </div>
           <div className="flex h-48 items-end justify-between gap-3">
             {daily.map((d, i) => (
-              <div key={i} className="group flex flex-1 flex-col items-center gap-2">
+              <div key={i} className="group flex h-full flex-1 flex-col items-center gap-2">
                 <div className="flex w-full flex-1 items-end">
                   <div
-                    className="w-full rounded-t-lg transition-[height,background] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-90"
+                    className="relative w-full rounded-t-lg transition-[height,background] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-90"
                     style={{
                       height: loading ? "2px" : `${(d.value / maxDaily) * 100}%`,
                       minHeight: d.value > 0 ? "6px" : "2px",
@@ -237,8 +237,17 @@ function Dashboard() {
                           ? ACCENT
                           : `${ACCENT}55`,
                     }}
-                    title={formatPrice(d.value)}
-                  />
+                  >
+                    {/* Hover tooltip — day + revenue */}
+                    <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg bg-stone-900 px-2.5 py-1.5 text-center text-xs font-semibold text-white opacity-0 shadow-lg transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 dark:bg-stone-100 dark:text-stone-900">
+                      {formatPrice(d.value)}
+                      <span className="block text-[10px] font-normal text-stone-300 dark:text-stone-500">
+                        {d.label}
+                      </span>
+                      {/* little arrow */}
+                      <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 bg-stone-900 dark:bg-stone-100" />
+                    </div>
+                  </div>
                 </div>
                 <span className="text-xs text-stone-400 dark:text-stone-500">{d.label}</span>
               </div>
