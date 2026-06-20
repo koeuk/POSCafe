@@ -236,7 +236,7 @@ function PayScreen() {
 
   // --- Cash pad ---
   return (
-    <Shell wide>
+    <Shell>
       <div className="grid gap-6 md:grid-cols-2">
         {/* Order summary */}
         <div>
@@ -349,13 +349,7 @@ function PayScreen() {
   );
 }
 
-function Shell({
-  children,
-  wide,
-}: {
-  children: React.ReactNode;
-  wide?: boolean;
-}) {
+function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-7xl">
       <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
@@ -374,13 +368,7 @@ function Shell({
           View orders
         </Link>
       </header>
-      <section
-        className={`mx-auto rounded-2xl p-6 ${GLASS} ${
-          wide ? "max-w-5xl" : "max-w-2xl"
-        }`}
-      >
-        {children}
-      </section>
+      <section className={`w-full rounded-2xl p-6 ${GLASS}`}>{children}</section>
     </main>
   );
 }
