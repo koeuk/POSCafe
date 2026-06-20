@@ -10,6 +10,26 @@ import { GLASS } from "@/lib/ui";
 
 const ACCENT = "#2A1D15";
 
+interface CategorySales {
+  categoryId: number;
+  name: string;
+  quantitySold: number;
+  orders: number;
+  revenue: number;
+}
+
+// Palette for the category bars.
+const CAT_COLORS = [
+  "#2A1D15",
+  "#F59E0B",
+  "#3B82F6",
+  "#22C55E",
+  "#7C5CFC",
+  "#EF4444",
+  "#06B6D4",
+  "#EC4899",
+];
+
 const STATUS_META: Record<OrderStatus, { label: string; color: string }> = {
   [OrderStatus.PENDING]: { label: "Pending", color: "#F59E0B" },
   [OrderStatus.PREPARING]: { label: "Preparing", color: "#3B82F6" },
@@ -30,6 +50,7 @@ function Dashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<CategorySales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,13 +58,15 @@ function Dashboard() {
     let cancelled = false;
     (async () => {
       try {
-        const [o, p] = await Promise.all([
+        const [o, p, c] = await Promise.all([
           api<Order[]>("/orders"),
           api<Product[]>("/products"),
+          api<CategorySales[]>("/reports/categories"),
         ]);
         if (!cancelled) {
           setOrders(o);
           setProducts(p);
+          setCategories(c);
         }
       } catch (err) {
         if (!cancelled)
@@ -96,6 +119,14 @@ function Dashboard() {
     return days;
   }, [orders]);
   const maxDaily = Math.max(1, ...daily.map((d) => d.value));
+
+  // Categories sorted by popularity (quantity sold).
+  const sortedCats = useMemo(
+    () => [...categories].sort((a, b) => b.quantitySold - a.quantitySold),
+    [categories],
+  );
+  const maxCat = Math.max(1, ...sortedCats.map((c) => c.quantitySold));
+  const totalCupsSold = sortedCats.reduce((s, c) => s + c.quantitySold, 0);
 
   // Order status breakdown for the donut.
   const breakdown = useMemo(() => {
@@ -297,8 +328,74 @@ function Dashboard() {
         </Card>
       </div>
 
+      {/* Popular categories */}
+      <Card className="mt-6" delay={540}>
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-stone-900 dark:text-stone-100">
+              Popular Categories
+            </h2>
+            <p className="text-sm text-stone-400 dark:text-stone-500">
+              Cups sold by category (completed orders)
+            </p>
+          </div>
+          {sortedCats.length > 0 && (
+            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+              {totalCupsSold} sold
+            </span>
+          )}
+        </div>
+
+        {sortedCats.length === 0 ? (
+          <p className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+            No completed sales yet.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {sortedCats.map((c, i) => {
+              const color = CAT_COLORS[i % CAT_COLORS.length];
+              const pct = (c.quantitySold / maxCat) * 100;
+              const share = totalCupsSold
+                ? Math.round((c.quantitySold / totalCupsSold) * 100)
+                : 0;
+              return (
+                <li key={c.categoryId}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 font-medium text-stone-700 dark:text-stone-300">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: color }}
+                      />
+                      {c.name}
+                      {i === 0 && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                          Most popular
+                        </span>
+                      )}
+                    </span>
+                    <span className="tabular-nums text-stone-500 dark:text-stone-400">
+                      {c.quantitySold} · {share}%
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                      style={{
+                        width: loading ? "0%" : `${pct}%`,
+                        background: color,
+                        transitionDelay: `${i * 70}ms`,
+                      }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+
       {/* Recent orders */}
-      <Card className="mt-6" delay={560}>
+      <Card className="mt-6" delay={620}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">Recent Orders</h2>
         </div>

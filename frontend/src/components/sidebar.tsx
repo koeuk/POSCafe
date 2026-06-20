@@ -106,6 +106,17 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    href: "/admin/stock",
+    label: "Stock",
+    adminOnly: true,
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
+        <path d="M3 7h18M3 12h18M3 17h18" />
+        <path d="M7 4v16" />
+      </svg>
+    ),
+  },
+  {
     href: { staff: "/order-history", admin: "/admin/orders" },
     label: "Order History",
     icon: (

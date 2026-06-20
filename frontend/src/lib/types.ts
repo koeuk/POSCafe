@@ -70,6 +70,13 @@ export interface ProductVariant {
   stock: number;
 }
 
+// Master cup-size catalog (Small / Medium / Large), managed on the Stock page.
+export interface Size {
+  id: number;
+  name: string;
+  sortOrder: number;
+}
+
 // Shape returned by the public GET /menu endpoint: active categories,
 // each with their available products only.
 export interface MenuCategory {

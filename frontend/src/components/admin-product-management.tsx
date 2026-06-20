@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
-import type { Category, Product, ProductSize } from "@/lib/types";
+import type { Category, Product, Size } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 interface CategoryForm {
@@ -15,6 +15,7 @@ interface CategoryForm {
   isActive: boolean;
 }
 
+// A size row on the product form: chosen size name + its price + stock qty.
 interface SizeRow {
   size: string;
   price: string;
@@ -90,6 +91,7 @@ export function AdminProductManagement({
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [sizeCatalog, setSizeCatalog] = useState<Size[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<Drawer>(null);
@@ -162,12 +164,14 @@ export function AdminProductManagement({
   }
 
   const reload = useCallback(async () => {
-    const [nextCategories, nextProducts] = await Promise.all([
+    const [nextCategories, nextProducts, nextSizes] = await Promise.all([
       api<Category[]>("/categories"),
       api<Product[]>("/products"),
+      api<Size[]>("/sizes"),
     ]);
     setCategories(nextCategories);
     setProducts(nextProducts);
+    setSizeCatalog(nextSizes);
   }, []);
 
   useEffect(() => {
@@ -175,13 +179,15 @@ export function AdminProductManagement({
 
     async function load() {
       try {
-        const [nextCategories, nextProducts] = await Promise.all([
+        const [nextCategories, nextProducts, nextSizes] = await Promise.all([
           api<Category[]>("/categories"),
           api<Product[]>("/products"),
+          api<Size[]>("/sizes"),
         ]);
         if (!cancelled) {
           setCategories(nextCategories);
           setProducts(nextProducts);
+          setSizeCatalog(nextSizes);
         }
       } catch (err) {
         if (!cancelled) {
@@ -250,12 +256,11 @@ export function AdminProductManagement({
       image: product.image ?? "",
       gallery: product.gallery ?? [],
       description: product.description ?? "",
-      sizes: (product.sizes ?? []).map((size) => ({
-        size: size.size,
-        price: String(size.price),
-        // Current per-size stock comes from the variant rows.
+      sizes: (product.sizes ?? []).map((s) => ({
+        size: s.size,
+        price: String(s.price),
         stock: String(
-          product.variants?.find((v) => v.size === size.size)?.stock ?? 0,
+          product.variants?.find((v) => v.size === s.size)?.stock ?? 0,
         ),
       })),
       isAvailable: product.isAvailable,
@@ -267,9 +272,12 @@ export function AdminProductManagement({
   }
 
   function addSizeRow() {
+    // Pre-select the first catalog size not already used.
+    const used = new Set(productForm.sizes.map((r) => r.size));
+    const next = sizeCatalog.find((s) => !used.has(s.name));
     setProductForm((form) => ({
       ...form,
-      sizes: [...form.sizes, { size: "", price: "", stock: "0" }],
+      sizes: [...form.sizes, { size: next?.name ?? "", price: "", stock: "0" }],
     }));
   }
 
@@ -327,6 +335,7 @@ export function AdminProductManagement({
       return;
     }
 
+    // Sizes: pick a size + price per row. Quantities are set on the Stock page.
     const parsedSizes = buildSizes(productForm.sizes);
     if (parsedSizes instanceof Error) {
       setError(parsedSizes.message);
@@ -890,61 +899,120 @@ export function AdminProductManagement({
               />
             </Field>
             <Field label="Sizes (optional)">
-              <div className="space-y-2">
-                {productForm.sizes.map((row, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      value={row.size}
-                      onChange={(event) =>
-                        updateSizeRow(index, "size", event.target.value)
-                      }
-                      placeholder="Size (e.g. Small)"
-                      className={`${INPUT_CLASS} flex-1`}
-                    />
-                    <div className="relative w-24 shrink-0">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
-                        $
-                      </span>
-                      <input
-                        value={row.price}
-                        onChange={(event) =>
-                          updateSizeRow(index, "price", event.target.value)
-                        }
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        className={`${INPUT_CLASS} pl-6`}
-                      />
+              {sizeCatalog.length === 0 ? (
+                <p className="rounded-lg bg-stone-50 px-3 py-2.5 text-xs text-stone-500 dark:bg-stone-800/60 dark:text-stone-400">
+                  No cup sizes defined yet. Add sizes on the{" "}
+                  <Link
+                    href="/admin/stock"
+                    className="font-medium text-[#2A1D15] underline dark:text-amber-400"
+                  >
+                    Stock
+                  </Link>{" "}
+                  page first.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {/* Column labels — aligned to the grid below. */}
+                  {productForm.sizes.length > 0 && (
+                    <div className="grid grid-cols-[1fr_1fr_1fr_2rem] gap-2 px-0.5 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                      <span>Size</span>
+                      <span>Price</span>
+                      <span>Qty</span>
+                      <span />
                     </div>
-                    <input
-                      value={row.stock}
-                      onChange={(event) =>
-                        updateSizeRow(index, "stock", event.target.value)
-                      }
-                      inputMode="numeric"
-                      placeholder="Qty"
-                      title="Cups in stock for this size"
-                      className={`${INPUT_CLASS} w-20 shrink-0`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeSizeRow(index)}
-                      aria-label="Remove size"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:text-stone-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                  )}
+                  {productForm.sizes.map((row, index) => {
+                    // Hide sizes chosen in other rows; keep this row's own value.
+                    const usedElsewhere = new Set(
+                      productForm.sizes
+                        .filter((_, i) => i !== index)
+                        .map((r) => r.size),
+                    );
+                    const options = sizeCatalog.filter(
+                      (s) => !usedElsewhere.has(s.name),
+                    );
+                    return (
+                      <div
+                        key={index}
+                        className="grid grid-cols-[1fr_1fr_1fr_2rem] items-center gap-2"
+                      >
+                        <select
+                          value={row.size}
+                          onChange={(e) =>
+                            updateSizeRow(index, "size", e.target.value)
+                          }
+                          className={`${INPUT_CLASS} min-w-0`}
+                        >
+                          <option value="">Select…</option>
+                          {options.map((s) => (
+                            <option key={s.id} value={s.name}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="relative min-w-0">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
+                            $
+                          </span>
+                          <input
+                            value={row.price}
+                            onChange={(e) =>
+                              updateSizeRow(index, "price", e.target.value)
+                            }
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            aria-label="Price"
+                            className={`${INPUT_CLASS} pl-6`}
+                          />
+                        </div>
+                        <input
+                          value={row.stock}
+                          onChange={(e) =>
+                            updateSizeRow(
+                              index,
+                              "stock",
+                              e.target.value.replace(/[^0-9]/g, ""),
+                            )
+                          }
+                          inputMode="numeric"
+                          placeholder="Qty"
+                          aria-label="Cups in stock for this size"
+                          title="Cups in stock for this size"
+                          className={`${INPUT_CLASS} min-w-0`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSizeRow(index)}
+                          aria-label="Remove size"
+                          className="flex h-9 w-8 items-center justify-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:text-stone-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
 
-                <button
-                  type="button"
-                  onClick={addSizeRow}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] dark:border-stone-700 dark:text-stone-400 dark:hover:border-amber-400 dark:hover:text-amber-400"
-                >
-                  <span className="text-base leading-none">＋</span>
-                  Add size
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={addSizeRow}
+                    disabled={productForm.sizes.length >= sizeCatalog.length}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-400 dark:hover:border-amber-400 dark:hover:text-amber-400"
+                  >
+                    <span className="text-base leading-none">＋</span>
+                    Add size
+                  </button>
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
+                    Size · price · Qty (cups in stock). Restock anytime on the{" "}
+                    <Link
+                      href="/admin/stock"
+                      className="underline hover:text-stone-600 dark:hover:text-stone-300"
+                    >
+                      Stock
+                    </Link>{" "}
+                    page.
+                  </p>
+                </div>
+              )}
             </Field>
             <label className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
               <input
@@ -1318,34 +1386,31 @@ function CategoryCombobox({
   );
 }
 
-// Validate the size rows from the form, dropping rows the user left fully blank.
-function buildSizes(rows: SizeRow[]): ProductSize[] | null | Error {
-  const filled = rows
-    .map((row) => ({
-      size: row.size.trim(),
-      price: row.price.trim(),
-      stock: row.stock.trim(),
-    }))
-    .filter((row) => row.size || row.price);
-
+// Validate the size rows: each needs a picked size (unique), a valid price,
+// and a valid stock quantity.
+function buildSizes(
+  rows: SizeRow[],
+): { size: string; price: number; stock: number }[] | null | Error {
+  const filled = rows.filter((r) => r.size.trim() || r.price.trim());
   if (filled.length === 0) return null;
 
-  const sizes: ProductSize[] = [];
+  const seen = new Set<string>();
+  const sizes: { size: string; price: number; stock: number }[] = [];
   for (const row of filled) {
-    if (!row.size) {
-      return new Error("Each size needs a name.");
-    }
+    const size = row.size.trim();
+    if (!size) return new Error("Pick a size for each row.");
+    if (seen.has(size)) return new Error(`Size "${size}" is selected twice.`);
+    seen.add(size);
     const price = Number(row.price);
     if (!row.price || Number.isNaN(price) || price < 0) {
-      return new Error(`Enter a valid price for size "${row.size}".`);
+      return new Error(`Enter a valid price for "${size}".`);
     }
     const stock = Number(row.stock || "0");
     if (Number.isNaN(stock) || stock < 0) {
-      return new Error(`Enter a valid stock for size "${row.size}".`);
+      return new Error(`Enter a valid stock for "${size}".`);
     }
-    sizes.push({ size: row.size, price, stock });
+    sizes.push({ size, price, stock });
   }
-
   return sizes;
 }
 

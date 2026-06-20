@@ -111,6 +111,23 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
               </button>
             )}
           </div>
+
+          {/* Category filter — lives on the header, stays visible while scrolling */}
+          <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pt-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <Chip
+              label="All"
+              active={activeCat === "all"}
+              onClick={() => setActiveCat("all")}
+            />
+            {menu.map((cat) => (
+              <Chip
+                key={cat.id}
+                label={cat.name}
+                active={activeCat === cat.id}
+                onClick={() => setActiveCat(cat.id)}
+              />
+            ))}
+          </div>
         </div>
       </header>
 
@@ -142,23 +159,6 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
               </span>
             </div>
           )}
-
-          {/* Category tabs */}
-          <div className="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pt-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <Chip
-              label="All"
-              active={activeCat === "all"}
-              onClick={() => setActiveCat("all")}
-            />
-            {menu.map((cat) => (
-              <Chip
-                key={cat.id}
-                label={cat.name}
-                active={activeCat === cat.id}
-                onClick={() => setActiveCat(cat.id)}
-              />
-            ))}
-          </div>
 
           {/* Results */}
           {!hasResults ? (
