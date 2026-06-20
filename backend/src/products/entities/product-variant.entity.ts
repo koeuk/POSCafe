@@ -37,4 +37,8 @@ export class ProductVariant {
 
   @Column({ default: 0 })
   stock: number;
+
+  // Capacity high-water mark for this size (see Product.totalStock).
+  @Column({ default: 0 })
+  totalStock: number;
 }
