@@ -12,6 +12,8 @@ import {
   formatPrice,
   hasDiscount,
   sizeStock,
+  soldCount,
+  stockCapacity,
   totalStock,
 } from "@/lib/pricing";
 import type { Category, Order, Product, ProductSize } from "@/lib/types";
@@ -489,6 +491,8 @@ function ProductCard({
 }) {
   const sizes = product.sizes ?? [];
   const stock = totalStock(product);
+  const sold = soldCount(product);
+  const capacity = stockCapacity(product);
   const priceLabel = sizes.length > 0
     ? `from ${formatPrice(effectivePrice(product))}`
     : formatPrice(effectivePrice(product));
@@ -571,7 +575,7 @@ function ProductCard({
               : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
         }`}
       >
-        {soldOut ? "Out of stock" : `${stock} left`}
+        {soldOut ? "Out of stock" : `${sold} / ${capacity} sold`}
       </span>
 
       <div className="mt-auto pt-3">

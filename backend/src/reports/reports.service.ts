@@ -86,7 +86,10 @@ export class ReportsService {
 
     return {
       today: { orders: Number(today.orders), revenue: Number(today.revenue) },
-      allTime: { orders: Number(allTime.orders), revenue: Number(allTime.revenue) },
+      allTime: {
+        orders: Number(allTime.orders),
+        revenue: Number(allTime.revenue),
+      },
     };
   }
 

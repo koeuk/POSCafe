@@ -24,7 +24,9 @@ export class ProductsController {
   // Optional ?categoryId= filter; reads open to any authenticated user.
   @Get()
   findAll(@Query('categoryId') categoryId?: string) {
-    return this.productsService.findAll(categoryId ? Number(categoryId) : undefined);
+    return this.productsService.findAll(
+      categoryId ? Number(categoryId) : undefined,
+    );
   }
 
   @Get(':id')

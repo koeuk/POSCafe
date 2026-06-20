@@ -19,7 +19,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
         // expiresIn accepts ms-style strings (e.g. '1d'); cast since config returns a plain string.
-        signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN', '1d') as any },
+        signOptions: {
+          expiresIn: config.get<string>('JWT_EXPIRES_IN', '1d') as any,
+        },
       }),
     }),
   ],

@@ -71,7 +71,10 @@ export class OrdersService {
 
         // Apply the product's discount and snapshot the charged price,
         // rounded to cents so the stored total has no float drift.
-        const discount = Math.min(Math.max(product.discountPercent ?? 0, 0), 100);
+        const discount = Math.min(
+          Math.max(product.discountPercent ?? 0, 0),
+          100,
+        );
         const unitPrice =
           Math.round(basePrice * (1 - discount / 100) * 100) / 100;
         const subtotal = Math.round(unitPrice * line.quantity * 100) / 100;

@@ -26,9 +26,7 @@ import { Order } from './entities/order.entity';
 @WebSocketGateway({
   cors: { origin: true, credentials: true },
 })
-export class OrdersGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(OrdersGateway.name);
 
   @WebSocketServer()

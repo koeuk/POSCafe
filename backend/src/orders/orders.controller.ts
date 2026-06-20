@@ -20,10 +20,7 @@ export class OrdersController {
 
   // Any authenticated user (cashier) can create an order.
   @Post()
-  create(
-    @CurrentUser('id') userId: number,
-    @Body() dto: CreateOrderDto,
-  ) {
+  create(@CurrentUser('id') userId: number, @Body() dto: CreateOrderDto) {
     return this.ordersService.create(userId, dto);
   }
 

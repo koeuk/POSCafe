@@ -49,6 +49,8 @@ export interface Product {
   gallery: string[] | null;
   isAvailable: boolean;
   stock: number;
+  // Capacity high-water mark (largest stock ever set). sold = totalStock - stock.
+  totalStock: number;
   // Per-size stock rows (source of truth for sized products' stock).
   variants?: ProductVariant[];
   categoryId: number;
@@ -68,6 +70,8 @@ export interface ProductVariant {
   size: string;
   price: string;
   stock: number;
+  // Capacity high-water mark for this size (see Product.totalStock).
+  totalStock: number;
 }
 
 // Master cup-size catalog (Small / Medium / Large), managed on the Stock page.

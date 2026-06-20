@@ -40,7 +40,10 @@ export class CategoriesController {
 
   @Roles(Role.ADMIN)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCategoryDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCategoryDto,
+  ) {
     return this.categoriesService.update(id, dto);
   }
 

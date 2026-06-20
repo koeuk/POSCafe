@@ -40,6 +40,8 @@ export class ProductsService {
     // Ensure the category exists (throws NotFound otherwise).
     await this.categoriesService.findOne(dto.categoryId);
     const product = this.repo.create(dto);
+    // Seed the capacity high-water mark from the initial stock.
+    product.totalStock = dto.stock ?? 0;
     const saved = await this.repo.save(product);
     await this.syncVariants(saved.id, dto.sizes ?? null);
     return this.findOne(saved.id);
@@ -51,6 +53,10 @@ export class ProductsService {
       await this.categoriesService.findOne(dto.categoryId);
     }
     Object.assign(product, dto);
+    // Raise the capacity high-water mark when stock is (re)set.
+    if (dto.stock !== undefined) {
+      product.totalStock = Math.max(product.totalStock ?? 0, dto.stock);
+    }
     await this.repo.save(product);
     // Only reconcile stock variants when sizes were part of the update.
     if (dto.sizes !== undefined) {
@@ -88,7 +94,10 @@ export class ProductsService {
       const current = existing.find((v) => v.size === s.size);
       if (current) {
         current.price = s.price;
-        if (s.stock !== undefined) current.stock = s.stock;
+        if (s.stock !== undefined) {
+          current.stock = s.stock;
+          current.totalStock = Math.max(current.totalStock ?? 0, s.stock);
+        }
         await this.variantRepo.save(current);
       } else {
         await this.variantRepo.save(
@@ -97,6 +106,7 @@ export class ProductsService {
             size: s.size,
             price: s.price,
             stock: s.stock ?? 0,
+            totalStock: s.stock ?? 0,
           }),
         );
       }
