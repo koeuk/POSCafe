@@ -145,7 +145,12 @@ function Stock() {
       ) : (
         <ul className="space-y-3">
           {visible.map((p) => (
-            <ProductStock key={p.id} product={p} onSaved={loadProducts} />
+            <ProductStock
+              key={p.id}
+              product={p}
+              catalog={sizes}
+              onSaved={loadProducts}
+            />
           ))}
         </ul>
       )}
@@ -169,7 +174,7 @@ function SummaryCard({
         ? "text-green-600 dark:text-green-400"
         : "text-stone-900 dark:text-stone-100";
   return (
-    <div className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+    <div className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-stone-800 dark:bg-stone-900 dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
       <p className={`text-2xl font-bold tabular-nums ${valueColor}`}>{value}</p>
       <p className="mt-0.5 text-xs font-medium text-stone-500 dark:text-stone-400">
         {label}
@@ -233,7 +238,7 @@ function SizesManager({
   }
 
   return (
-    <section className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+    <section className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-stone-800 dark:bg-stone-900 dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
       <h2 className="font-semibold text-stone-900 dark:text-stone-100">
         Cup sizes
       </h2>
@@ -313,17 +318,26 @@ function linesFor(product: Product): StockLine[] {
   return [{ key: "__base__", size: null, current: product.stock }];
 }
 
+interface NewSizeRow {
+  size: string;
+  price: string;
+  stock: string;
+}
+
 function ProductStock({
   product,
+  catalog,
   onSaved,
 }: {
   product: Product;
+  catalog: Size[];
   onSaved: () => Promise<void>;
 }) {
   const lines = useMemo(() => linesFor(product), [product]);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(lines.map((l) => [l.key, String(l.current)])),
   );
+  const [newRows, setNewRows] = useState<NewSizeRow[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -331,10 +345,41 @@ function ProductStock({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = lines.some((l) => Number(values[l.key]) !== l.current);
+  // Size names already used by the product or by a pending new row.
+  const usedSizes = useMemo(
+    () =>
+      new Set([
+        ...(product.sizes ?? []).map((s) => s.size),
+        ...newRows.map((r) => r.size),
+      ]),
+    [product.sizes, newRows],
+  );
+  const available = catalog.filter((s) => !usedSizes.has(s.name));
+
+  const dirty =
+    lines.some((l) => Number(values[l.key]) !== l.current) || newRows.length > 0;
+
+  function addRow() {
+    const next = catalog.find((s) => !usedSizes.has(s.name));
+    setNewRows((rows) => [
+      ...rows,
+      { size: next?.name ?? "", price: "", stock: "0" },
+    ]);
+  }
+
+  function updateRow(index: number, patch: Partial<NewSizeRow>) {
+    setNewRows((rows) =>
+      rows.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+    );
+  }
+
+  function removeRow(index: number) {
+    setNewRows((rows) => rows.filter((_, i) => i !== index));
+  }
 
   function cancelEdit() {
     setValues(Object.fromEntries(lines.map((l) => [l.key, String(l.current)])));
+    setNewRows([]);
     setEditing(false);
     setError(null);
     setSaved(false);
@@ -359,20 +404,47 @@ function ProductStock({
   }
 
   async function save() {
+    // Validate any newly-added sizes: need a name and a valid price.
+    const added = newRows
+      .map((r) => ({
+        size: r.size.trim(),
+        price: Number(r.price),
+        stock: Math.max(0, Number(r.stock || "0")),
+      }))
+      .filter((r) => r.size);
+    for (const r of added) {
+      if (!r.price || Number.isNaN(r.price) || r.price < 0) {
+        setError(`Enter a valid price for size "${r.size}".`);
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
     try {
       const sized = product.sizes && product.sizes.length > 0;
-      const body = sized
-        ? {
-            sizes: product.sizes!.map((s) => ({
-              size: s.size,
-              price: s.price,
-              stock: Math.max(0, Number(values[s.size] || "0")),
-            })),
-          }
-        : { stock: Math.max(0, Number(values["__base__"] || "0")) };
+      // Adding a size to an unsized product converts it to a sized product.
+      const body =
+        sized || added.length > 0
+          ? {
+              sizes: [
+                ...(product.sizes ?? []).map((s) => ({
+                  size: s.size,
+                  price: s.price,
+                  stock: Math.max(0, Number(values[s.size] || "0")),
+                })),
+                ...added,
+              ],
+            }
+          : { stock: Math.max(0, Number(values["__base__"] || "0")) };
       await api(`/products/${product.id}`, { method: "PATCH", body });
+      // Fold the added sizes into our value map so they render after reload.
+      setValues((prev) => {
+        const next = { ...prev };
+        for (const r of added) next[r.size] = String(r.stock);
+        return next;
+      });
+      setNewRows([]);
       setSaved(true);
       setEditing(false);
       await onSaved();
@@ -384,7 +456,7 @@ function ProductStock({
   }
 
   return (
-    <li className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+    <li className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-stone-800 dark:bg-stone-900 dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
       <div className="flex items-center gap-3">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -524,6 +596,81 @@ function ProductStock({
           );
         })}
       </div>
+
+      {/* Add new sizes to this product (edit mode only) */}
+      {editing && (
+        <div className="mt-2 space-y-2">
+          {newRows.map((row, index) => {
+            // Options: catalog sizes not used elsewhere, plus this row's own.
+            const options = catalog.filter(
+              (s) => s.name === row.size || !usedSizes.has(s.name),
+            );
+            return (
+              <div
+                key={index}
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-stone-300 bg-stone-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800/50"
+              >
+                <select
+                  value={row.size}
+                  onChange={(e) => updateRow(index, { size: e.target.value })}
+                  className={`${INPUT} flex-1`}
+                >
+                  {options.length === 0 && <option value="">No sizes left</option>}
+                  {options.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="relative w-24">
+                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-stone-400">
+                    $
+                  </span>
+                  <input
+                    value={row.price}
+                    onChange={(e) =>
+                      updateRow(index, {
+                        price: e.target.value.replace(/[^0-9.]/g, ""),
+                      })
+                    }
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className={`${INPUT} w-full pl-5`}
+                  />
+                </div>
+                <input
+                  value={row.stock}
+                  onChange={(e) =>
+                    updateRow(index, {
+                      stock: e.target.value.replace(/[^0-9]/g, ""),
+                    })
+                  }
+                  inputMode="numeric"
+                  aria-label="Cups in stock"
+                  className={`${INPUT} w-20 text-right`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeRow(index)}
+                  aria-label="Remove size"
+                  className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            onClick={addRow}
+            disabled={available.length === 0}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-300 dark:hover:border-amber-400 dark:hover:text-amber-400"
+          >
+            <span className="text-base leading-none">＋</span>
+            {available.length === 0 ? "All sizes added" : "Add size"}
+          </button>
+        </div>
+      )}
 
       {error && (
         <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
