@@ -566,7 +566,7 @@ export function AdminProductManagement({
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <RowActions
-                            viewHref={`/admin/menu/${product.id}`}
+                            viewHref={`/admin/products/${product.id}`}
                             onEdit={() => openProductEdit(product)}
                             onDelete={() =>
                               setDeleteTarget({
