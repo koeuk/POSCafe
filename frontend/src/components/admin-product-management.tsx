@@ -534,7 +534,9 @@ export function AdminProductManagement({
                           {categoryName(product.categoryId)}
                         </td>
                         <td className="px-4 py-3">{productPriceLabel(product)}</td>
-                        <td className="px-4 py-3">{product.stock}</td>
+                        <td className="px-4 py-3">
+                          <StockCell product={product} />
+                        </td>
                         <td className="px-4 py-3">
                           {product.discountPercent ? `${product.discountPercent}%` : "-"}
                         </td>
@@ -1412,6 +1414,116 @@ function buildSizes(
     sizes.push({ size, price, stock });
   }
   return sizes;
+}
+
+// Stock summary for the products table: how many sizes are out vs in stock,
+// with a popover breaking it down per size. Sizeless products count as a
+// single line (their base stock).
+function StockCell({ product }: { product: Product }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const sized = !!product.sizes && product.sizes.length > 0;
+  const lines = sized
+    ? product.sizes!.map((s) => ({
+        label: s.size,
+        qty: product.variants?.find((v) => v.size === s.size)?.stock ?? 0,
+      }))
+    : [{ label: "Stock", qty: product.stock }];
+
+  // out = number of sizes that are sold out; in = total cups across all sizes.
+  const out = lines.filter((l) => l.qty <= 0).length;
+  const inStock = lines.reduce((sum, l) => sum + Math.max(0, l.qty), 0);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-medium transition hover:bg-stone-100 dark:hover:bg-stone-800"
+      >
+        <span
+          className={
+            out > 0
+              ? "text-red-600 dark:text-red-400"
+              : "text-stone-400 dark:text-stone-500"
+          }
+        >
+          out {out}
+        </span>
+        <span className="text-stone-300 dark:text-stone-600">/</span>
+        <span
+          className={
+            inStock > 0
+              ? "text-green-600 dark:text-green-400"
+              : "text-stone-400 dark:text-stone-500"
+          }
+        >
+          in {inStock}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-3.5 w-3.5 text-stone-400 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 z-20 mt-1 w-48 rounded-xl border border-stone-200 bg-white p-2 text-left shadow-lg dark:border-stone-800 dark:bg-stone-900">
+          <p className="px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
+            Stock by size
+          </p>
+          <ul className="space-y-0.5">
+            {lines.map((l) => {
+              const isOut = l.qty <= 0;
+              return (
+                <li
+                  key={l.label}
+                  className="flex items-center justify-between gap-3 rounded-md px-1.5 py-1 text-sm"
+                >
+                  <span className="flex items-center gap-2 text-stone-600 dark:text-stone-300">
+                    <span
+                      className={`h-2 w-2 rounded-full ${isOut ? "bg-red-500" : "bg-green-500"}`}
+                    />
+                    {l.label}
+                  </span>
+                  <span
+                    className={
+                      isOut
+                        ? "text-xs font-medium text-red-600 dark:text-red-400"
+                        : "text-xs font-medium text-stone-700 dark:text-stone-200"
+                    }
+                  >
+                    {isOut ? "out" : `${l.qty} cups`}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function productPriceLabel(product: Product): string {

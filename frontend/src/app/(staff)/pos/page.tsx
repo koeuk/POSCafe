@@ -7,7 +7,13 @@ import { StaffShell } from "@/components/staff-shell";
 import { ProductDetailDrawer } from "@/components/product-detail-drawer";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
+import {
+  effectivePrice,
+  formatPrice,
+  hasDiscount,
+  sizeStock,
+  totalStock,
+} from "@/lib/pricing";
 import type { Category, Order, Product, ProductSize } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
@@ -97,11 +103,15 @@ function POSScreen() {
     setCheckoutError(null);
     setCart((prev) => {
       const sizeName = size?.size ?? null;
-      // Don't exceed available stock across all size variants of the product.
-      const currentForProduct = prev
-        .filter((l) => l.product.id === product.id)
+      // Cap by the cups actually in stock: per-size for sized products,
+      // base stock otherwise.
+      const cap = sizeName ? sizeStock(product, sizeName) : totalStock(product);
+      const currentForLine = prev
+        .filter(
+          (l) => l.product.id === product.id && (l.size?.size ?? null) === sizeName,
+        )
         .reduce((sum, l) => sum + l.quantity, 0);
-      if (currentForProduct >= product.stock) return prev;
+      if (currentForLine >= cap) return prev;
 
       const existing = prev.find(
         (l) => l.product.id === product.id && (l.size?.size ?? null) === sizeName,
@@ -127,10 +137,17 @@ function POSScreen() {
           const next = l.quantity + delta;
           if (next <= 0) return [];
           if (delta > 0) {
-            const currentForProduct = prev
-              .filter((line) => line.product.id === productId)
+            const cap = sizeName
+              ? sizeStock(l.product, sizeName)
+              : totalStock(l.product);
+            const currentForLine = prev
+              .filter(
+                (line) =>
+                  line.product.id === productId &&
+                  (line.size?.size ?? null) === sizeName,
+              )
               .reduce((sum, line) => sum + line.quantity, 0);
-            if (currentForProduct >= l.product.stock) return [l];
+            if (currentForLine >= cap) return [l];
           }
           return [{ ...l, quantity: next }];
         }),
@@ -209,7 +226,8 @@ function POSScreen() {
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                 {visibleProducts.map((product, i) => {
-                  const soldOut = !product.isAvailable || product.stock <= 0;
+                  const soldOut =
+                    !product.isAvailable || totalStock(product) <= 0;
                   return (
                     <ProductCard
                       key={product.id}
@@ -341,7 +359,18 @@ function POSScreen() {
                       </span>
                       <QtyButton
                         label="+"
-                        disabled={cart.filter((l) => l.product.id === line.product.id).reduce((sum, l) => sum + l.quantity, 0) >= line.product.stock}
+                        disabled={
+                          cart
+                            .filter(
+                              (l) =>
+                                l.product.id === line.product.id &&
+                                (l.size?.size ?? null) === (line.size?.size ?? null),
+                            )
+                            .reduce((sum, l) => sum + l.quantity, 0) >=
+                          (line.size
+                            ? sizeStock(line.product, line.size.size)
+                            : totalStock(line.product))
+                        }
                         onClick={() => changeQty(line.product.id, 1, line.size?.size ?? null)}
                       />
                     </div>
@@ -410,6 +439,7 @@ function ProductCard({
   onView: (product: Product) => void;
 }) {
   const sizes = product.sizes ?? [];
+  const stock = totalStock(product);
   const priceLabel = sizes.length > 0
     ? `from ${formatPrice(effectivePrice(product))}`
     : formatPrice(effectivePrice(product));
@@ -487,29 +517,37 @@ function ProductCard({
         className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
           soldOut
             ? "bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500"
-            : product.stock <= 5
+            : stock <= 5
               ? "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
               : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
         }`}
       >
-        {soldOut ? "Out of stock" : `${product.stock} left`}
+        {soldOut ? "Out of stock" : `${stock} left`}
       </span>
 
       <div className="mt-auto pt-3">
         {sizes.length > 0 ? (
           <div className="grid grid-cols-1 gap-1.5">
-            {sizes.map((size) => (
-              <button
-                key={size.size}
-                type="button"
-                disabled={soldOut}
-                onClick={() => onAdd(product, size)}
-                className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
-              >
-                <span>{size.size}</span>
-                <span>{formatPrice(effectivePrice(product, size))}</span>
-              </button>
-            ))}
+            {sizes.map((size) => {
+              const sizeOut = sizeStock(product, size.size) <= 0;
+              return (
+                <button
+                  key={size.size}
+                  type="button"
+                  disabled={sizeOut}
+                  onClick={() => onAdd(product, size)}
+                  className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
+                >
+                  <span>
+                    {size.size}
+                    {sizeOut && (
+                      <span className="ml-1 text-[10px] text-red-500">out</span>
+                    )}
+                  </span>
+                  <span>{formatPrice(effectivePrice(product, size))}</span>
+                </button>
+              );
+            })}
           </div>
         ) : (
           <button

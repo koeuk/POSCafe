@@ -39,6 +39,28 @@ export function hasSizes(product: Product): boolean {
   return Boolean(product.sizes && product.sizes.length > 0);
 }
 
+/**
+ * Cups in stock for one size of a sized product (0 if no variant row yet).
+ */
+export function sizeStock(product: Product, size: string): number {
+  return product.variants?.find((variant) => variant.size === size)?.stock ?? 0;
+}
+
+/**
+ * Total cups available. Sized products are tracked per-size in `variants`
+ * (the source of truth), so we sum those; unsized products use base `stock`.
+ * Keeps the POS in sync with the Stock page, which reads the same variants.
+ */
+export function totalStock(product: Product): number {
+  if (product.sizes && product.sizes.length > 0) {
+    return product.sizes.reduce(
+      (sum, size) => sum + sizeStock(product, size.size),
+      0,
+    );
+  }
+  return product.stock;
+}
+
 /** Format a numeric/string amount as USD (e.g. 3.5 -> "$3.50"). */
 export function formatPrice(value: number | string): string {
   const n = Number(value);

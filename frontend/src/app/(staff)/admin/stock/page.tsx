@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
+import { sizeStock, totalStock } from "@/lib/pricing";
 import { Role, type Product, type Size } from "@/lib/types";
 
 const INPUT =
@@ -38,6 +40,22 @@ function Stock() {
     })();
   }, [loadProducts, loadSizes]);
 
+  const summary = useMemo(() => {
+    let cups = 0;
+    let outProducts = 0;
+    let outSizes = 0;
+    for (const p of products) {
+      cups += totalStock(p);
+      if (totalStock(p) <= 0) outProducts += 1;
+      if (p.sizes && p.sizes.length > 0) {
+        for (const s of p.sizes) {
+          if (sizeStock(p, s.size) <= 0) outSizes += 1;
+        }
+      }
+    }
+    return { cups, outProducts, outSizes };
+  }, [products]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
@@ -72,6 +90,25 @@ function Stock() {
           {error}
         </p>
       )}
+
+      {/* At-a-glance totals */}
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        <SummaryCard
+          label="Cups in stock"
+          value={summary.cups}
+          tone="neutral"
+        />
+        <SummaryCard
+          label="Products out"
+          value={summary.outProducts}
+          tone={summary.outProducts > 0 ? "danger" : "ok"}
+        />
+        <SummaryCard
+          label="Sizes out"
+          value={summary.outSizes}
+          tone={summary.outSizes > 0 ? "danger" : "ok"}
+        />
+      </div>
 
       {/* Global size catalog */}
       <SizesManager sizes={sizes} onChanged={loadSizes} />
@@ -113,6 +150,31 @@ function Stock() {
         </ul>
       )}
     </main>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "neutral" | "ok" | "danger";
+}) {
+  const valueColor =
+    tone === "danger"
+      ? "text-red-600 dark:text-red-400"
+      : tone === "ok"
+        ? "text-green-600 dark:text-green-400"
+        : "text-stone-900 dark:text-stone-100";
+  return (
+    <div className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+      <p className={`text-2xl font-bold tabular-nums ${valueColor}`}>{value}</p>
+      <p className="mt-0.5 text-xs font-medium text-stone-500 dark:text-stone-400">
+        {label}
+      </p>
+    </div>
   );
 }
 
@@ -264,9 +326,28 @@ function ProductStock({
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const dirty = lines.some((l) => Number(values[l.key]) !== l.current);
+
+  async function remove() {
+    if (
+      !window.confirm(
+        `Delete "${product.name}"? This removes the product entirely.`,
+      )
+    )
+      return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await api(`/products/${product.id}`, { method: "DELETE" });
+      await onSaved(); // product drops off the list
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
+      setDeleting(false);
+    }
+  }
 
   function set(key: string, v: string) {
     setSaved(false);
@@ -320,14 +401,63 @@ function ProductStock({
             {product.category?.name ?? "Uncategorized"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || saving}
-          className="rounded-lg bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-amber-500 dark:text-stone-950"
-        >
-          {saving ? "Saving…" : saved && !dirty ? "Saved ✓" : "Save"}
-        </button>
+        {(() => {
+          // out = sizes sold out; in = total cups across all sizes.
+          const out = lines.filter(
+            (l) => Number(values[l.key] || "0") <= 0,
+          ).length;
+          const inCups = lines.reduce(
+            (sum, l) => sum + Math.max(0, Number(values[l.key] || "0")),
+            0,
+          );
+          return (
+            <span className="hidden items-center gap-1 text-xs font-medium sm:inline-flex">
+              <span
+                className={
+                  out > 0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-stone-400 dark:text-stone-500"
+                }
+              >
+                out stock {out}
+              </span>
+              <span className="text-stone-300 dark:text-stone-600">/</span>
+              <span
+                className={
+                  inCups > 0
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-stone-400 dark:text-stone-500"
+                }
+              >
+                in stock {inCups}
+              </span>
+            </span>
+          );
+        })()}
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/admin/products?edit=${product.id}`}
+            className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            Edit
+          </Link>
+          <button
+            type="button"
+            onClick={remove}
+            disabled={deleting}
+            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+          >
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={!dirty || saving}
+            className="rounded-lg bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-amber-500 dark:text-stone-950"
+          >
+            {saving ? "Saving…" : saved && !dirty ? "Saved ✓" : "Save"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 dark:border-stone-800 sm:grid-cols-2">

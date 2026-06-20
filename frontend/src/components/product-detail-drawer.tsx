@@ -6,6 +6,8 @@ import {
   formatPrice,
   hasDiscount,
   hasSizes,
+  sizeStock,
+  totalStock,
 } from "@/lib/pricing";
 import type { Product, ProductSize } from "@/lib/types";
 
@@ -48,7 +50,8 @@ export function ProductDetailDrawer({
   if (!product) return null;
 
   const sizes = product.sizes ?? [];
-  const soldOut = !product.isAvailable || product.stock <= 0;
+  const stock = totalStock(product);
+  const soldOut = !product.isAvailable || stock <= 0;
   const gallery = [
     ...(product.image ? [product.image] : []),
     ...(product.gallery ?? []),
@@ -150,7 +153,7 @@ export function ProductDetailDrawer({
           </div>
 
           <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-            {soldOut ? "Out of stock" : `${product.stock} in stock`}
+            {soldOut ? "Out of stock" : `${stock} in stock`}
           </p>
 
           {/* Sizes */}
@@ -160,22 +163,28 @@ export function ProductDetailDrawer({
                 Sizes
               </h4>
               <div className="grid gap-2 sm:grid-cols-2">
-                {sizes.map((size) => (
-                  <button
-                    key={size.size}
-                    type="button"
-                    disabled={!onAdd || soldOut}
-                    onClick={() => onAdd?.(product, size)}
-                    className="flex items-center justify-between rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:hover:border-amber-400"
-                  >
-                    <span className="font-medium text-stone-700 dark:text-stone-300">
-                      {size.size}
-                    </span>
-                    <span className="font-semibold text-stone-900 dark:text-stone-100">
-                      {formatPrice(effectivePrice(product, size))}
-                    </span>
-                  </button>
-                ))}
+                {sizes.map((size) => {
+                  const sizeOut = sizeStock(product, size.size) <= 0;
+                  return (
+                    <button
+                      key={size.size}
+                      type="button"
+                      disabled={!onAdd || sizeOut}
+                      onClick={() => onAdd?.(product, size)}
+                      className="flex items-center justify-between rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:hover:border-amber-400"
+                    >
+                      <span className="font-medium text-stone-700 dark:text-stone-300">
+                        {size.size}
+                        {sizeOut && (
+                          <span className="ml-1.5 text-xs text-red-500">out</span>
+                        )}
+                      </span>
+                      <span className="font-semibold text-stone-900 dark:text-stone-100">
+                        {formatPrice(effectivePrice(product, size))}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
