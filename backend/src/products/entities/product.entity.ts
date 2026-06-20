@@ -4,10 +4,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
+import { ProductVariant } from './product-variant.entity';
 
 @Entity('products')
 export class Product {
@@ -42,8 +44,15 @@ export class Product {
   @Column({ default: true })
   isAvailable: boolean;
 
+  // Whole-product stock (used for products WITHOUT size options). Sized
+  // products track stock per-size in `variants` instead.
   @Column({ default: 0 })
   stock: number;
+
+  @OneToMany(() => ProductVariant, (variant) => variant.product, {
+    cascade: true,
+  })
+  variants: ProductVariant[];
 
   @Column()
   categoryId: number;

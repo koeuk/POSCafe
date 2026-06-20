@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
+import { ProductVariant } from '../products/entities/product-variant.entity';
 
 @Injectable()
 export class ReportsService {
@@ -12,7 +13,56 @@ export class ReportsService {
     private readonly orderRepo: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly itemRepo: Repository<OrderItem>,
+    @InjectRepository(ProductVariant)
+    private readonly variantRepo: Repository<ProductVariant>,
   ) {}
+
+  /**
+   * Cup stock by size: how many cups of each size are in stock, and how many
+   * size-variants are out of stock. Sized products only (per-size stock lives
+   * in product_variants).
+   */
+  async stock() {
+    const bySizeRaw = await this.variantRepo
+      .createQueryBuilder('v')
+      .select('v.size', 'size')
+      .addSelect('SUM(v.stock)', 'inStock')
+      .addSelect('COUNT(*)', 'variants')
+      .addSelect('SUM(CASE WHEN v.stock <= 0 THEN 1 ELSE 0 END)', 'outOfStock')
+      .groupBy('v.size')
+      .orderBy('v.size', 'ASC')
+      .getRawMany();
+
+    const bySize = bySizeRaw.map((r) => ({
+      size: r.size as string,
+      inStock: Number(r.inStock),
+      variants: Number(r.variants),
+      outOfStock: Number(r.outOfStock),
+    }));
+
+    const outOfStockItems = await this.variantRepo
+      .createQueryBuilder('v')
+      .innerJoin('v.product', 'p')
+      .select('v.productId', 'productId')
+      .addSelect('p.name', 'productName')
+      .addSelect('v.size', 'size')
+      .where('v.stock <= 0')
+      .orderBy('p.name', 'ASC')
+      .getRawMany();
+
+    return {
+      bySize,
+      totals: {
+        inStock: bySize.reduce((s, b) => s + b.inStock, 0),
+        outOfStock: bySize.reduce((s, b) => s + b.outOfStock, 0),
+      },
+      outOfStockItems: outOfStockItems.map((r) => ({
+        productId: Number(r.productId),
+        productName: r.productName as string,
+        size: r.size as string,
+      })),
+    };
+  }
 
   /** Today's and all-time completed-order totals. */
   async summary() {
@@ -59,6 +109,36 @@ export class ReportsService {
 
     return rows.map((r) => ({
       date: r.date,
+      orders: Number(r.orders),
+      revenue: Number(r.revenue),
+    }));
+  }
+
+  /**
+   * Sales per category (completed orders), most popular first. Used by the
+   * dashboard "Popular Categories" chart.
+   */
+  async categorySales() {
+    const rows = await this.itemRepo
+      .createQueryBuilder('oi')
+      .innerJoin('oi.order', 'o')
+      .innerJoin('oi.product', 'p')
+      .innerJoin('p.category', 'c')
+      .select('c.id', 'categoryId')
+      .addSelect('c.name', 'name')
+      .addSelect('SUM(oi.quantity)', 'quantitySold')
+      .addSelect('COUNT(DISTINCT o.id)', 'orders')
+      .addSelect('SUM(oi.subtotal)', 'revenue')
+      .where('o.status = :status', { status: OrderStatus.COMPLETED })
+      .groupBy('c.id')
+      .addGroupBy('c.name')
+      .orderBy('quantitySold', 'DESC')
+      .getRawMany();
+
+    return rows.map((r) => ({
+      categoryId: Number(r.categoryId),
+      name: r.name as string,
+      quantitySold: Number(r.quantitySold),
       orders: Number(r.orders),
       revenue: Number(r.revenue),
     }));

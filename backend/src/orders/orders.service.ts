@@ -8,6 +8,7 @@ import { DataSource, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { OrderType } from '../common/enums/order-type.enum';
 import { Product } from '../products/entities/product.entity';
+import { ProductVariant } from '../products/entities/product-variant.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -47,11 +48,6 @@ export class OrdersService {
         if (!product.isAvailable) {
           throw new BadRequestException(`"${product.name}" is not available`);
         }
-        if (product.stock < line.quantity) {
-          throw new BadRequestException(
-            `Insufficient stock for "${product.name}" (have ${product.stock}, need ${line.quantity})`,
-          );
-        }
 
         // Resolve the base price: from the chosen size if the product has
         // size options, otherwise the product's own price.
@@ -81,8 +77,31 @@ export class OrdersService {
         const subtotal = Math.round(unitPrice * line.quantity * 100) / 100;
         total += subtotal;
 
-        product.stock -= line.quantity;
-        await manager.save(product);
+        // Decrement stock. Sized items draw from their per-size variant (the
+        // source of truth); products without a variant row fall back to the
+        // whole-product stock (covers sizeless products and legacy data).
+        const variant = size
+          ? await manager.findOne(ProductVariant, {
+              where: { productId: product.id, size },
+            })
+          : null;
+        if (variant) {
+          if (variant.stock < line.quantity) {
+            throw new BadRequestException(
+              `Insufficient stock for "${product.name}" (${size}): have ${variant.stock}, need ${line.quantity}`,
+            );
+          }
+          variant.stock -= line.quantity;
+          await manager.save(variant);
+        } else {
+          if (product.stock < line.quantity) {
+            throw new BadRequestException(
+              `Insufficient stock for "${product.name}" (have ${product.stock}, need ${line.quantity})`,
+            );
+          }
+          product.stock -= line.quantity;
+          await manager.save(product);
+        }
 
         items.push(
           manager.create(OrderItem, {

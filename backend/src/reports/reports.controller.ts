@@ -25,4 +25,16 @@ export class ReportsController {
   bestProducts(@Query('limit') limit?: string) {
     return this.reportsService.bestProducts(limit ? Number(limit) : 5);
   }
+
+  @Roles(Role.ADMIN)
+  @Get('stock')
+  stock() {
+    return this.reportsService.stock();
+  }
+
+  @Roles(Role.ADMIN)
+  @Get('categories')
+  categories() {
+    return this.reportsService.categorySales();
+  }
 }

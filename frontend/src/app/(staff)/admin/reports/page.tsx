@@ -23,10 +23,17 @@ interface BestProduct {
   revenue: number;
 }
 
+interface StockReport {
+  bySize: { size: string; inStock: number; variants: number; outOfStock: number }[];
+  totals: { inStock: number; outOfStock: number };
+  outOfStockItems: { productId: number; productName: string; size: string }[];
+}
+
 export default function ReportsPage() {
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [daily, setDaily] = useState<DailySale[]>([]);
   const [bestProducts, setBestProducts] = useState<BestProduct[]>([]);
+  const [stock, setStock] = useState<StockReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,15 +44,18 @@ export default function ReportsPage() {
       setLoading(true);
       setError(null);
       try {
-        const [nextSummary, nextDaily, nextBestProducts] = await Promise.all([
-          api<ReportSummary>("/reports/summary"),
-          api<DailySale[]>("/reports/daily-sales?days=14"),
-          api<BestProduct[]>("/reports/best-products?limit=8"),
-        ]);
+        const [nextSummary, nextDaily, nextBestProducts, nextStock] =
+          await Promise.all([
+            api<ReportSummary>("/reports/summary"),
+            api<DailySale[]>("/reports/daily-sales?days=14"),
+            api<BestProduct[]>("/reports/best-products?limit=8"),
+            api<StockReport>("/reports/stock"),
+          ]);
         if (!cancelled) {
           setSummary(nextSummary);
           setDaily(nextDaily);
           setBestProducts(nextBestProducts);
+          setStock(nextStock);
         }
       } catch (err) {
         if (!cancelled) {
@@ -183,6 +193,70 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* Cup stock by size */}
+      <section className={`mt-6 rounded-2xl p-5 ${GLASS}`}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-stone-900 dark:text-stone-100">
+            Cup Stock by Size
+          </h2>
+          {stock && (
+            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+              {stock.totals.inStock} in stock · {stock.totals.outOfStock} out of stock
+            </span>
+          )}
+        </div>
+
+        {!stock || stock.bySize.length === 0 ? (
+          <p className="text-sm text-stone-400 dark:text-stone-500">
+            No sized products yet.
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {stock.bySize.map((s) => (
+                <div
+                  key={s.size}
+                  className="rounded-xl border border-stone-200/70 p-4 dark:border-stone-800"
+                >
+                  <p className="text-sm font-medium text-stone-500 dark:text-stone-400">
+                    {s.size}
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-stone-900 dark:text-stone-100">
+                    {s.inStock}
+                    <span className="ml-1 text-sm font-normal text-stone-400">
+                      cups
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-500">
+                    {s.outOfStock > 0
+                      ? `${s.outOfStock} of ${s.variants} out of stock`
+                      : `${s.variants} item${s.variants === 1 ? "" : "s"}`}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {stock.outOfStockItems.length > 0 && (
+              <div className="mt-5">
+                <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
+                  Out of stock
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {stock.outOfStockItems.map((it) => (
+                    <span
+                      key={`${it.productId}-${it.size}`}
+                      className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400"
+                    >
+                      {it.productName} · {it.size}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </section>
     </main>
   );

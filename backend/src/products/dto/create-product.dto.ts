@@ -20,6 +20,12 @@ export class ProductSizeDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   price: number;
+
+  // Cups of this size in stock. Optional on update (omit to keep current).
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  stock?: number;
 }
 
 export class CreateProductDto {

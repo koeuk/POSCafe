@@ -18,6 +18,7 @@ interface CategoryForm {
 interface SizeRow {
   size: string;
   price: string;
+  stock: string;
 }
 
 interface ProductForm {
@@ -252,6 +253,10 @@ export function AdminProductManagement({
       sizes: (product.sizes ?? []).map((size) => ({
         size: size.size,
         price: String(size.price),
+        // Current per-size stock comes from the variant rows.
+        stock: String(
+          product.variants?.find((v) => v.size === size.size)?.stock ?? 0,
+        ),
       })),
       isAvailable: product.isAvailable,
     });
@@ -264,7 +269,7 @@ export function AdminProductManagement({
   function addSizeRow() {
     setProductForm((form) => ({
       ...form,
-      sizes: [...form.sizes, { size: "", price: "" }],
+      sizes: [...form.sizes, { size: "", price: "", stock: "0" }],
     }));
   }
 
@@ -896,7 +901,7 @@ export function AdminProductManagement({
                       placeholder="Size (e.g. Small)"
                       className={`${INPUT_CLASS} flex-1`}
                     />
-                    <div className="relative w-28 shrink-0">
+                    <div className="relative w-24 shrink-0">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
                         $
                       </span>
@@ -910,6 +915,16 @@ export function AdminProductManagement({
                         className={`${INPUT_CLASS} pl-6`}
                       />
                     </div>
+                    <input
+                      value={row.stock}
+                      onChange={(event) =>
+                        updateSizeRow(index, "stock", event.target.value)
+                      }
+                      inputMode="numeric"
+                      placeholder="Qty"
+                      title="Cups in stock for this size"
+                      className={`${INPUT_CLASS} w-20 shrink-0`}
+                    />
                     <button
                       type="button"
                       onClick={() => removeSizeRow(index)}
@@ -1306,7 +1321,11 @@ function CategoryCombobox({
 // Validate the size rows from the form, dropping rows the user left fully blank.
 function buildSizes(rows: SizeRow[]): ProductSize[] | null | Error {
   const filled = rows
-    .map((row) => ({ size: row.size.trim(), price: row.price.trim() }))
+    .map((row) => ({
+      size: row.size.trim(),
+      price: row.price.trim(),
+      stock: row.stock.trim(),
+    }))
     .filter((row) => row.size || row.price);
 
   if (filled.length === 0) return null;
@@ -1320,7 +1339,11 @@ function buildSizes(rows: SizeRow[]): ProductSize[] | null | Error {
     if (!row.price || Number.isNaN(price) || price < 0) {
       return new Error(`Enter a valid price for size "${row.size}".`);
     }
-    sizes.push({ size: row.size, price });
+    const stock = Number(row.stock || "0");
+    if (Number.isNaN(stock) || stock < 0) {
+      return new Error(`Enter a valid stock for size "${row.size}".`);
+    }
+    sizes.push({ size: row.size, price, stock });
   }
 
   return sizes;

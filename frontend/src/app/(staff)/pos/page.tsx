@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fraunces } from "next/font/google";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
+import { ProductDetailDrawer } from "@/components/product-detail-drawer";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { effectivePrice, formatPrice, hasDiscount } from "@/lib/pricing";
@@ -29,6 +30,7 @@ function POSScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [viewProduct, setViewProduct] = useState<Product | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -215,6 +217,7 @@ function POSScreen() {
                       soldOut={soldOut}
                       animationDelay={`${Math.min(i * 40, 400)}ms`}
                       onAdd={addToCart}
+                      onView={setViewProduct}
                     />
                   );
                 })}
@@ -383,6 +386,12 @@ function POSScreen() {
           </div>
         </aside>
       </div>
+
+      <ProductDetailDrawer
+        product={viewProduct}
+        onClose={() => setViewProduct(null)}
+        onAdd={addToCart}
+      />
     </div>
   );
 }
@@ -392,11 +401,13 @@ function ProductCard({
   soldOut,
   animationDelay,
   onAdd,
+  onView,
 }: {
   product: Product;
   soldOut: boolean;
   animationDelay: string;
   onAdd: (product: Product, size?: ProductSize | null) => void;
+  onView: (product: Product) => void;
 }) {
   const sizes = product.sizes ?? [];
   const priceLabel = sizes.length > 0
@@ -430,9 +441,9 @@ function ProductCard({
             -{product.discountPercent}%
           </span>
         )}
-        <Link
-          href={`/menu/${product.id}`}
-          target="_blank"
+        <button
+          type="button"
+          onClick={() => onView(product)}
           aria-label={`View ${product.name} details`}
           title="View details"
           className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/85 text-stone-700 shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white hover:text-stone-900 dark:bg-stone-900/80 dark:text-stone-300 dark:ring-white/10 dark:hover:bg-stone-900"
@@ -451,7 +462,7 @@ function ProductCard({
             <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
-        </Link>
+        </button>
         {soldOut && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-stone-950/60">
             <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">

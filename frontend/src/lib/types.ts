@@ -49,6 +49,8 @@ export interface Product {
   gallery: string[] | null;
   isAvailable: boolean;
   stock: number;
+  // Per-size stock rows (source of truth for sized products' stock).
+  variants?: ProductVariant[];
   categoryId: number;
   category?: Category;
 }
@@ -56,6 +58,16 @@ export interface Product {
 export interface ProductSize {
   size: string;
   price: number;
+  // Cups of this size in stock (optional; mirrored to a ProductVariant row).
+  stock?: number;
+}
+
+export interface ProductVariant {
+  id: number;
+  productId: number;
+  size: string;
+  price: string;
+  stock: number;
 }
 
 // Shape returned by the public GET /menu endpoint: active categories,
