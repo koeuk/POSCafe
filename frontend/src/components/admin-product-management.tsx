@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
@@ -106,6 +107,8 @@ export function AdminProductManagement({
   const [uploading, setUploading] = useState(false);
   const [galleryLink, setGalleryLink] = useState("");
   const pageCopy = VIEW_COPY[view];
+  const searchParams = useSearchParams();
+  const handledEditParam = useRef(false);
 
   async function handleMainImageUpload(file: File | undefined) {
     if (!file) return;
@@ -203,6 +206,20 @@ export function AdminProductManagement({
       cancelled = true;
     };
   }, []);
+
+  // Deep-link: open a product's edit drawer when arriving via ?edit=<id>
+  // (e.g. the "Edit" button on the Stock page). Runs once per visit.
+  useEffect(() => {
+    if (view !== "products" || handledEditParam.current) return;
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    const product = products.find((p) => p.id === Number(editId));
+    if (product) {
+      handledEditParam.current = true;
+      openProductEdit(product);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, products, view]);
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((category) => [category.id, category.name]));
@@ -1490,12 +1507,14 @@ function StockCell({ product }: { product: Product }) {
 
       {open && (
         <div className="absolute left-0 z-20 mt-1 w-48 rounded-xl border border-stone-200 bg-white p-2 text-left shadow-lg dark:border-stone-800 dark:bg-stone-900">
-          <p className="px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-            Stock by size
-          </p>
+          <div className="flex items-center justify-between px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
+            <span>Stock by size</span>
+            <span>in / out</span>
+          </div>
           <ul className="space-y-0.5">
             {lines.map((l) => {
               const isOut = l.qty <= 0;
+              const inCups = Math.max(0, l.qty);
               return (
                 <li
                   key={l.label}
@@ -1507,14 +1526,20 @@ function StockCell({ product }: { product: Product }) {
                     />
                     {l.label}
                   </span>
-                  <span
-                    className={
-                      isOut
-                        ? "text-xs font-medium text-red-600 dark:text-red-400"
-                        : "text-xs font-medium text-stone-700 dark:text-stone-200"
-                    }
-                  >
-                    {isOut ? "out" : `${l.qty} cups`}
+                  <span className="text-xs font-medium tabular-nums">
+                    <span className="text-green-600 dark:text-green-400">
+                      {inCups}
+                    </span>
+                    <span className="text-stone-300 dark:text-stone-600"> / </span>
+                    <span
+                      className={
+                        isOut
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-stone-400 dark:text-stone-500"
+                      }
+                    >
+                      {isOut ? 1 : 0}
+                    </span>
                   </span>
                 </li>
               );

@@ -462,7 +462,8 @@ function ProductStock({
 
       <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 dark:border-stone-800 sm:grid-cols-2">
         {lines.map((l) => {
-          const out = Number(values[l.key] || "0") <= 0;
+          const inCups = Math.max(0, Number(values[l.key] || "0"));
+          const out = inCups <= 0;
           return (
             <div
               key={l.key}
@@ -475,11 +476,21 @@ function ProductStock({
                 <span className="font-medium text-stone-700 dark:text-stone-300">
                   {l.size ?? "Stock"}
                 </span>
-                {out && (
-                  <span className="text-xs font-medium text-red-600 dark:text-red-400">
-                    out
+                <span className="text-xs font-medium tabular-nums">
+                  <span className="text-green-600 dark:text-green-400">
+                    {inCups}
                   </span>
-                )}
+                  <span className="text-stone-300 dark:text-stone-600"> / </span>
+                  <span
+                    className={
+                      out
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-stone-400 dark:text-stone-500"
+                    }
+                  >
+                    {out ? 1 : 0}
+                  </span>
+                </span>
               </span>
               <input
                 value={values[l.key]}
