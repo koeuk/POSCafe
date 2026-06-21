@@ -239,17 +239,20 @@ export function AdminProductManagement({
   // Products filtered by the search box (name / category / size names).
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
-    return products.filter((p) => {
-      if (categoryFilter !== "all" && p.categoryId !== categoryFilter) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        categoryName(p.categoryId).toLowerCase().includes(q) ||
-        (p.sizes ?? []).some((s) => s.size.toLowerCase().includes(q))
-      );
-    });
+    return products
+      .filter((p) => {
+        if (categoryFilter !== "all" && p.categoryId !== categoryFilter) {
+          return false;
+        }
+        if (!q) return true;
+        return (
+          p.name.toLowerCase().includes(q) ||
+          categoryName(p.categoryId).toLowerCase().includes(q) ||
+          (p.sizes ?? []).some((s) => s.size.toLowerCase().includes(q))
+        );
+      })
+      // Newest first — the highest id is the most recently created product.
+      .sort((a, b) => b.id - a.id);
   }, [products, productQuery, categoryFilter, categoryName]);
 
   function openCategoryCreate() {
@@ -471,7 +474,9 @@ export function AdminProductManagement({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                    {categories.map((category) => (
+                    {[...categories]
+                      .sort((a, b) => b.id - a.id)
+                      .map((category) => (
                       <tr key={category.id} className="text-stone-800 transition-colors hover:bg-stone-50/70 dark:text-stone-200 dark:hover:bg-stone-800/40">
                         <td className="px-4 py-3">
                           <p className="font-medium text-stone-900 dark:text-stone-100">{category.name}</p>

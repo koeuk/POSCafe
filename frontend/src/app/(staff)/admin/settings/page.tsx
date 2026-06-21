@@ -230,7 +230,9 @@ function Settings() {
               </p>
             ) : (
               <ul className="space-y-1">
-                {users.map((u) => (
+                {[...users]
+                  .sort((a, b) => b.id - a.id)
+                  .map((u) => (
                   <StaffRow
                     key={u.id}
                     user={u}
