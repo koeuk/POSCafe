@@ -44,8 +44,9 @@ const NAV: NavItem[] = [
     label: "Point of Sale",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
-        <rect x="3" y="4" width="18" height="14" rx="2" />
-        <path d="M3 9h18M7 14h4" />
+        <path d="M6 7h12l1 13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1L6 7Z" />
+        <path d="M9 7V5a3 3 0 0 1 6 0v2" />
+        <path d="M9 11v2M15 11v2" />
       </svg>
     ),
   },

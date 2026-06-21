@@ -589,6 +589,18 @@ export function AdminProductManagement({
                   </svg>
                 </span>
               </div>
+              {(productQuery || categoryFilter !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductQuery("");
+                    setCategoryFilter("all");
+                  }}
+                  className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+                >
+                  Clear
+                </button>
+              )}
             </div>
             {products.length === 0 ? (
               <EmptyState message="No products yet." />
