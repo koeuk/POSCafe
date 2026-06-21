@@ -518,7 +518,7 @@ export function AdminProductManagement({
               actionLabel="Create product"
               onCreate={openProductCreate}
             >
-            <div className="mb-4 flex items-center gap-3">
+            <div className="flex items-center gap-3 px-5 py-4">
               <div className="relative max-w-sm flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
                   <svg

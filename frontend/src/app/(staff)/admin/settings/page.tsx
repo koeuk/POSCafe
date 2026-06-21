@@ -108,7 +108,7 @@ function Settings() {
     !submitting;
 
   return (
-    <main className="mx-auto max-w-5xl">
+    <main className="mx-auto max-w-7xl">
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
           Settings
@@ -123,7 +123,7 @@ function Settings() {
         <section className="lg:col-span-2">
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900"
+            className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
           >
             <h2 className="font-semibold text-stone-900 dark:text-stone-100">
               Create user
@@ -210,7 +210,7 @@ function Settings() {
 
         {/* User list */}
         <section className="lg:col-span-3">
-          <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+          <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-md dark:border-stone-800 dark:bg-stone-900">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold text-stone-900 dark:text-stone-100">
                 Staff
@@ -229,7 +229,7 @@ function Settings() {
                 No users yet.
               </p>
             ) : (
-              <ul className="divide-y divide-stone-100 dark:divide-stone-800">
+              <ul className="space-y-1">
                 {users.map((u) => (
                   <StaffRow
                     key={u.id}
@@ -363,7 +363,7 @@ function StaffRow({
   }, [menuOpen]);
 
   return (
-    <li className="flex items-center gap-3 py-3">
+    <li className="flex items-center gap-3 rounded-xl px-2 py-3 transition-shadow duration-200 hover:bg-stone-50 hover:shadow-md dark:hover:bg-stone-800/40">
       <Avatar src={user.avatar} name={user.name} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">

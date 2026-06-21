@@ -159,10 +159,12 @@ function NavLinks({
   pathname,
   isAdmin,
   onNavigate,
+  collapsed,
 }: {
   pathname: string;
   isAdmin: boolean;
   onNavigate?: () => void;
+  collapsed?: boolean;
 }) {
   const navRef = useRef<HTMLElement>(null);
   // The active "pill" position — slides between links as the route changes.
@@ -211,28 +213,56 @@ function NavLinks({
           data-active={active}
           target={item.newTab ? "_blank" : undefined}
           onClick={onNavigate}
-          className={`relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300 ${
+          aria-label={item.label}
+          className={`group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300 ${
+            collapsed ? "lg:justify-center" : ""
+          } ${
             active
               ? "text-amber-50 dark:text-stone-950"
               : "text-stone-600 hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/5"
           }`}
         >
-          {item.icon}
-          <span>{item.label}</span>
-          {item.newTab && <span className="ml-auto text-xs opacity-50">↗</span>}
+          <span className="shrink-0">{item.icon}</span>
+          <span className={collapsed ? "lg:hidden" : ""}>{item.label}</span>
+          {item.newTab && (
+            <span
+              className={`ml-auto text-xs opacity-50 ${
+                collapsed ? "lg:hidden" : ""
+              }`}
+            >
+              ↗
+            </span>
+          )}
+          {/* Hover tooltip — only when the sidebar is collapsed (desktop). */}
+          {collapsed && (
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-stone-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 dark:bg-stone-700"
+            >
+              {item.label}
+            </span>
+          )}
         </Link>
       ))}
     </nav>
   );
 }
 
-function Brand() {
+function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5 px-2">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
+    <div
+      className={`flex items-center gap-2.5 px-2 ${
+        collapsed ? "lg:justify-center lg:px-0" : ""
+      }`}
+    >
+      <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
         ☕
       </span>
-      <span className="text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100">
+      <span
+        className={`text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100 ${
+          collapsed ? "lg:hidden" : ""
+        }`}
+      >
         POSCAFE
       </span>
     </div>
@@ -300,7 +330,7 @@ function ThemeSwitch() {
   );
 }
 
-function UserBlock() {
+function UserBlock({ collapsed }: { collapsed?: boolean }) {
   const { user, logout, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -327,7 +357,10 @@ function UserBlock() {
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-stone-900/5 dark:hover:bg-white/5"
+        title={collapsed ? user?.name : undefined}
+        className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-stone-900/5 dark:hover:bg-white/5 ${
+          collapsed ? "lg:justify-center lg:px-0" : ""
+        }`}
       >
         {user?.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -341,7 +374,7 @@ function UserBlock() {
             {initial}
           </span>
         )}
-        <div className="min-w-0 flex-1">
+        <div className={`min-w-0 flex-1 ${collapsed ? "lg:hidden" : ""}`}>
           <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
             {user?.name}
           </p>
@@ -353,7 +386,7 @@ function UserBlock() {
           viewBox="0 0 24 24"
           className={`h-4 w-4 shrink-0 text-stone-400 transition-transform dark:text-stone-500 ${
             open ? "rotate-180" : ""
-          }`}
+          } ${collapsed ? "lg:hidden" : ""}`}
           {...sw}
         >
           <path d="M6 9l6 6 6-6" />
@@ -363,7 +396,7 @@ function UserBlock() {
       {open && (
         <div
           role="menu"
-          className="pos-drop absolute bottom-full left-0 mb-2 w-full overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
+          className="pos-drop absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
         >
           <div className="flex items-center justify-between gap-2 px-2.5 py-2">
             <span className="text-xs font-medium text-stone-500 dark:text-stone-400">
@@ -403,7 +436,13 @@ function UserBlock() {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  collapsed = false,
+  onToggleCollapse,
+}: {
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}) {
   const pathname = usePathname();
   const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
@@ -411,12 +450,32 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop: fixed sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col justify-between border-r border-white/60 bg-white/70 p-4 backdrop-blur-xl lg:flex dark:border-stone-800/60 dark:bg-stone-900/70">
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 hidden flex-col justify-between border-r border-white/60 bg-white/70 p-4 backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex dark:border-stone-800/60 dark:bg-stone-900/70 ${
+          collapsed ? "lg:w-20" : "lg:w-64"
+        }`}
+      >
+        {/* Collapse / expand toggle on the right edge */}
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand" : "Collapse"}
+          className="absolute -right-3 top-7 z-40 hidden h-6 w-6 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 shadow-sm transition hover:text-stone-800 lg:grid dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`}
+            {...sw}
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
         <div className="space-y-6">
-          <Brand />
-          <NavLinks pathname={pathname} isAdmin={isAdmin} />
+          <Brand collapsed={collapsed} />
+          <NavLinks pathname={pathname} isAdmin={isAdmin} collapsed={collapsed} />
         </div>
-        <UserBlock />
+        <UserBlock collapsed={collapsed} />
       </aside>
 
       {/* Mobile: top bar */}
