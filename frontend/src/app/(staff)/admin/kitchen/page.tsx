@@ -164,7 +164,7 @@ function KitchenScreen() {
                   list.map((order) => (
                     <article
                       key={order.id}
-                      className={`rounded-xl border border-stone-200 dark:border-stone-800 border-l-4 bg-stone-50 dark:bg-stone-800 p-4 shadow-sm ${col.accent}`}
+                      className={`rounded-xl border border-stone-200 dark:border-stone-800 border-l-4 bg-stone-50 dark:bg-stone-800 p-4 shadow-sm transition-shadow duration-200 hover:shadow-md ${col.accent}`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">
