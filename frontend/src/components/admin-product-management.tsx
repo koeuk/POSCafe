@@ -567,10 +567,10 @@ export function AdminProductManagement({
                   aria-label="Filter by category"
                   className={`${INPUT_CLASS} !w-56 cursor-pointer appearance-none pr-9 transition hover:border-stone-400 dark:hover:border-stone-600`}
                 >
-                  <option value="all">All categories</option>
+                  <option value="all">All categories ({products.length})</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.name} ({productCountByCategory.get(c.id) ?? 0})
                     </option>
                   ))}
                 </select>
