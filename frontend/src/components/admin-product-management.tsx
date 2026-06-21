@@ -94,6 +94,7 @@ export function AdminProductManagement({
   const [products, setProducts] = useState<Product[]>([]);
   const [sizeCatalog, setSizeCatalog] = useState<Size[]>([]);
   const [productQuery, setProductQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<number | "all">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<Drawer>(null);
@@ -238,14 +239,18 @@ export function AdminProductManagement({
   // Products filtered by the search box (name / category / size names).
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
-      (p) =>
+    return products.filter((p) => {
+      if (categoryFilter !== "all" && p.categoryId !== categoryFilter) {
+        return false;
+      }
+      if (!q) return true;
+      return (
         p.name.toLowerCase().includes(q) ||
         categoryName(p.categoryId).toLowerCase().includes(q) ||
-        (p.sizes ?? []).some((s) => s.size.toLowerCase().includes(q)),
-    );
-  }, [products, productQuery, categoryName]);
+        (p.sizes ?? []).some((s) => s.size.toLowerCase().includes(q))
+      );
+    });
+  }, [products, productQuery, categoryFilter, categoryName]);
 
   function openCategoryCreate() {
     setCategoryForm(EMPTY_CATEGORY_FORM);
@@ -513,8 +518,8 @@ export function AdminProductManagement({
               actionLabel="Create product"
               onCreate={openProductCreate}
             >
-            <div className="mb-4">
-              <div className="relative max-w-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="relative max-w-sm flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
                   <svg
                     viewBox="0 0 24 24"
@@ -548,6 +553,41 @@ export function AdminProductManagement({
                     ✕
                   </button>
                 )}
+              </div>
+              <div className="relative shrink-0">
+                <select
+                  value={
+                    categoryFilter === "all" ? "all" : String(categoryFilter)
+                  }
+                  onChange={(e) =>
+                    setCategoryFilter(
+                      e.target.value === "all" ? "all" : Number(e.target.value),
+                    )
+                  }
+                  aria-label="Filter by category"
+                  className={`${INPUT_CLASS} !w-56 cursor-pointer appearance-none pr-9 transition hover:border-stone-400 dark:hover:border-stone-600`}
+                >
+                  <option value="all">All categories</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.25"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </span>
               </div>
             </div>
             {products.length === 0 ? (
