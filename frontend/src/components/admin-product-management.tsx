@@ -93,6 +93,7 @@ export function AdminProductManagement({
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [sizeCatalog, setSizeCatalog] = useState<Size[]>([]);
+  const [productQuery, setProductQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<Drawer>(null);
@@ -233,6 +234,18 @@ export function AdminProductManagement({
     }
     return counts;
   }, [products]);
+
+  // Products filtered by the search box (name / category / size names).
+  const filteredProducts = useMemo(() => {
+    const q = productQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        categoryName(p.categoryId).toLowerCase().includes(q) ||
+        (p.sizes ?? []).some((s) => s.size.toLowerCase().includes(q)),
+    );
+  }, [products, productQuery, categoryName]);
 
   function openCategoryCreate() {
     setCategoryForm(EMPTY_CATEGORY_FORM);
@@ -500,8 +513,47 @@ export function AdminProductManagement({
               actionLabel="Create product"
               onCreate={openProductCreate}
             >
+            <div className="mb-4">
+              <div className="relative max-w-sm">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={productQuery}
+                  onChange={(e) => setProductQuery(e.target.value)}
+                  placeholder="Search product, category, or size…"
+                  aria-label="Search products"
+                  className={`${INPUT_CLASS} pl-9 pr-9`}
+                />
+                {productQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setProductQuery("")}
+                    aria-label="Clear search"
+                    className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-700"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
             {products.length === 0 ? (
               <EmptyState message="No products yet." />
+            ) : filteredProducts.length === 0 ? (
+              <EmptyState message={`No products match “${productQuery}”.`} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -517,7 +569,7 @@ export function AdminProductManagement({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                    {products.map((product) => (
+                    {filteredProducts.map((product) => (
                       <tr key={product.id} className="text-stone-800 transition-colors hover:bg-stone-50/70 dark:text-stone-200 dark:hover:bg-stone-800/40">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
@@ -594,7 +646,11 @@ export function AdminProductManagement({
           description="Categories appear as sections on the customer menu."
           onClose={() => setDrawer(null)}
         >
-          <form onSubmit={submitCategory} className="space-y-4">
+          <form
+            onSubmit={submitCategory}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
             <Field label="Name">
               <input
                 value={categoryForm.name}
@@ -701,6 +757,7 @@ export function AdminProductManagement({
               />
               Active on menu
             </label>
+            </div>
             <PanelActions
               busy={busy}
               submitLabel={drawer.mode === "create" ? "Create category" : "Save category"}
@@ -716,7 +773,11 @@ export function AdminProductManagement({
           description="Products are shown in the customer menu when available."
           onClose={() => setDrawer(null)}
         >
-          <form onSubmit={submitProduct} className="space-y-4">
+          <form
+            onSubmit={submitProduct}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
             <Field label="Name">
               <input
                 value={productForm.name}
@@ -1046,6 +1107,7 @@ export function AdminProductManagement({
               />
               Available for sale
             </label>
+            </div>
             <PanelActions
               busy={busy}
               submitLabel={drawer.mode === "create" ? "Create product" : "Save product"}
@@ -1153,7 +1215,8 @@ function SidePanel({
 }) {
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-stone-950/30" onClick={onClose} />
+      {/* Backdrop is non-dismissing — only Close/Cancel can close the form. */}
+      <div className="absolute inset-0 bg-stone-950/30" />
       <aside className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-stone-900">
         <header className="border-b border-stone-200 px-6 py-5 dark:border-stone-800">
           <div className="flex items-start justify-between gap-4">
@@ -1171,7 +1234,7 @@ function SidePanel({
             </button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </aside>
     </div>
   );
@@ -1226,7 +1289,7 @@ function PanelActions({
   onCancel: () => void;
 }) {
   return (
-    <div className="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-2 border-t border-stone-200 bg-white px-6 py-4 dark:border-stone-800 dark:bg-stone-900">
+    <div className="flex shrink-0 justify-end gap-2 border-t border-stone-200 bg-white px-6 py-4 dark:border-stone-800 dark:bg-stone-900">
       <button
         type="button"
         onClick={onCancel}
