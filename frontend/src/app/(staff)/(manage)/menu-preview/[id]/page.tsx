@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminProductDetail } from "@/components/admin-product-detail";
-import type { Product } from "@/lib/types";
+import { RequireAuth } from "@/components/require-auth";
+import { Role, type Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 

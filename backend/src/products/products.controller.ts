@@ -39,13 +39,16 @@ export class ProductsController {
     return this.productsService.create(dto);
   }
 
-  @RequiresPage('products')
+  // Also reachable from the Stock page (quantity/size edits), so 'stock' grants
+  // it too — not just full 'products' catalog access.
+  @RequiresPage('products', 'stock')
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
   }
 
-  @RequiresPage('products')
+  // The Stock page can also remove a product, so 'stock' grants delete too.
+  @RequiresPage('products', 'stock')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {

@@ -92,9 +92,15 @@ export function firstAllowedHref(allowed: string[]): string | null {
   return page ? CASHIER_PAGE_HREFS[page.key] : null;
 }
 
+// Admin-only routes that have no cashier-assignable page key. Cashiers are
+// denied these even though they don't map to a CASHIER_PAGES entry.
+// (/manage-orders is the admin Order History full view; /menu-preview the admin
+// menu browser; /settings the staff-account manager.)
+const ADMIN_ONLY_PREFIXES = ["/settings", "/menu-preview", "/manage-orders"];
+
 // Whether the given role/permissions may view the page at `pathname`.
-// Admins see everything; cashiers see granted pages. Unmapped /admin routes
-// (settings, admin-only screen variants) stay admin-only.
+// Admins see everything; cashiers see granted pages plus shared unmapped routes
+// (e.g. /view-menu), but never the admin-only routes above.
 export function isPathAllowed(
   role: string,
   allowedPages: string[] | null | undefined,
@@ -103,6 +109,8 @@ export function isPathAllowed(
   if (role === "admin") return true;
   const key = pageKeyForPath(pathname);
   if (key) return resolveCashierPages(allowedPages).includes(key);
-  if (pathname.startsWith("/admin")) return false;
-  return true;
+  const adminOnly = ADMIN_ONLY_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+  return !adminOnly;
 }

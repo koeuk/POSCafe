@@ -1,5 +1,6 @@
 import { AdminMenuBrowser } from "@/components/admin-menu-browser";
-import type { MenuCategory } from "@/lib/types";
+import { RequireAuth } from "@/components/require-auth";
+import { Role, type MenuCategory } from "@/lib/types";
 
 // Admin menu preview is always fresh (availability/prices change).
 export const dynamic = "force-dynamic";
@@ -31,5 +32,9 @@ export default async function MenuPage() {
     );
   }
 
-  return <AdminMenuBrowser menu={menu} />;
+  return (
+    <RequireAuth role={Role.ADMIN}>
+      <AdminMenuBrowser menu={menu} />
+    </RequireAuth>
+  );
 }
