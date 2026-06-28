@@ -8,8 +8,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
+import { RequiresPage } from '../common/decorators/requires-page.decorator';
 
 // Minimal shape of the multer file (no @types/multer installed).
 interface UploadedImage {
@@ -18,7 +17,8 @@ interface UploadedImage {
 
 @Controller('uploads')
 export class UploadsController {
-  @Roles(Role.ADMIN)
+  // Image upload is used by the product, category and (admin) staff forms.
+  @RequiresPage('products', 'categories')
   @Post('image')
   @UseInterceptors(
     FileInterceptor('file', {

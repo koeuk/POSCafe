@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { OrderStatus } from "@/lib/types";
 
 const STATUS_META: Record<
@@ -34,9 +41,13 @@ const STATUS_META: Record<
   },
 };
 
+const MENU_WIDTH = 176; // matches w-44
+
 /**
- * Color-coded order-status picker. Same popover pattern as the product
- * category dropdown: a pill trigger, a listbox, and outside-click close.
+ * Color-coded order-status picker: a pill trigger and a listbox popover.
+ * The menu is rendered in a portal with fixed positioning so it can't be
+ * clipped by the card's `backdrop-filter` border-box (cards use the GLASS
+ * style, and backdrop-filter clips its descendants).
  */
 export function StatusDropdown({
   value,
@@ -48,23 +59,44 @@ export function StatusDropdown({
   busy?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(
+    null,
+  );
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
 
   const close = useCallback(() => setOpen(false), []);
 
+  // Anchor the fixed menu to the trigger's bottom-right corner.
+  const reposition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setCoords({ top: rect.bottom + 6, left: rect.right - MENU_WIDTH });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open) reposition();
+  }, [open, reposition]);
+
   useEffect(() => {
     if (!open) return;
-    function handleClick(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        close();
-      }
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      close();
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, close]);
+    // Keep the menu glued to the trigger as the page scrolls / resizes.
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    document.addEventListener("mousedown", onPointerDown);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+      document.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [open, close, reposition]);
 
   function pick(status: OrderStatus) {
     if (status !== value) onChange(status);
@@ -74,8 +106,9 @@ export function StatusDropdown({
   const current = STATUS_META[value];
 
   return (
-    <div ref={containerRef} className="relative">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         disabled={busy}
         onClick={() => setOpen((prev) => !prev)}
@@ -101,38 +134,43 @@ export function StatusDropdown({
         </svg>
       </button>
 
-      {open && (
-        <ul
-          role="listbox"
-          className="pos-drop absolute right-0 z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
-        >
-          {Object.values(OrderStatus).map((status) => {
-            const meta = STATUS_META[status];
-            const isSelected = status === value;
-            return (
-              <li key={status} role="option" aria-selected={isSelected}>
-                <button
-                  type="button"
-                  onClick={() => pick(status)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-stone-50 dark:hover:bg-stone-800 ${
-                    isSelected
-                      ? "font-semibold text-stone-900 dark:text-stone-100"
-                      : "text-stone-600 dark:text-stone-300"
-                  }`}
-                >
-                  <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
-                  {meta.label}
-                  {isSelected && (
-                    <span className="ml-auto text-stone-400 dark:text-stone-500">
-                      ✓
-                    </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+      {open &&
+        coords &&
+        createPortal(
+          <ul
+            ref={menuRef}
+            role="listbox"
+            style={{ top: coords.top, left: coords.left }}
+            className="pos-drop fixed z-50 w-44 overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
+          >
+            {Object.values(OrderStatus).map((status) => {
+              const meta = STATUS_META[status];
+              const isSelected = status === value;
+              return (
+                <li key={status} role="option" aria-selected={isSelected}>
+                  <button
+                    type="button"
+                    onClick={() => pick(status)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-stone-50 dark:hover:bg-stone-800 ${
+                      isSelected
+                        ? "font-semibold text-stone-900 dark:text-stone-100"
+                        : "text-stone-600 dark:text-stone-300"
+                    }`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                    {meta.label}
+                    {isSelected && (
+                      <span className="ml-auto text-stone-400 dark:text-stone-500">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>,
+          document.body,
+        )}
+    </>
   );
 }

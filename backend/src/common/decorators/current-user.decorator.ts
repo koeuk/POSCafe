@@ -4,6 +4,8 @@ export interface AuthUser {
   id: number;
   username: string;
   role: string;
+  // Sidebar pages a cashier may access (null = default cashier pages).
+  allowedPages?: string[] | null;
 }
 
 /** Injects the authenticated user (from the JWT) into a route handler. */

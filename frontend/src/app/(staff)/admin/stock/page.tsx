@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
 import { sizeStock, totalStock } from "@/lib/pricing";
-import { Role, type Product, type Size } from "@/lib/types";
+import { type Product, type Size } from "@/lib/types";
 
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
@@ -722,9 +721,5 @@ function ProductStock({
 }
 
 export default function AdminStockPage() {
-  return (
-    <RequireAuth role={Role.ADMIN}>
-      <Stock />
-    </RequireAuth>
-  );
+  return <Stock />;
 }

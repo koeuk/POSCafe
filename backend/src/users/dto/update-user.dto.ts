@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -33,4 +34,10 @@ export class UpdateUserDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   avatar?: string | null;
+
+  // Sidebar pages a cashier may see (ignored for admins).
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedPages?: string[];
 }

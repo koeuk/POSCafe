@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Role } from '../../common/enums/role.enum';
+import { UsersService } from '../../users/users.service';
 
 export interface JwtPayload {
   sub: number;
@@ -12,7 +13,10 @@ export interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly usersService: UsersService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -20,8 +24,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // The returned object is attached to request.user.
-  validate(payload: JwtPayload) {
-    return { id: payload.sub, username: payload.username, role: payload.role };
+  // Loads the user fresh from the DB so role/permission changes take effect
+  // immediately (no re-login). The returned object is attached to request.user.
+  async validate(payload: JwtPayload) {
+    const user = await this.usersService.findById(payload.sub);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException();
+    }
+    return {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      allowedPages: user.allowedPages,
+    };
   }
 }

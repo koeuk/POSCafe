@@ -5,8 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme, type Theme } from "@/lib/theme-context";
+import { resolveCashierPages } from "@/lib/permissions";
 
 interface NavItem {
+  /** Stable id; cashier-assignable keys live in lib/permissions. */
+  key: string;
   href: string | { staff: string; admin: string };
   label: string;
   icon: ReactNode;
@@ -26,6 +29,7 @@ const sw = {
 
 const NAV: NavItem[] = [
   {
+    key: "dashboard",
     href: "/dashboard",
     label: "Dashboard",
     adminOnly: true,
@@ -40,6 +44,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "pos",
     href: "/pos",
     label: "Point of Sale",
     icon: (
@@ -51,6 +56,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "orders",
     href: "/orders",
     label: "Orders",
     icon: (
@@ -61,9 +67,9 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: { staff: "/pay", admin: "/admin/pay" },
+    key: "payments",
+    href: "/admin/pay",
     label: "Payments",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -72,9 +78,9 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: { staff: "/kitchen", admin: "/admin/kitchen" },
+    key: "kitchen",
+    href: "/admin/kitchen",
     label: "Kitchen",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M6 3v6a3 3 0 1 0 6 0V3" />
@@ -85,6 +91,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "categories",
     href: "/admin/categories",
     label: "Categories",
     adminOnly: true,
@@ -96,6 +103,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "products",
     href: "/admin/products",
     label: "Products",
     adminOnly: true,
@@ -107,6 +115,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "stock",
     href: "/admin/stock",
     label: "Stock",
     adminOnly: true,
@@ -118,6 +127,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "order-history",
     href: { staff: "/order-history", admin: "/admin/orders" },
     label: "Order History",
     icon: (
@@ -128,6 +138,7 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "reports",
     href: "/admin/reports",
     label: "Reports",
     adminOnly: true,
@@ -142,9 +153,9 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    href: { staff: "/menu/qr", admin: "/admin/menu/qr" },
+    key: "qr",
+    href: "/admin/menu/qr",
     label: "QR Code",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -159,11 +170,13 @@ const NAV: NavItem[] = [
 function NavLinks({
   pathname,
   isAdmin,
+  allowedPages,
   onNavigate,
   collapsed,
 }: {
   pathname: string;
   isAdmin: boolean;
+  allowedPages?: string[] | null;
   onNavigate?: () => void;
   collapsed?: boolean;
 }) {
@@ -175,7 +188,11 @@ function NavLinks({
     return exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
   }
 
-  const items = NAV.filter((i) => !i.adminOnly || isAdmin).map((item) => {
+  // Admins see every page; cashiers see the pages they've been granted.
+  const cashierPages = resolveCashierPages(allowedPages);
+  const items = NAV.filter(
+    (item) => isAdmin || cashierPages.includes(item.key),
+  ).map((item) => {
     const href =
       typeof item.href === "string"
         ? item.href
@@ -445,8 +462,9 @@ export function Sidebar({
   onToggleCollapse?: () => void;
 }) {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [open, setOpen] = useState(false);
+  const allowedPages = user?.allowedPages;
 
   return (
     <>
@@ -474,7 +492,12 @@ export function Sidebar({
         </button>
         <div className="space-y-6">
           <Brand collapsed={collapsed} />
-          <NavLinks pathname={pathname} isAdmin={isAdmin} collapsed={collapsed} />
+          <NavLinks
+            pathname={pathname}
+            isAdmin={isAdmin}
+            allowedPages={allowedPages}
+            collapsed={collapsed}
+          />
         </div>
         <UserBlock collapsed={collapsed} />
       </aside>
@@ -507,6 +530,7 @@ export function Sidebar({
               <NavLinks
                 pathname={pathname}
                 isAdmin={isAdmin}
+                allowedPages={allowedPages}
                 onNavigate={() => setOpen(false)}
               />
             </div>

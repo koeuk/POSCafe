@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
-import { RequireAuth } from "@/components/require-auth";
 import { StaffShell } from "@/components/staff-shell";
-import { Role } from "@/lib/types";
 
+// Access to /admin/* routes is enforced by PageGuard in the (staff) layout:
+// admins see everything, cashiers only pages they've been granted, and
+// unmapped admin routes (e.g. settings) stay admin-only.
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return (
-    <RequireAuth role={Role.ADMIN}>
-      <StaffShell>{children}</StaffShell>
-    </RequireAuth>
-  );
+  return <StaffShell>{children}</StaffShell>;
 }

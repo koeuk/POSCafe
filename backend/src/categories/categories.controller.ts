@@ -10,8 +10,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
+import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -32,13 +31,13 @@ export class CategoriesController {
   }
 
   // Writes are admin-only.
-  @Roles(Role.ADMIN)
+  @RequiresPage('categories')
   @Post()
   create(@Body() dto: CreateCategoryDto) {
     return this.categoriesService.create(dto);
   }
 
-  @Roles(Role.ADMIN)
+  @RequiresPage('categories')
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -47,7 +46,7 @@ export class CategoriesController {
     return this.categoriesService.update(id, dto);
   }
 
-  @Roles(Role.ADMIN)
+  @RequiresPage('categories')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {

@@ -16,6 +16,7 @@ export interface CreateUserData {
   password: string; // already hashed
   role?: Role;
   avatar?: string;
+  allowedPages?: string[];
 }
 
 export interface NewUserInput {
@@ -24,6 +25,7 @@ export interface NewUserInput {
   password: string; // plain text — hashed here
   role: Role;
   avatar?: string;
+  allowedPages?: string[];
 }
 
 @Injectable()
@@ -75,6 +77,8 @@ export class UsersService {
       password,
       role: input.role,
       avatar: input.avatar,
+      // Page restrictions only apply to cashiers.
+      allowedPages: input.role === Role.CASHIER ? input.allowedPages : undefined,
     });
     // Never leak the (hashed) password back to the client.
     return this.repo.create({ ...user, password: undefined });
@@ -98,7 +102,10 @@ export class UsersService {
     if (dto.username !== undefined) patch.username = dto.username;
     if (dto.role !== undefined) patch.role = dto.role;
     if (dto.avatar !== undefined) patch.avatar = dto.avatar;
+    if (dto.allowedPages !== undefined) patch.allowedPages = dto.allowedPages;
     if (dto.password) patch.password = await bcrypt.hash(dto.password, 10);
+    // Promotion to admin clears any cashier page restrictions.
+    if (dto.role === Role.ADMIN) patch.allowedPages = null;
 
     await this.repo.update(id, patch);
     // findById excludes the password column (select: false).

@@ -11,6 +11,9 @@ export interface User {
   username: string;
   role: Role;
   avatar?: string | null;
+  // Sidebar pages a cashier may see (keys from lib/permissions).
+  // null/undefined = default cashier pages. Ignored for admins.
+  allowedPages?: string[] | null;
 }
 
 // Response shape from POST /auth/login and /auth/register.

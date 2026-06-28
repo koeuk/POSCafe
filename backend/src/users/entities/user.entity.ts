@@ -30,6 +30,12 @@ export class User {
   @Column({ type: 'enum', enum: Role, default: Role.CASHIER })
   role: Role;
 
+  // Sidebar pages a cashier is allowed to see (keys from the frontend's
+  // permissions list). null = fall back to the default cashier pages.
+  // Ignored for admins, who always see every page.
+  @Column({ type: 'simple-json', nullable: true })
+  allowedPages: string[] | null;
+
   @Column({ default: true })
   isActive: boolean;
 

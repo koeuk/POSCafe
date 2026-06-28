@@ -11,8 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
+import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
@@ -34,19 +33,19 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
 
-  @Roles(Role.ADMIN)
+  @RequiresPage('products')
   @Post()
   create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
   }
 
-  @Roles(Role.ADMIN)
+  @RequiresPage('products')
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
   }
 
-  @Roles(Role.ADMIN)
+  @RequiresPage('products')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {

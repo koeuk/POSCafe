@@ -11,6 +11,11 @@ import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/lib/auth-context";
 import { api, uploadImage } from "@/lib/api";
 import { Role, type User } from "@/lib/types";
+import {
+  CASHIER_PAGES,
+  DEFAULT_CASHIER_PAGES,
+  resolveCashierPages,
+} from "@/lib/permissions";
 
 const ROLE_META: Record<Role, { label: string; pill: string }> = {
   [Role.ADMIN]: {
@@ -31,6 +36,8 @@ function Settings() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(EMPTY);
   const [avatar, setAvatar] = useState<string | null>(null);
+  // Sidebar pages a new cashier may see (only used when role === cashier).
+  const [pages, setPages] = useState<string[]>(DEFAULT_CASHIER_PAGES);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -40,6 +47,8 @@ function Settings() {
   // The user pending deletion (drives the confirm dialog).
   const [deleting, setDeleting] = useState<User | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // The cashier whose page permissions are being edited (drives that modal).
+  const [permitting, setPermitting] = useState<User | null>(null);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -73,11 +82,14 @@ function Settings() {
           password: form.password,
           role: form.role,
           avatar,
+          // Page restrictions only apply to cashiers.
+          ...(form.role === Role.CASHIER ? { allowedPages: pages } : {}),
         },
       });
       setSuccess(`${created.name} (${ROLE_META[created.role].label}) created.`);
       setForm(EMPTY);
       setAvatar(null);
+      setPages(DEFAULT_CASHIER_PAGES);
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create user");
@@ -185,6 +197,15 @@ function Settings() {
                   onChange={(role) => setForm({ ...form, role })}
                 />
               </Field>
+
+              {form.role === Role.CASHIER && (
+                <Field
+                  label="Page access"
+                  hint="Sidebar pages this cashier can see"
+                >
+                  <PagePermissions value={pages} onChange={setPages} />
+                </Field>
+              )}
             </div>
 
             {error && (
@@ -239,6 +260,7 @@ function Settings() {
                     isSelf={u.id === currentUser?.id}
                     onEdit={() => setEditing(u)}
                     onDelete={() => setDeleting(u)}
+                    onPermissions={() => setPermitting(u)}
                   />
                 ))}
               </ul>
@@ -266,6 +288,17 @@ function Settings() {
           busy={deleteBusy}
           onCancel={() => setDeleting(null)}
           onConfirm={confirmDelete}
+        />
+      )}
+
+      {permitting && (
+        <PermissionsModal
+          user={permitting}
+          onClose={() => setPermitting(null)}
+          onSaved={async () => {
+            setPermitting(null);
+            await loadUsers();
+          }}
         />
       )}
     </main>
@@ -344,11 +377,13 @@ function StaffRow({
   isSelf,
   onEdit,
   onDelete,
+  onPermissions,
 }: {
   user: User;
   isSelf: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onPermissions: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -405,7 +440,7 @@ function StaffRow({
         {menuOpen && (
           <div
             role="menu"
-            className="pos-drop absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
+            className="pos-drop absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
           >
             <button
               type="button"
@@ -422,6 +457,23 @@ function StaffRow({
               </svg>
               Edit
             </button>
+            {user.role === Role.CASHIER && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onPermissions();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Permissions
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"
@@ -586,6 +638,159 @@ function EditUserModal({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// ── Permissions modal ────────────────────────────────────────────────────
+
+function PermissionsModal({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: User;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [pages, setPages] = useState<string[]>(
+    resolveCashierPages(user.allowedPages),
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      await api<User>(`/users/${user.id}`, {
+        method: "PATCH",
+        body: { allowedPages: pages },
+      });
+      onSaved();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to update permissions",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSave}
+        className="pos-drop w-full max-w-md rounded-2xl border border-stone-200 bg-white p-5 shadow-xl dark:border-stone-800 dark:bg-stone-900"
+      >
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="font-semibold text-stone-900 dark:text-stone-100">
+            Page access
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800"
+          >
+            ✕
+          </button>
+        </div>
+        <p className="mb-4 text-sm text-stone-500 dark:text-stone-400">
+          Choose which sidebar pages{" "}
+          <span className="font-medium text-stone-700 dark:text-stone-300">
+            {user.name}
+          </span>{" "}
+          can see.
+        </p>
+
+        <PagePermissions value={pages} onChange={setPages} />
+
+        <p className="mt-3 text-xs text-stone-400 dark:text-stone-500">
+          Changes take effect the next time this cashier logs in.
+        </p>
+
+        {error && (
+          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex-1 rounded-xl bg-[#2A1D15] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+          >
+            {saving ? "Saving…" : "Save access"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// Multi-select grid of the cashier-assignable sidebar pages.
+function PagePermissions({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (pages: string[]) => void;
+}) {
+  function toggle(key: string) {
+    onChange(
+      value.includes(key)
+        ? value.filter((k) => k !== key)
+        : [...value, key],
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {CASHIER_PAGES.map((p) => {
+        const active = value.includes(p.key);
+        return (
+          <button
+            key={p.key}
+            type="button"
+            onClick={() => toggle(p.key)}
+            aria-pressed={active}
+            className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition ${
+              active
+                ? "border-[#2A1D15] bg-[#2A1D15] text-amber-50 dark:border-amber-500 dark:bg-amber-500 dark:text-stone-950"
+                : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+            }`}
+          >
+            <span
+              className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${
+                active
+                  ? "border-transparent bg-white/20 dark:bg-stone-950/20"
+                  : "border-stone-300 dark:border-stone-600"
+              }`}
+            >
+              {active && (
+                <svg viewBox="0 0 24 24" className="h-3 w-3" {...sw}>
+                  <path d="m5 13 4 4L19 7" />
+                </svg>
+              )}
+            </span>
+            {p.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

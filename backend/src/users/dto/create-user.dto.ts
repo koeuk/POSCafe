@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -27,4 +28,10 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  // Sidebar pages a cashier may see (ignored for admins).
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedPages?: string[];
 }

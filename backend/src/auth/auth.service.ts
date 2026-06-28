@@ -49,6 +49,22 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  /** Current user, loaded fresh from the DB so permission changes apply on reload. */
+  async me(userId: number) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User no longer exists');
+    }
+    return {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      avatar: user.avatar,
+      allowedPages: user.allowedPages,
+    };
+  }
+
   private buildAuthResponse(user: User) {
     const payload = { sub: user.id, username: user.username, role: user.role };
     return {
@@ -59,6 +75,7 @@ export class AuthService {
         username: user.username,
         role: user.role,
         avatar: user.avatar,
+        allowedPages: user.allowedPages,
       },
     };
   }
