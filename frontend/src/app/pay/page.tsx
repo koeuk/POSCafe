@@ -9,7 +9,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { PageGuard } from "@/components/page-guard";
 import { RequireAuth } from "@/components/require-auth";
+import { StaffFrame } from "@/components/staff-frame";
 import { api } from "@/lib/api";
 import { PaymentMethod, type Order } from "@/lib/types";
 
@@ -148,7 +150,7 @@ function PayScreen() {
         ) : pending.length === 0 ? (
           <p className="text-sm text-stone-400 dark:text-stone-500">No unpaid orders right now.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {pending.map((o) => (
               <li key={o.id}>
                 <Link
@@ -355,10 +357,10 @@ function Shell({
   wide?: boolean;
 }) {
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-10 dark:bg-stone-950">
+    <main className="px-4 py-8 sm:px-6 lg:px-8">
       <div
         className={`mx-auto rounded-2xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900 ${
-          wide ? "max-w-3xl" : "max-w-md"
+          wide ? "max-w-3xl" : "max-w-7xl"
         }`}
       >
         {children}
@@ -417,15 +419,19 @@ function PadBtn({
 export default function PayPage() {
   return (
     <RequireAuth>
-      <Suspense
-        fallback={
-          <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
-            Loading…
-          </div>
-        }
-      >
-        <PayScreen />
-      </Suspense>
+      <PageGuard>
+        <StaffFrame>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
+                Loading…
+              </div>
+            }
+          >
+            <PayScreen />
+          </Suspense>
+        </StaffFrame>
+      </PageGuard>
     </RequireAuth>
   );
 }

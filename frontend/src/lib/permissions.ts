@@ -43,14 +43,14 @@ export const CASHIER_PAGE_HREFS: Record<string, string> = {
   dashboard: "/dashboard",
   pos: "/pos",
   orders: "/orders",
-  payments: "/admin/pay",
-  kitchen: "/admin/kitchen",
-  categories: "/admin/categories",
-  products: "/admin/products",
-  stock: "/admin/stock",
+  payments: "/pay",
+  kitchen: "/kitchen",
+  categories: "/categories",
+  products: "/products",
+  stock: "/stock",
   "order-history": "/order-history",
-  reports: "/admin/reports",
-  qr: "/admin/menu/qr",
+  reports: "/reports",
+  qr: "/menu/qr",
 };
 
 // Which assignable page a pathname belongs to (longest-prefix match so nested

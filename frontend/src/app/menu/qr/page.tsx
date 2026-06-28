@@ -2,8 +2,11 @@
 
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
+import { PageGuard } from "@/components/page-guard";
+import { RequireAuth } from "@/components/require-auth";
+import { StaffFrame } from "@/components/staff-frame";
 
-export default function MenuQrPage() {
+function MenuQrScreen() {
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [menuUrl, setMenuUrl] = useState("");
 
@@ -53,5 +56,17 @@ export default function MenuQrPage() {
         Print
       </button>
     </main>
+  );
+}
+
+export default function MenuQrPage() {
+  return (
+    <RequireAuth>
+      <PageGuard>
+        <StaffFrame>
+          <MenuQrScreen />
+        </StaffFrame>
+      </PageGuard>
+    </RequireAuth>
   );
 }

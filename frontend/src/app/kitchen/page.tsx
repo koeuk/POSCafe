@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
+import { PageGuard } from "@/components/page-guard";
 import { RequireAuth } from "@/components/require-auth";
+import { StaffFrame } from "@/components/staff-frame";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { api, getToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -218,7 +220,11 @@ function KitchenScreen() {
 export default function KitchenPage() {
   return (
     <RequireAuth>
-      <KitchenScreen />
+      <PageGuard>
+        <StaffFrame>
+          <KitchenScreen />
+        </StaffFrame>
+      </PageGuard>
     </RequireAuth>
   );
 }

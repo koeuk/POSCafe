@@ -68,7 +68,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "payments",
-    href: "/admin/pay",
+    href: { staff: "/pay", admin: "/admin/pay" },
     label: "Payments",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -79,7 +79,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "kitchen",
-    href: "/admin/kitchen",
+    href: { staff: "/kitchen", admin: "/admin/kitchen" },
     label: "Kitchen",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -92,7 +92,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "categories",
-    href: "/admin/categories",
+    href: "/categories",
     label: "Categories",
     adminOnly: true,
     icon: (
@@ -104,7 +104,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "products",
-    href: "/admin/products",
+    href: "/products",
     label: "Products",
     adminOnly: true,
     icon: (
@@ -116,7 +116,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "stock",
-    href: "/admin/stock",
+    href: "/stock",
     label: "Stock",
     adminOnly: true,
     icon: (
@@ -139,7 +139,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "reports",
-    href: "/admin/reports",
+    href: "/reports",
     label: "Reports",
     adminOnly: true,
     icon: (
@@ -154,7 +154,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "qr",
-    href: "/admin/menu/qr",
+    href: { staff: "/menu/qr", admin: "/admin/menu/qr" },
     label: "QR Code",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>

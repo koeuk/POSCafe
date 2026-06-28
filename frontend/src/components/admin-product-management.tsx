@@ -495,7 +495,7 @@ export function AdminProductManagement({
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <RowActions
-                            viewHref={`/admin/categories/${category.id}`}
+                            viewHref={`/categories/${category.id}`}
                             onEdit={() => openCategoryEdit(category)}
                             onDelete={() =>
                               setDeleteTarget({
@@ -675,7 +675,7 @@ export function AdminProductManagement({
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <RowActions
-                            viewHref={`/admin/products/${product.id}`}
+                            viewHref={`/products/${product.id}`}
                             onEdit={() => openProductEdit(product)}
                             onDelete={() =>
                               setDeleteTarget({
@@ -1040,7 +1040,7 @@ export function AdminProductManagement({
                 <p className="rounded-lg bg-stone-50 px-3 py-2.5 text-xs text-stone-500 dark:bg-stone-800/60 dark:text-stone-400">
                   No cup sizes defined yet. Add sizes on the{" "}
                   <Link
-                    href="/admin/stock"
+                    href="/stock"
                     className="font-medium text-[#2A1D15] underline dark:text-amber-400"
                   >
                     Stock
@@ -1141,7 +1141,7 @@ export function AdminProductManagement({
                   <p className="text-xs text-stone-400 dark:text-stone-500">
                     Size · price · Qty (cups in stock). Restock anytime on the{" "}
                     <Link
-                      href="/admin/stock"
+                      href="/stock"
                       className="underline hover:text-stone-600 dark:hover:text-stone-300"
                     >
                       Stock

@@ -57,7 +57,7 @@ function ProductView({ id }: { id: string }) {
             {error ?? "Product not found."}
           </p>
           <Link
-            href="/admin/products"
+            href="/products"
             className="mt-4 inline-block text-sm font-medium text-stone-600 hover:underline dark:text-stone-300"
           >
             ← Back to products
@@ -85,7 +85,7 @@ function ProductView({ id }: { id: string }) {
       >
         <div>
           <nav className="flex items-center gap-1.5 text-sm text-stone-400 dark:text-stone-500">
-            <Link href="/admin/products" className="hover:underline">
+            <Link href="/products" className="hover:underline">
               Products
             </Link>
             <span>/</span>
@@ -99,7 +99,7 @@ function ProductView({ id }: { id: string }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/admin/products"
+            href="/products"
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
             Back
@@ -111,7 +111,7 @@ function ProductView({ id }: { id: string }) {
             Customer view
           </Link>
           <Link
-            href={`/admin/products?edit=${product.id}`}
+            href={`/products?edit=${product.id}`}
             className="rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-medium text-amber-50 transition hover:opacity-90 dark:bg-amber-500 dark:text-stone-950"
           >
             Edit product
