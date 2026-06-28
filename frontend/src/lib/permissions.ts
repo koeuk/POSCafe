@@ -37,9 +37,9 @@ export function resolveCashierPages(allowed?: string[] | null): string[] {
   return allowed ?? DEFAULT_CASHIER_PAGES;
 }
 
-// Cashier-facing route for each assignable page. Admin-management pages have
-// only an /admin/* route, which the page guard now opens to granted cashiers.
-export const CASHIER_PAGE_HREFS: Record<string, string> = {
+// Canonical (admin) route for each page — the clean path with no role prefix.
+// Used to resolve which page a URL belongs to.
+export const CLEAN_PAGE_HREFS: Record<string, string> = {
   dashboard: "/dashboard",
   pos: "/pos",
   orders: "/orders",
@@ -53,14 +53,28 @@ export const CASHIER_PAGE_HREFS: Record<string, string> = {
   qr: "/menu/qr",
 };
 
-// Which assignable page a pathname belongs to (longest-prefix match so nested
-// routes like /pay/123 still resolve). Returns null for non-assignable routes
-// (e.g. admin pages), which the cashier guard leaves alone.
+// Where the sidebar sends a cashier. The management pages live under a
+// /cashier/* namespace so the cashier role is visible in the URL; admins use
+// the clean routes above.
+export const CASHIER_PAGE_HREFS: Record<string, string> = {
+  ...CLEAN_PAGE_HREFS,
+  categories: "/cashier/categories",
+  products: "/cashier/products",
+  stock: "/cashier/stock",
+  reports: "/cashier/reports",
+};
+
+// Which page a pathname belongs to. The optional /cashier prefix is stripped
+// first so both /reports and /cashier/reports resolve to the same key
+// (longest-prefix match so nested routes like /products/12 still resolve).
 export function pageKeyForPath(pathname: string): string | null {
+  const path = pathname.startsWith("/cashier/")
+    ? pathname.slice("/cashier".length)
+    : pathname;
   let best: string | null = null;
   let bestLen = -1;
-  for (const [key, href] of Object.entries(CASHIER_PAGE_HREFS)) {
-    const match = pathname === href || pathname.startsWith(`${href}/`);
+  for (const [key, href] of Object.entries(CLEAN_PAGE_HREFS)) {
+    const match = path === href || path.startsWith(`${href}/`);
     if (match && href.length > bestLen) {
       best = key;
       bestLen = href.length;

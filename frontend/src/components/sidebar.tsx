@@ -92,7 +92,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "categories",
-    href: "/categories",
+    href: { staff: "/cashier/categories", admin: "/categories" },
     label: "Categories",
     adminOnly: true,
     icon: (
@@ -104,7 +104,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "products",
-    href: "/products",
+    href: { staff: "/cashier/products", admin: "/products" },
     label: "Products",
     adminOnly: true,
     icon: (
@@ -116,7 +116,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "stock",
-    href: "/stock",
+    href: { staff: "/cashier/stock", admin: "/stock" },
     label: "Stock",
     adminOnly: true,
     icon: (
@@ -139,7 +139,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "reports",
-    href: "/reports",
+    href: { staff: "/cashier/reports", admin: "/reports" },
     label: "Reports",
     adminOnly: true,
     icon: (

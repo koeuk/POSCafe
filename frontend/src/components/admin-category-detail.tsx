@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
@@ -11,6 +14,9 @@ export function AdminCategoryDetail({
   products: Product[];
 }) {
   const availableCount = products.filter((product) => product.isAvailable).length;
+  const pathname = usePathname();
+  // Stay in the current role's namespace (admin: clean, cashier: /cashier/*).
+  const base = pathname.startsWith("/cashier") ? "/cashier" : "";
 
   return (
     <main className="mx-auto max-w-7xl">
@@ -25,7 +31,7 @@ export function AdminCategoryDetail({
           </p>
         </div>
         <Link
-          href="/categories"
+          href={`${base}/categories`}
           className="rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
         >
           Categories

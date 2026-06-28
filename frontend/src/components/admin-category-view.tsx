@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { AdminCategoryDetail } from "@/components/admin-category-detail";
-import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
-import { Role, type Category, type Product } from "@/lib/types";
+import { type Category, type Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 function CategoryView({ id }: { id: string }) {
@@ -65,9 +64,5 @@ function CategoryView({ id }: { id: string }) {
 }
 
 export function AdminCategoryView({ id }: { id: string }) {
-  return (
-    <RequireAuth role={Role.ADMIN}>
-      <CategoryView id={id} />
-    </RequireAuth>
-  );
+  return <CategoryView id={id} />;
 }

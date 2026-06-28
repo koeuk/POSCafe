@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
@@ -110,6 +110,9 @@ export function AdminProductManagement({
   const [galleryLink, setGalleryLink] = useState("");
   const pageCopy = VIEW_COPY[view];
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  // Keep links within the current role's namespace (admin: clean, cashier: /cashier/*).
+  const base = pathname.startsWith("/cashier") ? "/cashier" : "";
   const handledEditParam = useRef(false);
 
   async function handleMainImageUpload(file: File | undefined) {
@@ -495,7 +498,7 @@ export function AdminProductManagement({
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <RowActions
-                            viewHref={`/categories/${category.id}`}
+                            viewHref={`${base}/categories/${category.id}`}
                             onEdit={() => openCategoryEdit(category)}
                             onDelete={() =>
                               setDeleteTarget({
@@ -675,7 +678,7 @@ export function AdminProductManagement({
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <RowActions
-                            viewHref={`/products/${product.id}`}
+                            viewHref={`${base}/products/${product.id}`}
                             onEdit={() => openProductEdit(product)}
                             onDelete={() =>
                               setDeleteTarget({
@@ -1040,7 +1043,7 @@ export function AdminProductManagement({
                 <p className="rounded-lg bg-stone-50 px-3 py-2.5 text-xs text-stone-500 dark:bg-stone-800/60 dark:text-stone-400">
                   No cup sizes defined yet. Add sizes on the{" "}
                   <Link
-                    href="/stock"
+                    href={`${base}/stock`}
                     className="font-medium text-[#2A1D15] underline dark:text-amber-400"
                   >
                     Stock
@@ -1141,7 +1144,7 @@ export function AdminProductManagement({
                   <p className="text-xs text-stone-400 dark:text-stone-500">
                     Size · price · Qty (cups in stock). Restock anytime on the{" "}
                     <Link
-                      href="/stock"
+                      href={`${base}/stock`}
                       className="underline hover:text-stone-600 dark:hover:text-stone-300"
                     >
                       Stock
