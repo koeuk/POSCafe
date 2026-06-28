@@ -9,7 +9,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrderStatus } from '../../common/enums/order-status.enum';
-import { OrderType } from '../../common/enums/order-type.enum';
 import { PaymentStatus } from '../../common/enums/payment-status.enum';
 import { User } from '../../users/entities/user.entity';
 import { OrderItem } from './order-item.entity';
@@ -32,10 +31,6 @@ export class Order {
     default: PaymentStatus.UNPAID,
   })
   paymentStatus: PaymentStatus;
-
-  // Whether the customer is dining in (in shop) or taking away.
-  @Column({ type: 'enum', enum: OrderType, default: OrderType.DINE_IN })
-  orderType: OrderType;
 
   @Column('decimal', { precision: 10, scale: 2 })
   total: number;

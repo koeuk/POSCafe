@@ -94,11 +94,6 @@ export enum OrderStatus {
   CANCELLED = "cancelled",
 }
 
-export enum OrderType {
-  DINE_IN = "dine_in",
-  TAKEAWAY = "takeaway",
-}
-
 export enum PaymentStatus {
   UNPAID = "unpaid",
   PAID = "paid",
@@ -125,7 +120,6 @@ export interface Order {
   orderNumber: string;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  orderType: OrderType;
   total: string;
   userId: number;
   items: OrderItem[];

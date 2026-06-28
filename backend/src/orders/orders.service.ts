@@ -7,7 +7,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
-import { OrderType } from '../common/enums/order-type.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
@@ -138,7 +137,6 @@ export class OrdersService implements OnModuleInit {
       const order = manager.create(Order, {
         orderNumber: `ORD-${Date.now()}`,
         status: OrderStatus.PENDING,
-        orderType: dto.orderType ?? OrderType.DINE_IN,
         total,
         userId,
         items, // cascade-inserted

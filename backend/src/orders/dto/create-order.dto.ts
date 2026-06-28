@@ -2,14 +2,12 @@ import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
-  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { OrderType } from '../../common/enums/order-type.enum';
 
 export class CreateOrderItemDto {
   @IsInt()
@@ -31,8 +29,4 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
-
-  @IsOptional()
-  @IsEnum(OrderType)
-  orderType?: OrderType;
 }
