@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
@@ -111,9 +111,27 @@ export function AdminProductManagement({
   const pageCopy = VIEW_COPY[view];
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const router = useRouter();
   // Keep links within the current role's namespace (admin: clean, cashier: /cashier/*).
   const base = pathname.startsWith("/cashier") ? "/cashier" : "";
-  const handledEditParam = useRef(false);
+  const handledParam = useRef(false);
+
+  // Reflect the open drawer in the URL query (e.g. ?create=1 or ?edit=12) so the
+  // action is shareable and the back button closes it.
+  function setQuery(next: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(next)) {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  function closeDrawer() {
+    setDrawer(null);
+    setQuery({ create: null, edit: null });
+  }
 
   async function handleMainImageUpload(file: File | undefined) {
     if (!file) return;
@@ -212,19 +230,34 @@ export function AdminProductManagement({
     };
   }, []);
 
-  // Deep-link: open a product's edit drawer when arriving via ?edit=<id>
-  // (e.g. the "Edit" button on the Stock page). Runs once per visit.
+  // Deep-link: open the create/edit drawer when arriving via ?create=1 or
+  // ?edit=<id> (e.g. the "Edit" button on the Stock page, or a shared link).
+  // Runs once per visit.
   useEffect(() => {
-    if (view !== "products" || handledEditParam.current) return;
+    if (handledParam.current) return;
+    if (searchParams.get("create")) {
+      handledParam.current = true;
+      if (view === "categories") openCategoryCreate();
+      else openProductCreate();
+      return;
+    }
     const editId = searchParams.get("edit");
     if (!editId) return;
-    const product = products.find((p) => p.id === Number(editId));
-    if (product) {
-      handledEditParam.current = true;
-      openProductEdit(product);
+    if (view === "categories") {
+      const category = categories.find((c) => c.id === Number(editId));
+      if (category) {
+        handledParam.current = true;
+        openCategoryEdit(category);
+      }
+    } else {
+      const product = products.find((p) => p.id === Number(editId));
+      if (product) {
+        handledParam.current = true;
+        openProductEdit(product);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, products, view]);
+  }, [searchParams, products, categories, view]);
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((category) => [category.id, category.name]));
@@ -262,6 +295,7 @@ export function AdminProductManagement({
     setCategoryForm(EMPTY_CATEGORY_FORM);
     setCategoryImageMode("upload");
     setDrawer({ type: "category", mode: "create" });
+    setQuery({ create: "1", edit: null });
     setError(null);
   }
 
@@ -275,6 +309,7 @@ export function AdminProductManagement({
     });
     setCategoryImageMode(category.image ? "link" : "upload");
     setDrawer({ type: "category", mode: "edit" });
+    setQuery({ edit: String(category.id), create: null });
     setError(null);
   }
 
@@ -283,6 +318,7 @@ export function AdminProductManagement({
     setImageMode("upload");
     setGalleryLink("");
     setDrawer({ type: "product", mode: "create" });
+    setQuery({ create: "1", edit: null });
     setError(null);
   }
 
@@ -309,6 +345,7 @@ export function AdminProductManagement({
     setImageMode(product.image ? "link" : "upload");
     setGalleryLink("");
     setDrawer({ type: "product", mode: "edit" });
+    setQuery({ edit: String(product.id), create: null });
     setError(null);
   }
 
@@ -361,7 +398,7 @@ export function AdminProductManagement({
         });
       }
       await reload();
-      setDrawer(null);
+      closeDrawer();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save category");
     } finally {
@@ -405,7 +442,7 @@ export function AdminProductManagement({
         await api(`/products/${productForm.id}`, { method: "PATCH", body: payload });
       }
       await reload();
-      setDrawer(null);
+      closeDrawer();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save product");
     } finally {
@@ -704,7 +741,7 @@ export function AdminProductManagement({
         <SidePanel
           title={drawer.mode === "create" ? "Create category" : "Edit category"}
           description="Categories appear as sections on the customer menu."
-          onClose={() => setDrawer(null)}
+          onClose={() => closeDrawer()}
         >
           <form
             onSubmit={submitCategory}
@@ -821,7 +858,7 @@ export function AdminProductManagement({
             <PanelActions
               busy={busy}
               submitLabel={drawer.mode === "create" ? "Create category" : "Save category"}
-              onCancel={() => setDrawer(null)}
+              onCancel={() => closeDrawer()}
             />
           </form>
         </SidePanel>
@@ -831,7 +868,7 @@ export function AdminProductManagement({
         <SidePanel
           title={drawer.mode === "create" ? "Create product" : "Edit product"}
           description="Products are shown in the customer menu when available."
-          onClose={() => setDrawer(null)}
+          onClose={() => closeDrawer()}
         >
           <form
             onSubmit={submitProduct}
@@ -1171,7 +1208,7 @@ export function AdminProductManagement({
             <PanelActions
               busy={busy}
               submitLabel={drawer.mode === "create" ? "Create product" : "Save product"}
-              onCancel={() => setDrawer(null)}
+              onCancel={() => closeDrawer()}
             />
           </form>
         </SidePanel>
