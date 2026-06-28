@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
@@ -9,6 +15,8 @@ import { OrderStatus, type Order, type Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 const ACCENT = "#2A1D15";
+// Revenue chart bars — green, matching the Revenue KPI card.
+const BAR = "#22C55E";
 
 interface CategorySales {
   categoryId: number;
@@ -46,6 +54,33 @@ const sw = {
   strokeLinejoin: "round" as const,
 };
 
+type Period =
+  | "this_week"
+  | "last_week"
+  | "this_month"
+  | "last_month"
+  | "this_year"
+  | "last_year"
+  | "all";
+
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "this_week", label: "This Week" },
+  { value: "last_week", label: "Last Week" },
+  { value: "this_month", label: "This Month" },
+  { value: "last_month", label: "Last Month" },
+  { value: "this_year", label: "This Year" },
+  { value: "last_year", label: "Last Year" },
+  { value: "all", label: "All Time" },
+];
+
+// Monday-based start of the week, at 00:00.
+function startOfWeek(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+
 function Dashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -53,6 +88,7 @@ function Dashboard() {
   const [categories, setCategories] = useState<CategorySales[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>("this_week");
 
   useEffect(() => {
     let cancelled = false;
@@ -96,29 +132,117 @@ function Dashboard() {
     };
   }, [orders, products]);
 
-  // Revenue for the last 7 days — completed orders only, matching the KPI card.
-  const daily = useMemo(() => {
-    const days: { label: string; value: number }[] = [];
+  // Revenue per bucket for the selected period — completed orders only.
+  // Weeks/months bucket by day; years and "all" bucket by month.
+  const chart = useMemo(() => {
     const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const key = d.toDateString();
-      const value = orders
-        .filter(
-          (o) =>
-            o.status === OrderStatus.COMPLETED &&
-            new Date(o.createdAt).toDateString() === key,
-        )
-        .reduce((s, o) => s + Number(o.total), 0);
-      days.push({
-        label: d.toLocaleDateString("en-US", { weekday: "short" }),
-        value,
-      });
+    const completed = orders.filter((o) => o.status === OrderStatus.COMPLETED);
+
+    let start: Date;
+    let end: Date;
+    let grain: "day" | "month";
+
+    switch (period) {
+      case "this_week":
+        start = startOfWeek(now);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        grain = "day";
+        break;
+      case "last_week":
+        start = startOfWeek(now);
+        start.setDate(start.getDate() - 7);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        grain = "day";
+        break;
+      case "this_month":
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        grain = "day";
+        break;
+      case "last_month":
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        grain = "day";
+        break;
+      case "this_year":
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+        grain = "month";
+        break;
+      case "last_year":
+        start = new Date(now.getFullYear() - 1, 0, 1);
+        end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+        grain = "month";
+        break;
+      default: {
+        // all — from the earliest completed order to now, by month.
+        const times = completed.map((o) => new Date(o.createdAt).getTime());
+        const earliest = times.length
+          ? new Date(Math.min(...times))
+          : new Date(now.getFullYear(), 0, 1);
+        start = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        grain = "month";
+      }
     }
-    return days;
-  }, [orders]);
-  const maxDaily = Math.max(1, ...daily.map((d) => d.value));
+
+    const map = new Map<string, number>();
+    for (const o of completed) {
+      const t = new Date(o.createdAt);
+      if (t < start || t > end) continue;
+      const key =
+        grain === "day" ? t.toDateString() : `${t.getFullYear()}-${t.getMonth()}`;
+      map.set(key, (map.get(key) ?? 0) + Number(o.total));
+    }
+
+    const buckets: { label: string; value: number; current: boolean }[] = [];
+    if (grain === "day") {
+      const todayKey = now.toDateString();
+      const byDate = period === "this_month" || period === "last_month";
+      for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const key = d.toDateString();
+        buckets.push({
+          label: byDate
+            ? String(d.getDate())
+            : d.toLocaleDateString("en-US", { weekday: "short" }),
+          value: map.get(key) ?? 0,
+          current: key === todayKey,
+        });
+      }
+    } else {
+      const curKey = `${now.getFullYear()}-${now.getMonth()}`;
+      const multiYear = start.getFullYear() !== end.getFullYear();
+      for (
+        const d = new Date(start.getFullYear(), start.getMonth(), 1);
+        d <= end;
+        d.setMonth(d.getMonth() + 1)
+      ) {
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        buckets.push({
+          label: d.toLocaleDateString("en-US", {
+            month: "short",
+            ...(multiYear ? { year: "2-digit" } : {}),
+          }),
+          value: map.get(key) ?? 0,
+          current: key === curKey,
+        });
+      }
+    }
+
+    return {
+      buckets,
+      total: buckets.reduce((s, b) => s + b.value, 0),
+      max: Math.max(1, ...buckets.map((b) => b.value)),
+    };
+  }, [orders, period]);
+
+  const periodLabel =
+    PERIODS.find((p) => p.value === period)?.label ?? "This Week";
+  const labelStep = Math.max(1, Math.ceil(chart.buckets.length / 12));
 
   // Categories sorted by popularity (quantity sold).
   const sortedCats = useMemo(
@@ -244,29 +368,38 @@ function Dashboard() {
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         {/* Revenue bar chart */}
         <Card className="lg:col-span-2" delay={360}>
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold text-stone-900 dark:text-stone-100">Revenue</h2>
-              <p className="text-sm text-stone-400 dark:text-stone-500">Last 7 days</p>
+              <p className="text-sm text-stone-400 dark:text-stone-500">{periodLabel}</p>
             </div>
-            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-              {formatPrice(daily.reduce((s, d) => s + d.value, 0))} total
-            </span>
+            <div className="flex items-center gap-2">
+              <PeriodMenu value={period} onChange={setPeriod} />
+              <span className="hidden rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 sm:inline dark:bg-stone-800 dark:text-stone-400">
+                {formatPrice(chart.total)} total
+              </span>
+            </div>
           </div>
-          <div className="flex h-48 items-end justify-between gap-3">
-            {daily.map((d, i) => (
+          <div
+            className={`flex h-48 items-end justify-between ${
+              chart.buckets.length > 12 ? "gap-1" : "gap-3"
+            }`}
+          >
+            {chart.buckets.length === 0 && (
+              <p className="m-auto text-sm text-stone-400 dark:text-stone-500">
+                No revenue in this period.
+              </p>
+            )}
+            {chart.buckets.map((d, i) => (
               <div key={i} className="group flex h-full flex-1 flex-col items-center gap-2">
                 <div className="flex w-full flex-1 items-end">
                   <div
                     className="relative w-full rounded-t-lg transition-[height,background] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-90"
                     style={{
-                      height: loading ? "2px" : `${(d.value / maxDaily) * 100}%`,
+                      height: loading ? "2px" : `${(d.value / chart.max) * 100}%`,
                       minHeight: d.value > 0 ? "6px" : "2px",
                       transitionDelay: `${i * 70}ms`,
-                      background:
-                        i === daily.length - 1
-                          ? ACCENT
-                          : `${ACCENT}55`,
+                      background: d.current ? BAR : `${BAR}59`,
                     }}
                   >
                     {/* Hover tooltip — day + revenue */}
@@ -280,7 +413,9 @@ function Dashboard() {
                     </div>
                   </div>
                 </div>
-                <span className="text-xs text-stone-400 dark:text-stone-500">{d.label}</span>
+                <span className="h-4 text-xs text-stone-400 dark:text-stone-500">
+                  {i % labelStep === 0 || d.current ? d.label : ""}
+                </span>
               </div>
             ))}
           </div>
@@ -457,6 +592,89 @@ function Dashboard() {
           </table>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function PeriodMenu({
+  value,
+  onChange,
+}: {
+  value: Period;
+  onChange: (p: Period) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = PERIODS.find((p) => p.value === value)?.label ?? "This Week";
+
+  // Close on outside click or Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-stone-50 active:scale-95 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700/60"
+      >
+        {current}
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-3.5 w-3.5 text-stone-400 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+          {...sw}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          className={`absolute right-0 z-20 mt-2 w-40 origin-top-right overflow-hidden rounded-xl p-1 ${GLASS}`}
+          style={{ animation: "menu-pop 160ms cubic-bezier(0.22,1,0.36,1)" }}
+        >
+          {PERIODS.map((p) => {
+            const active = p.value === value;
+            return (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => {
+                  onChange(p.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition ${
+                  active
+                    ? "bg-stone-100 text-stone-900 dark:bg-stone-700/60 dark:text-stone-100"
+                    : "text-stone-600 hover:bg-stone-100/70 dark:text-stone-300 dark:hover:bg-stone-700/40"
+                }`}
+              >
+                {p.label}
+                {active && (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" {...sw}>
+                    <path d="m5 13 4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
