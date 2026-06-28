@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { rolePathBase } from "@/lib/permissions";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
@@ -14,9 +15,8 @@ export function AdminCategoryDetail({
   products: Product[];
 }) {
   const availableCount = products.filter((product) => product.isAvailable).length;
-  const pathname = usePathname();
   // Stay in the current role's namespace (admin: clean, cashier: /cashier/*).
-  const base = pathname.startsWith("/cashier") ? "/cashier" : "";
+  const base = rolePathBase(usePathname());
 
   return (
     <main className="mx-auto max-w-7xl">

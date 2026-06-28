@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { ProductDetailDrawer } from "@/components/product-detail-drawer";
-import { useAuth } from "@/lib/auth-context";
+import { rolePathBase } from "@/lib/permissions";
 import { api } from "@/lib/api";
 import {
   effectivePrice,
@@ -33,7 +34,7 @@ function cartKey(productId: number, sizeName: string | null | undefined) {
 }
 
 function POSScreen() {
-  const { isAdmin } = useAuth();
+  const pathname = usePathname();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);

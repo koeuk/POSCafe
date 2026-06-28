@@ -67,6 +67,14 @@ export const CASHIER_PAGE_HREFS: Record<string, string> = {
   reports: "/cashier/reports",
 };
 
+// Route prefix for the current role context, inferred from the path: cashier
+// pages live under /cashier/*, admin pages at the clean root. Use to build
+// sibling links that stay within the same namespace, e.g.
+// `${rolePathBase(pathname)}/products`.
+export function rolePathBase(pathname: string): "" | "/cashier" {
+  return pathname.startsWith("/cashier") ? "/cashier" : "";
+}
+
 // Which page a pathname belongs to. The optional /cashier prefix is stripped
 // first so both /reports and /cashier/reports resolve to the same key
 // (longest-prefix match so nested routes like /products/12 still resolve).

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { rolePathBase } from "@/lib/permissions";
 import {
   effectivePrice,
   formatPrice,
@@ -18,9 +19,8 @@ function ProductView({ id }: { id: string }) {
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const pathname = usePathname();
   // Stay in the current role's namespace (admin: clean, cashier: /cashier/*).
-  const base = pathname.startsWith("/cashier") ? "/cashier" : "";
+  const base = rolePathBase(usePathname());
 
   useEffect(() => {
     let cancelled = false;

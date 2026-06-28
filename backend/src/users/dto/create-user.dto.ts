@@ -1,4 +1,5 @@
 import {
+  ArrayMinSize,
   IsArray,
   IsEnum,
   IsNotEmpty,
@@ -29,9 +30,11 @@ export class CreateUserDto {
   @IsString()
   avatar?: string;
 
-  // Sidebar pages a cashier may see (ignored for admins).
+  // Sidebar pages a cashier may see (ignored for admins). Omit/null = default
+  // cashier pages; an empty array is rejected (it would lock the cashier out).
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @IsString({ each: true })
   allowedPages?: string[];
 }

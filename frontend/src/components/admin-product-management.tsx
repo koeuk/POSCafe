@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
+import { rolePathBase } from "@/lib/permissions";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product, Size } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
@@ -113,7 +114,7 @@ export function AdminProductManagement({
   const pathname = usePathname();
   const router = useRouter();
   // Keep links within the current role's namespace (admin: clean, cashier: /cashier/*).
-  const base = pathname.startsWith("/cashier") ? "/cashier" : "";
+  const base = rolePathBase(pathname);
   const handledParam = useRef(false);
 
   // Reflect the open drawer in the URL query (e.g. ?create=1 or ?edit=12) so the
