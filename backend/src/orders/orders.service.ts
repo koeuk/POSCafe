@@ -5,7 +5,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, MoreThanOrEqual, Not, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { OrderType } from '../common/enums/order-type.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
@@ -192,44 +192,6 @@ export class OrdersService implements OnModuleInit {
       relations: { items: { product: true }, user: true },
       order: { createdAt: 'DESC' },
     });
-  }
-
-  /**
-   * Cashier "today" snapshot: order/item counts, revenue, and cups by size.
-   * Excludes cancelled orders.
-   */
-  async getTodaySummary() {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    const orders = await this.repo.find({
-      where: {
-        createdAt: MoreThanOrEqual(start),
-        status: Not(OrderStatus.CANCELLED),
-      },
-      relations: { items: true },
-    });
-
-    let items = 0;
-    let revenue = 0;
-    const cupsBySize: Record<string, number> = {};
-
-    for (const order of orders) {
-      revenue += Number(order.total);
-      for (const item of order.items) {
-        items += item.quantity;
-        if (item.size) {
-          cupsBySize[item.size] = (cupsBySize[item.size] ?? 0) + item.quantity;
-        }
-      }
-    }
-
-    return {
-      orders: orders.length,
-      items,
-      revenue: Math.round(revenue * 100) / 100,
-      cupsBySize,
-    };
   }
 
   async findOne(id: number): Promise<Order> {

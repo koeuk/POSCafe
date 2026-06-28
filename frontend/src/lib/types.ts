@@ -22,13 +22,6 @@ export interface AuthResponse {
   user: User;
 }
 
-// GET /auth/me returns the JWT payload (no name).
-export interface AuthUser {
-  id: number;
-  username: string;
-  role: Role;
-}
-
 export interface Category {
   id: number;
   name: string;
@@ -71,7 +64,6 @@ export interface ProductVariant {
   id: number;
   productId: number;
   size: string;
-  price: string;
   stock: number;
   // Capacity high-water mark for this size (see Product.totalStock).
   totalStock: number;
@@ -138,18 +130,4 @@ export interface Order {
   userId: number;
   items: OrderItem[];
   createdAt: string;
-}
-
-// Cashier "today" snapshot from GET /orders/today-summary.
-export interface TodaySummary {
-  orders: number;
-  items: number;
-  revenue: number;
-  cupsBySize: Record<string, number>;
-}
-
-// POST /orders payload.
-export interface CreateOrderPayload {
-  orderType?: OrderType;
-  items: { productId: number; quantity: number; size?: string }[];
 }

@@ -93,18 +93,16 @@ export class ProductsService {
     for (const s of wanted) {
       const current = existing.find((v) => v.size === s.size);
       if (current) {
-        current.price = s.price;
         if (s.stock !== undefined) {
           current.stock = s.stock;
           current.totalStock = Math.max(current.totalStock ?? 0, s.stock);
+          await this.variantRepo.save(current);
         }
-        await this.variantRepo.save(current);
       } else {
         await this.variantRepo.save(
           this.variantRepo.create({
             productId,
             size: s.size,
-            price: s.price,
             stock: s.stock ?? 0,
             totalStock: s.stock ?? 0,
           }),

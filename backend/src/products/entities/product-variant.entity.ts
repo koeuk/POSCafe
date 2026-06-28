@@ -31,10 +31,6 @@ export class ProductVariant {
   @Column({ type: 'varchar', length: 255 })
   size: string;
 
-  // Price snapshot mirrored from the product's size option (for reference).
-  @Column('decimal', { precision: 10, scale: 2, default: 0 })
-  price: number;
-
   @Column({ default: 0 })
   stock: number;
 

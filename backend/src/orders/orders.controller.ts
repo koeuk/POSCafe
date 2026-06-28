@@ -44,14 +44,6 @@ export class OrdersController {
     });
   }
 
-  // Cashier "today" sales snapshot — declared before :id so it isn't treated
-  // as an id.
-  @RequiresPage('pos', 'dashboard', 'reports')
-  @Get('today-summary')
-  todaySummary() {
-    return this.ordersService.getTodaySummary();
-  }
-
   // Viewing a single order: same access as viewing the list.
   @RequiresPage('orders', 'order-history', 'kitchen', 'payments')
   @Get(':id')

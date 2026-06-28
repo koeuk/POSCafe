@@ -26,8 +26,6 @@ export const CASHIER_PAGES: PagePermission[] = [
   { key: "qr", label: "QR Code" },
 ];
 
-export const CASHIER_PAGE_KEYS = CASHIER_PAGES.map((p) => p.key);
-
 // Pages a cashier sees when `allowedPages` has never been set (legacy accounts).
 // Mirrors the original hard-coded cashier sidebar.
 export const DEFAULT_CASHIER_PAGES = ["pos", "orders", "order-history"];
