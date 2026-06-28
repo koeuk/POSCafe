@@ -334,13 +334,13 @@ function POSScreen() {
                   <span>{formatPrice(lastOrder.total)}</span>
                   <div className="flex gap-3">
                     <Link
-                      href={`${isAdmin ? "/admin/pay" : "/pay"}?orderId=${lastOrder.id}`}
+                      href={`/pay?orderId=${lastOrder.id}`}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       Pay
                     </Link>
                     <Link
-                      href="/orders"
+                      href={isAdmin ? "/orders" : "/cashier/orders"}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       View

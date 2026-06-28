@@ -45,7 +45,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "pos",
-    href: "/pos",
+    href: { staff: "/cashier/pos", admin: "/pos" },
     label: "Point of Sale",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -57,7 +57,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "orders",
-    href: "/orders",
+    href: { staff: "/cashier/orders", admin: "/orders" },
     label: "Orders",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -68,7 +68,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "payments",
-    href: { staff: "/pay", admin: "/admin/pay" },
+    href: "/pay",
     label: "Payments",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -79,7 +79,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "kitchen",
-    href: { staff: "/kitchen", admin: "/admin/kitchen" },
+    href: "/kitchen",
     label: "Kitchen",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -128,7 +128,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "order-history",
-    href: { staff: "/order-history", admin: "/admin/orders" },
+    href: { staff: "/cashier/order-history", admin: "/manage-orders" },
     label: "Order History",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -154,7 +154,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "qr",
-    href: { staff: "/menu/qr", admin: "/admin/menu/qr" },
+    href: "/qr",
     label: "QR Code",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -425,7 +425,7 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
           <div className="my-1 border-t border-stone-100 dark:border-stone-800" />
           {isAdmin && (
             <Link
-              href="/admin/settings"
+              href="/settings"
               role="menuitem"
               onClick={() => setOpen(false)}
               className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-stone-700 transition hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"

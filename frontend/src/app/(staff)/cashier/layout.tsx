@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { StaffShell } from "@/components/staff-shell";
 
-// Cashier-namespaced management pages (/cashier/*). Auth + sidebar come from
-// the (staff) layout; PageGuard enforces per-page access.
+// Pass-through for the /cashier/* segment. The shell differs per page:
+//  - management pages live in (manage) and get a padded StaffShell there;
+//  - pos/orders/order-history re-export top-level pages that wrap their own
+//    shell (the POS is full-bleed, so it must not be padded here).
 export default function CashierLayout({ children }: { children: ReactNode }) {
-  return <StaffShell>{children}</StaffShell>;
+  return <>{children}</>;
 }

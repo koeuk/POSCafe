@@ -115,7 +115,7 @@ export function AdminCategoryDetail({
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link
-                          href={`/admin/menu/${product.id}`}
+                          href={`${base}/products/${product.id}`}
                           className="rounded-lg border border-stone-200 dark:border-stone-800 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-400 transition hover:bg-stone-50 dark:hover:bg-stone-800"
                         >
                           View

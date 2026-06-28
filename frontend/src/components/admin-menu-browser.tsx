@@ -116,7 +116,7 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                   {cat.products.map((product) => (
                     <Link
                       key={product.id}
-                      href={`/admin/menu/${product.id}`}
+                      href={`/menu-preview/${product.id}`}
                       className={`group grid grid-cols-[128px_1fr] overflow-hidden rounded-2xl ${GLASS} transition hover:border-[#2A1D15]/30 hover:shadow-md`}
                     >
                       <div className="relative h-full min-h-24 bg-stone-100 dark:bg-stone-800">

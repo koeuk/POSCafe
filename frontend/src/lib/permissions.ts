@@ -50,7 +50,7 @@ export const CLEAN_PAGE_HREFS: Record<string, string> = {
   stock: "/stock",
   "order-history": "/order-history",
   reports: "/reports",
-  qr: "/menu/qr",
+  qr: "/qr",
 };
 
 // Where the sidebar sends a cashier. The management pages live under a
@@ -58,9 +58,12 @@ export const CLEAN_PAGE_HREFS: Record<string, string> = {
 // the clean routes above.
 export const CASHIER_PAGE_HREFS: Record<string, string> = {
   ...CLEAN_PAGE_HREFS,
+  pos: "/cashier/pos",
+  orders: "/cashier/orders",
   categories: "/cashier/categories",
   products: "/cashier/products",
   stock: "/cashier/stock",
+  "order-history": "/cashier/order-history",
   reports: "/cashier/reports",
 };
 
