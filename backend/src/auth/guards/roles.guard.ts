@@ -1,6 +1,9 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PAGE_KEY } from '../../common/decorators/requires-page.decorator';
+import {
+  DEFAULT_CASHIER_PAGES,
+  PAGE_KEY,
+} from '../../common/decorators/requires-page.decorator';
 import { ROLES_KEY } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
@@ -38,7 +41,8 @@ export class RolesGuard implements CanActivate {
     }
 
     if (hasPages) {
-      const allowed: string[] = user?.allowedPages ?? [];
+      // null allowedPages = legacy cashier → default pages (see user entity).
+      const allowed: string[] = user?.allowedPages ?? DEFAULT_CASHIER_PAGES;
       return requiredPages.some((page) => allowed.includes(page));
     }
 

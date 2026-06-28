@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -18,14 +19,17 @@ import { OrdersService } from './orders.service';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // Any authenticated user (cashier) can create an order.
+  // Orders are created from the POS screen.
+  @RequiresPage('pos')
   @Post()
   create(@CurrentUser('id') userId: number, @Body() dto: CreateOrderDto) {
     return this.ordersService.create(userId, dto);
   }
 
+  // Read by the Orders, Order History, Kitchen and Take Payment screens.
   // Optional filters: ?status=pending, ?mine=true (only my orders),
   // ?unpaid=true (orders without a payment yet — for the Take Payment screen).
+  @RequiresPage('orders', 'order-history', 'kitchen', 'payments')
   @Get()
   findAll(
     @CurrentUser('id') userId: number,
@@ -40,17 +44,23 @@ export class OrdersController {
     });
   }
 
-  // Cashier "today" summary — declared before :id so it isn't treated as an id.
+  // Cashier "today" sales snapshot — declared before :id so it isn't treated
+  // as an id.
+  @RequiresPage('pos', 'dashboard', 'reports')
   @Get('today-summary')
   todaySummary() {
     return this.ordersService.getTodaySummary();
   }
 
+  // Viewing a single order: same access as viewing the list.
+  @RequiresPage('orders', 'order-history', 'kitchen', 'payments')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.ordersService.findOne(id);
   }
 
+  // Status changes come from the Orders, Order History and Kitchen screens.
+  @RequiresPage('orders', 'order-history', 'kitchen')
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
