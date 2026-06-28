@@ -4,8 +4,24 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { StatusDropdown } from "@/components/status-dropdown";
 import { api } from "@/lib/api";
-import { OrderStatus, type Order } from "@/lib/types";
+import { OrderStatus, PaymentStatus, type Order } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
+
+// Small Paid / Unpaid pill shown next to each order number.
+function PaymentBadge({ status }: { status: PaymentStatus }) {
+  const paid = status === PaymentStatus.PAID;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+        paid
+          ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300"
+          : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+      }`}
+    >
+      {paid ? "Paid" : "Unpaid"}
+    </span>
+  );
+}
 
 // The orders endpoint joins the cashier; extend locally to avoid editing
 // the shared types.ts (kept minimal to prevent collisions).
@@ -130,8 +146,9 @@ function OrderHistory() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-stone-900 dark:text-stone-100">
+                    <p className="flex items-center gap-2 font-semibold text-stone-900 dark:text-stone-100">
                       {order.orderNumber}
+                      <PaymentBadge status={order.paymentStatus} />
                     </p>
                     <p className="text-sm text-stone-500 dark:text-stone-400">
                       {new Date(order.createdAt).toLocaleString()}

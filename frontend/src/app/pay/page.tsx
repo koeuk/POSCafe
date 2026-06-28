@@ -75,7 +75,7 @@ function PayScreen() {
             setAlreadyPaid(existing !== null);
           }
         } else {
-          const list = await api<Order[]>("/orders?status=pending");
+          const list = await api<Order[]>("/orders?unpaid=true");
           if (!cancelled) setPending(list);
         }
       } catch (err) {

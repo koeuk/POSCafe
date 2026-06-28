@@ -24,16 +24,19 @@ export class OrdersController {
     return this.ordersService.create(userId, dto);
   }
 
-  // Optional filters: ?status=pending  and  ?mine=true (only my orders).
+  // Optional filters: ?status=pending, ?mine=true (only my orders),
+  // ?unpaid=true (orders without a payment yet — for the Take Payment screen).
   @Get()
   findAll(
     @CurrentUser('id') userId: number,
     @Query('status') status?: OrderStatus,
     @Query('mine') mine?: string,
+    @Query('unpaid') unpaid?: string,
   ) {
     return this.ordersService.findAll({
       status,
       userId: mine === 'true' ? userId : undefined,
+      unpaid: unpaid === 'true',
     });
   }
 

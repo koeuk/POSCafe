@@ -63,7 +63,8 @@ export class PaymentsService {
     });
     const saved = await this.repo.save(payment);
 
-    // Payment received → complete the order (also broadcasts via gateway).
+    // Payment received → mark paid, then complete the order (both broadcast).
+    await this.ordersService.markPaid(order.id);
     await this.ordersService.updateStatus(order.id, OrderStatus.COMPLETED);
 
     return saved;

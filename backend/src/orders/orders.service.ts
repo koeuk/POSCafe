@@ -2,11 +2,13 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  type OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { OrderType } from '../common/enums/order-type.enum';
+import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -17,16 +19,32 @@ import { OrdersGateway } from './orders.gateway';
 export interface FindOrdersFilter {
   status?: OrderStatus;
   userId?: number;
+  // Only orders that have no payment yet (and aren't cancelled).
+  unpaid?: boolean;
 }
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit {
   constructor(
     @InjectRepository(Order)
     private readonly repo: Repository<Order>,
     private readonly dataSource: DataSource,
     private readonly gateway: OrdersGateway,
   ) {}
+
+  // Backfill paymentStatus for orders created before this column existed:
+  // any order that already has a payment row is marked paid.
+  async onModuleInit() {
+    try {
+      await this.repo.query(
+        `UPDATE orders o SET o.paymentStatus = 'paid'
+         WHERE o.paymentStatus <> 'paid'
+           AND EXISTS (SELECT 1 FROM payments p WHERE p.orderId = o.id)`,
+      );
+    } catch {
+      // Tables may not exist yet on a fresh database — safe to ignore.
+    }
+  }
 
   /**
    * Creates an order atomically: validates each product, snapshots prices,
@@ -137,9 +155,31 @@ export class OrdersService {
   }
 
   findAll(filter: FindOrdersFilter = {}): Promise<Order[]> {
+    // Unpaid orders: no payment row yet, and not cancelled. Used by the
+    // "Take Payment" screen so paid/cancelled orders never show up there.
+    if (filter.unpaid) {
+      const qb = this.repo
+        .createQueryBuilder('o')
+        .leftJoinAndSelect('o.items', 'items')
+        .leftJoinAndSelect('items.product', 'product')
+        .leftJoinAndSelect('o.user', 'user')
+        .where('o.status != :cancelled', { cancelled: OrderStatus.CANCELLED })
+        .andWhere('o.paymentStatus = :unpaid', {
+          unpaid: PaymentStatus.UNPAID,
+        })
+        .orderBy('o.createdAt', 'DESC');
+      if (filter.status !== undefined) {
+        qb.andWhere('o.status = :status', { status: filter.status });
+      }
+      if (filter.userId !== undefined) {
+        qb.andWhere('o.userId = :userId', { userId: filter.userId });
+      }
+      return qb.getMany();
+    }
+
     // Build the where clause with only defined keys — TypeORM throws on
     // undefined values in a where condition.
-    const where: FindOrdersFilter = {};
+    const where: { status?: OrderStatus; userId?: number } = {};
     if (filter.status !== undefined) {
       where.status = filter.status;
     }
@@ -209,6 +249,14 @@ export class OrdersService {
     await this.repo.save(order);
 
     // Broadcast the status change so every screen stays in sync.
+    const updated = await this.findOne(id);
+    this.gateway.emitOrderUpdated(updated);
+    return updated;
+  }
+
+  /** Marks an order paid (called when a payment is recorded). */
+  async markPaid(id: number): Promise<Order> {
+    await this.repo.update(id, { paymentStatus: PaymentStatus.PAID });
     const updated = await this.findOne(id);
     this.gateway.emitOrderUpdated(updated);
     return updated;

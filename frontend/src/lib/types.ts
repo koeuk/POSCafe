@@ -107,6 +107,11 @@ export enum OrderType {
   TAKEAWAY = "takeaway",
 }
 
+export enum PaymentStatus {
+  UNPAID = "unpaid",
+  PAID = "paid",
+}
+
 export enum PaymentMethod {
   CASH = "cash",
   QR = "qr",
@@ -127,6 +132,7 @@ export interface Order {
   id: number;
   orderNumber: string;
   status: OrderStatus;
+  paymentStatus: PaymentStatus;
   orderType: OrderType;
   total: string;
   userId: number;

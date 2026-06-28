@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { OrderStatus } from '../../common/enums/order-status.enum';
 import { OrderType } from '../../common/enums/order-type.enum';
+import { PaymentStatus } from '../../common/enums/payment-status.enum';
 import { User } from '../../users/entities/user.entity';
 import { OrderItem } from './order-item.entity';
 
@@ -23,6 +24,14 @@ export class Order {
 
   @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.PENDING })
   status: OrderStatus;
+
+  // Payment state, tracked separately from the kitchen status above.
+  @Column({
+    type: 'enum',
+    enum: PaymentStatus,
+    default: PaymentStatus.UNPAID,
+  })
+  paymentStatus: PaymentStatus;
 
   // Whether the customer is dining in (in shop) or taking away.
   @Column({ type: 'enum', enum: OrderType, default: OrderType.DINE_IN })
