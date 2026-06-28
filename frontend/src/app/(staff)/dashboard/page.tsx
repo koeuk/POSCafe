@@ -16,7 +16,9 @@ import { GLASS } from "@/lib/ui";
 
 const ACCENT = "#2A1D15";
 // Revenue chart bars — green, matching the Revenue KPI card.
+// BAR is the default; BAR_CURRENT marks today/the current bucket.
 const BAR = "#22C55E";
+const BAR_CURRENT = "#15803D";
 
 interface CategorySales {
   categoryId: number;
@@ -399,7 +401,7 @@ function Dashboard() {
                       height: loading ? "2px" : `${(d.value / chart.max) * 100}%`,
                       minHeight: d.value > 0 ? "6px" : "2px",
                       transitionDelay: `${i * 70}ms`,
-                      background: d.current ? BAR : `${BAR}59`,
+                      background: d.current ? BAR_CURRENT : BAR,
                     }}
                   >
                     {/* Hover tooltip — day + revenue */}

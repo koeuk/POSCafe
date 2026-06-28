@@ -307,17 +307,31 @@ interface StockLine {
   key: string;
   size: string | null;
   current: number;
+  // Capacity high-water mark ("count all that we have"); sold = capacity − current.
+  capacity: number;
 }
 
 function linesFor(product: Product): StockLine[] {
   if (product.sizes && product.sizes.length > 0) {
-    return product.sizes.map((s) => ({
-      key: s.size,
-      size: s.size,
-      current: product.variants?.find((v) => v.size === s.size)?.stock ?? 0,
-    }));
+    return product.sizes.map((s) => {
+      const variant = product.variants?.find((v) => v.size === s.size);
+      const current = variant?.stock ?? 0;
+      return {
+        key: s.size,
+        size: s.size,
+        current,
+        capacity: variant?.totalStock ?? current,
+      };
+    });
   }
-  return [{ key: "__base__", size: null, current: product.stock }];
+  return [
+    {
+      key: "__base__",
+      size: null,
+      current: product.stock,
+      capacity: product.totalStock ?? product.stock,
+    },
+  ];
 }
 
 interface NewSizeRow {
@@ -500,31 +514,32 @@ function ProductStock({
           </p>
         </div>
         {(() => {
-          // out = sizes sold out; in = total cups across all sizes.
-          const out = lines.filter(
-            (l) => Number(values[l.key] || "0") <= 0,
-          ).length;
+          // Totals across every size: sold / capacity, plus cups still in stock.
           const inCups = lines.reduce(
             (sum, l) => sum + Math.max(0, Number(values[l.key] || "0")),
             0,
           );
+          const capacity = lines.reduce(
+            (sum, l) => sum + Math.max(l.capacity, Number(values[l.key] || "0")),
+            0,
+          );
+          const sold = Math.max(0, capacity - inCups);
           return (
-            <span className="hidden items-center gap-1 text-xs font-medium sm:inline-flex">
-              <span
-                className={
-                  out > 0
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-stone-400 dark:text-stone-500"
-                }
-              >
-                out stock {out}
+            <span className="hidden items-center gap-1.5 text-xs font-medium sm:inline-flex">
+              <span className="tabular-nums">
+                <span className="text-amber-600 dark:text-amber-400">{sold}</span>
+                <span className="text-stone-300 dark:text-stone-600"> / </span>
+                <span className="text-stone-500 dark:text-stone-400">
+                  {capacity}
+                </span>
+                <span className="text-stone-400 dark:text-stone-500"> sold</span>
               </span>
-              <span className="text-stone-300 dark:text-stone-600">/</span>
+              <span className="text-stone-300 dark:text-stone-600">·</span>
               <span
                 className={
                   inCups > 0
                     ? "text-green-600 dark:text-green-400"
-                    : "text-stone-400 dark:text-stone-500"
+                    : "text-red-600 dark:text-red-400"
                 }
               >
                 in stock {inCups}
@@ -578,6 +593,9 @@ function ProductStock({
         {lines.map((l) => {
           const inCups = Math.max(0, Number(values[l.key] || "0"));
           const out = inCups <= 0;
+          // sold / capacity — how many have sold out of everything we ever had.
+          const capacity = Math.max(l.capacity, inCups);
+          const sold = Math.max(0, capacity - inCups);
           return (
             <div
               key={l.key}
@@ -591,18 +609,12 @@ function ProductStock({
                   {l.size ?? "Stock"}
                 </span>
                 <span className="text-xs font-medium tabular-nums">
-                  <span className="text-green-600 dark:text-green-400">
-                    {inCups}
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {sold}
                   </span>
                   <span className="text-stone-300 dark:text-stone-600"> / </span>
-                  <span
-                    className={
-                      out
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-stone-400 dark:text-stone-500"
-                    }
-                  >
-                    {out ? 1 : 0}
+                  <span className="text-stone-500 dark:text-stone-400">
+                    {capacity}
                   </span>
                 </span>
               </span>
