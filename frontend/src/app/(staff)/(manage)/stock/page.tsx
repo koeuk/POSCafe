@@ -62,10 +62,7 @@ function Stock() {
       if (outOnly) {
         const hasSizes = !!p.sizes && p.sizes.length > 0;
         const anyOut = hasSizes
-          ? p.sizes!.some(
-              (s) =>
-                (p.variants?.find((v) => v.size === s.size)?.stock ?? 0) <= 0,
-            )
+          ? p.sizes!.some((s) => sizeStock(p, s.size) <= 0)
           : p.stock <= 0;
         if (!anyOut) return false;
       }

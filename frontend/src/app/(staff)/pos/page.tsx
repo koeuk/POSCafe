@@ -341,7 +341,7 @@ function POSScreen() {
                       Pay
                     </Link>
                     <Link
-                      href={isAdmin ? "/orders" : "/cashier/orders"}
+                      href={`${rolePathBase(pathname)}/orders`}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       View
