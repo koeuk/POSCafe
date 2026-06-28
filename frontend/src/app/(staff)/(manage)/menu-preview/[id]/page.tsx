@@ -25,5 +25,9 @@ export default async function ProductDetailPage({
   const product = await getProduct(id);
   if (!product) notFound();
 
-  return <AdminProductDetail product={product} />;
+  return (
+    <RequireAuth role={Role.ADMIN}>
+      <AdminProductDetail product={product} />
+    </RequireAuth>
+  );
 }

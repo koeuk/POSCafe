@@ -117,6 +117,9 @@ function Settings() {
     form.name.trim().length > 0 &&
     form.username.trim().length >= 3 &&
     form.password.length >= 6 &&
+    // A cashier locked out of every page can't use the app (and PageGuard would
+    // bounce them to /login), so require at least one granted page.
+    (form.role !== Role.CASHIER || pages.length > 0) &&
     !submitting;
 
   return (
@@ -712,7 +715,9 @@ function PermissionsModal({
         <PagePermissions value={pages} onChange={setPages} />
 
         <p className="mt-3 text-xs text-stone-400 dark:text-stone-500">
-          Changes take effect the next time this cashier logs in.
+          {pages.length === 0
+            ? "Select at least one page — a cashier with no access can't sign in."
+            : "Changes take effect the next time this cashier logs in."}
         </p>
 
         {error && (
@@ -731,7 +736,7 @@ function PermissionsModal({
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || pages.length === 0}
             className="flex-1 rounded-xl bg-[#2A1D15] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
           >
             {saving ? "Saving…" : "Save access"}
