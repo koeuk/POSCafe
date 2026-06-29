@@ -4,6 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
 import { GLASS } from "@/lib/ui";
+import { downloadExcel } from "@/lib/export-excel";
+
+type Period = "day" | "week" | "month" | "year";
+
+const PERIODS: { value: Period; label: string; days: number }[] = [
+  { value: "day", label: "Today", days: 1 },
+  { value: "week", label: "This Week", days: 7 },
+  { value: "month", label: "This Month", days: 30 },
+  { value: "year", label: "This Year", days: 365 },
+];
 
 interface ReportSummary {
   today: { orders: number; revenue: number };
@@ -36,6 +46,9 @@ export default function ReportsPage() {
   const [stock, setStock] = useState<StockReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>("week");
+
+  const periodMeta = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +60,7 @@ export default function ReportsPage() {
         const [nextSummary, nextDaily, nextBestProducts, nextStock] =
           await Promise.all([
             api<ReportSummary>("/reports/summary"),
-            api<DailySale[]>("/reports/daily-sales?days=14"),
+            api<DailySale[]>(`/reports/daily-sales?days=${periodMeta.days}`),
             api<BestProduct[]>("/reports/best-products?limit=8"),
             api<StockReport>("/reports/stock"),
           ]);
@@ -70,7 +83,7 @@ export default function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [periodMeta.days]);
 
   const sortedDaily = useMemo(
     () =>
@@ -83,6 +96,56 @@ export default function ReportsPage() {
   const totalWindowRevenue = sortedDaily.reduce((sum, d) => sum + d.revenue, 0);
   const totalWindowOrders = sortedDaily.reduce((sum, d) => sum + d.orders, 0);
 
+  function handleExport() {
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadExcel(`poscafe-report-${period}-${stamp}`, [
+      {
+        title: `Summary (${periodMeta.label})`,
+        columns: ["Metric", "Value"],
+        rows: [
+          ["Today Revenue", formatPrice(summary?.today.revenue ?? 0)],
+          ["Today Orders", summary?.today.orders ?? 0],
+          ["All-time Revenue", formatPrice(summary?.allTime.revenue ?? 0)],
+          ["All-time Orders", summary?.allTime.orders ?? 0],
+          ["Window Revenue", formatPrice(totalWindowRevenue)],
+          ["Window Orders", totalWindowOrders],
+        ],
+      },
+      {
+        title: `Daily Sales — ${periodMeta.label}`,
+        columns: ["Date", "Orders", "Revenue"],
+        rows: sortedDaily.map((d) => [
+          d.date,
+          d.orders,
+          formatPrice(d.revenue),
+        ]),
+      },
+      {
+        title: "Best Products",
+        columns: ["Product", "Sold", "Revenue"],
+        rows: bestProducts.map((p) => [
+          p.name,
+          p.quantitySold,
+          formatPrice(p.revenue),
+        ]),
+      },
+      ...(stock
+        ? [
+            {
+              title: "Cup Stock by Size",
+              columns: ["Size", "In stock", "Variants", "Out of stock"],
+              rows: stock.bySize.map((s) => [
+                s.size,
+                s.inStock,
+                s.variants,
+                s.outOfStock,
+              ]),
+            },
+          ]
+        : []),
+    ]);
+  }
+
   return (
     <main className="mx-auto max-w-7xl">
       <div className={`mb-6 flex flex-wrap items-end justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
@@ -94,9 +157,40 @@ export default function ReportsPage() {
             Completed order revenue and product performance.
           </p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-500 ring-1 ring-stone-200 dark:bg-stone-900 dark:text-stone-400 dark:ring-stone-800">
-          Last 14 days
-        </span>
+        <div className="flex items-center gap-2">
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as Period)}
+            aria-label="Report period"
+            className="cursor-pointer rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:focus:border-amber-500 dark:focus:ring-amber-500/20"
+          >
+            {PERIODS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3v12M8 11l4 4 4-4M5 21h14" />
+            </svg>
+            Export Excel
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -115,7 +209,9 @@ export default function ReportsPage() {
       <section className={`mt-6 rounded-2xl p-5 ${GLASS}`}>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-stone-900 dark:text-stone-100">Daily Sales</h2>
+            <h2 className="font-semibold text-stone-900 dark:text-stone-100">
+              Daily Sales · {periodMeta.label}
+            </h2>
             <p className="text-sm text-stone-400 dark:text-stone-500">
               {formatPrice(totalWindowRevenue)} from {totalWindowOrders} orders
             </p>
