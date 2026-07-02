@@ -507,7 +507,7 @@ function ProductCard({
           : "hover:shadow-[0_12px_28px_rgba(120,80,40,0.14)]"
       }`}
     >
-      <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100 dark:from-amber-500/15 dark:to-stone-800">
+      <div className="relative mb-3 aspect-[1/1] w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-stone-100 dark:from-amber-500/15 dark:to-stone-800">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -581,7 +581,7 @@ function ProductCard({
 
       <div className="mt-auto pt-3">
         {sizes.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className={sizes.length === 1 ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-2 gap-1.5"}>
             {sizes.map((size, index) => {
               const sizeOut = sizeStock(product, size.size) <= 0;
               return (
@@ -590,7 +590,7 @@ function ProductCard({
                   type="button"
                   disabled={sizeOut}
                   onClick={() => onAdd(product, size)}
-                  className={`flex ${sizes.length === 2 || (sizes.length === 3 && index < 2) ? "flex-1 basis-[calc(50%-0.1875rem)]" : sizes.length === 3 ? "w-full" : size.size.length > 10 ? "w-full" : "w-auto min-w-[5.75rem]"} max-w-full items-center justify-between gap-3 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800`}
+                  className="flex w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
                 >
                   <span className="min-w-0 break-words text-left leading-snug">
                     {size.size}
