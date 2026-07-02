@@ -346,29 +346,55 @@ function ProductStock({
   onSaved: () => Promise<void>;
 }) {
   const lines = useMemo(() => linesFor(product), [product]);
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(lines.map((l) => [l.key, String(l.current)])),
-  );
+  const initialStockValues = () =>
+    Object.fromEntries(lines.map((l) => [l.key, String(l.current)]));
+  const initialSizeValues = () =>
+    Object.fromEntries((product.sizes ?? []).map((s) => [s.size, s.size]));
+  const initialPriceValues = () =>
+    Object.fromEntries(
+      (product.sizes ?? []).map((s) => [s.size, String(s.price)]),
+    );
+  const [values, setValues] = useState<Record<string, string>>(initialStockValues);
+  const [sizeValues, setSizeValues] =
+    useState<Record<string, string>>(initialSizeValues);
+  const [priceValues, setPriceValues] =
+    useState<Record<string, string>>(initialPriceValues);
   const [newRows, setNewRows] = useState<NewSizeRow[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [removedSizes, setRemovedSizes] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
+
+  const activeLines = useMemo(
+    () => lines.filter((line) => !line.size || !removedSizes.has(line.size)),
+    [lines, removedSizes],
+  );
 
   // Size names already used by the product or by a pending new row.
   const usedSizes = useMemo(
     () =>
       new Set([
-        ...(product.sizes ?? []).map((s) => s.size),
+        ...(product.sizes ?? [])
+          .filter((s) => !removedSizes.has(s.size))
+          .map((s) => sizeValues[s.size] ?? s.size),
         ...newRows.map((r) => r.size),
       ]),
-    [product.sizes, newRows],
+    [product.sizes, newRows, removedSizes, sizeValues],
   );
 
   const dirty =
-    lines.some((l) => Number(values[l.key]) !== l.current) || newRows.length > 0;
+    activeLines.some((l) => Number(values[l.key]) !== l.current) ||
+    (product.sizes ?? []).some(
+      (s) =>
+        !removedSizes.has(s.size) &&
+        ((sizeValues[s.size] ?? s.size) !== s.size ||
+          Number(priceValues[s.size] ?? s.price) !== Number(s.price)),
+    ) ||
+    newRows.length > 0 ||
+    removedSizes.size > 0;
 
   function addRow() {
     const next = catalog.find((s) => !usedSizes.has(s.name));
@@ -384,13 +410,35 @@ function ProductStock({
     );
   }
 
+  function updateExistingSize(originalSize: string, size: string) {
+    setSaved(false);
+    setSizeValues((prev) => ({ ...prev, [originalSize]: size }));
+  }
+
+  function updateExistingPrice(originalSize: string, price: string) {
+    setSaved(false);
+    setPriceValues((prev) => ({ ...prev, [originalSize]: price }));
+  }
+
   function removeRow(index: number) {
     setNewRows((rows) => rows.filter((_, i) => i !== index));
   }
 
+  function removeExistingSize(size: string) {
+    setSaved(false);
+    setRemovedSizes((prev) => {
+      const next = new Set(prev);
+      next.add(size);
+      return next;
+    });
+  }
+
   function cancelEdit() {
-    setValues(Object.fromEntries(lines.map((l) => [l.key, String(l.current)])));
+    setValues(initialStockValues());
+    setSizeValues(initialSizeValues());
+    setPriceValues(initialPriceValues());
     setNewRows([]);
+    setRemovedSizes(new Set());
     setEditing(false);
     setError(null);
     setSaved(false);
@@ -423,16 +471,23 @@ function ProductStock({
         stock: Math.max(0, Number(r.stock || "0")),
       }))
       .filter((r) => r.size);
-    const existingNames = (product.sizes ?? []).map((s) => s.size.toLowerCase());
-    const seen = new Set(existingNames);
-    for (const r of added) {
+    const keptSizes = (product.sizes ?? [])
+      .filter((s) => !removedSizes.has(s.size))
+      .map((s) => ({
+        size: (sizeValues[s.size] ?? s.size).trim(),
+        price: Number(priceValues[s.size] ?? s.price),
+        stock: Math.max(0, Number(values[s.size] || "0")),
+      }))
+      .filter((s) => s.size);
+    const seen = new Set<string>();
+    for (const r of [...keptSizes, ...added]) {
       if (!r.price || Number.isNaN(r.price) || r.price < 0) {
         setError(`Enter a valid price for size "${r.size}".`);
         return;
       }
       const key = r.size.toLowerCase();
       if (seen.has(key)) {
-        setError(`Size "${r.size}" is already on this product.`);
+        setError(`Size "${r.size}" is selected twice.`);
         return;
       }
       seen.add(key);
@@ -444,7 +499,9 @@ function ProductStock({
       // Create any brand-new size names in the global catalog so they show up
       // in the top "Cup sizes" list and other products' pickers.
       const known = new Set(catalog.map((c) => c.name.toLowerCase()));
-      const brandNew = added.filter((r) => !known.has(r.size.toLowerCase()));
+      const brandNew = [...keptSizes, ...added].filter(
+        (r) => !known.has(r.size.toLowerCase()),
+      );
       await Promise.all(
         brandNew.map((r) =>
           api("/sizes", { method: "POST", body: { name: r.size } }).catch(
@@ -459,23 +516,36 @@ function ProductStock({
         sized || added.length > 0
           ? {
               sizes: [
-                ...(product.sizes ?? []).map((s) => ({
-                  size: s.size,
-                  price: s.price,
-                  stock: Math.max(0, Number(values[s.size] || "0")),
+                ...keptSizes.map(({ size, price, stock }) => ({
+                  size,
+                  price,
+                  stock,
                 })),
                 ...added,
               ],
             }
           : { stock: Math.max(0, Number(values["__base__"] || "0")) };
       await api(`/products/${product.id}`, { method: "PATCH", body });
-      // Fold the added sizes into our value map so they render after reload.
-      setValues((prev) => {
-        const next = { ...prev };
+      // Fold saved sizes into local state so they render cleanly after reload.
+      setValues(() => {
+        const next = Object.fromEntries(
+          keptSizes.map((r) => [r.size, String(r.stock)]),
+        );
         for (const r of added) next[r.size] = String(r.stock);
         return next;
       });
+      setSizeValues(
+        Object.fromEntries(
+          [...keptSizes, ...added].map((r) => [r.size, r.size]),
+        ),
+      );
+      setPriceValues(
+        Object.fromEntries(
+          [...keptSizes, ...added].map((r) => [r.size, String(r.price)]),
+        ),
+      );
       setNewRows([]);
+      setRemovedSizes(new Set());
       setSaved(true);
       setEditing(false);
       await onSaved();
@@ -511,11 +581,11 @@ function ProductStock({
         </div>
         {(() => {
           // Totals across every size: sold / capacity, plus cups still in stock.
-          const inCups = lines.reduce(
+          const inCups = activeLines.reduce(
             (sum, l) => sum + Math.max(0, Number(values[l.key] || "0")),
             0,
           );
-          const capacity = lines.reduce(
+          const capacity = activeLines.reduce(
             (sum, l) => sum + Math.max(l.capacity, Number(values[l.key] || "0")),
             0,
           );
@@ -585,46 +655,111 @@ function ProductStock({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 dark:border-stone-800 sm:grid-cols-2">
-        {lines.map((l) => {
-          const inCups = Math.max(0, Number(values[l.key] || "0"));
-          const out = inCups <= 0;
-          // sold / capacity — how many have sold out of everything we ever had.
-          const capacity = Math.max(l.capacity, inCups);
-          const sold = Math.max(0, capacity - inCups);
-          return (
-            <div
-              key={l.key}
-              className="flex items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2 dark:bg-stone-800/50"
-            >
-              <span className="flex items-center gap-2 text-sm">
-                <span
-                  className={`h-2 w-2 rounded-full ${out ? "bg-red-500" : "bg-green-500"}`}
+      {editing && product.sizes && product.sizes.length > 0 ? (
+        <div className="mt-3 space-y-2 border-t border-stone-100 pt-3 dark:border-stone-800">
+          {product.sizes
+            .filter((size) => !removedSizes.has(size.size))
+            .map((size) => {
+              const stockLine = lines.find((line) => line.size === size.size);
+              const currentStock = values[size.size] ?? String(stockLine?.current ?? 0);
+              const selectedSize = sizeValues[size.size] ?? size.size;
+              const selectedPrice = priceValues[size.size] ?? String(size.price);
+              return (
+                <div
+                  key={size.size}
+                  className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-stone-300 bg-stone-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800/50"
+                >
+                  <input
+                    value={selectedSize}
+                    onChange={(e) => updateExistingSize(size.size, e.target.value)}
+                    list={`sizes-${product.id}`}
+                    placeholder="Size name (e.g. XL)"
+                    className={`${INPUT} min-w-48 flex-1`}
+                  />
+                  <datalist id={`sizes-${product.id}`}>
+                    {catalog.map((option) => (
+                      <option key={option.id} value={option.name} />
+                    ))}
+                  </datalist>
+                  <div className="relative w-24">
+                    <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-stone-400">
+                      $
+                    </span>
+                    <input
+                      value={selectedPrice}
+                      onChange={(e) =>
+                        updateExistingPrice(
+                          size.size,
+                          e.target.value.replace(/[^0-9.]/g, ""),
+                        )
+                      }
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className={`${INPUT} w-full pl-5`}
+                    />
+                  </div>
+                  <input
+                    value={currentStock}
+                    onChange={(e) => set(size.size, e.target.value)}
+                    inputMode="numeric"
+                    aria-label="Cups in stock"
+                    className={`${INPUT} w-20 text-right`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeExistingSize(size.size)}
+                    aria-label={`Remove ${selectedSize || size.size} from ${product.name}`}
+                    title="Remove size"
+                    className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 dark:border-stone-800 sm:grid-cols-2">
+          {activeLines.map((l) => {
+            const inCups = Math.max(0, Number(values[l.key] || "0"));
+            const out = inCups <= 0;
+            // sold / capacity - how many have sold out of everything we ever had.
+            const capacity = Math.max(l.capacity, inCups);
+            const sold = Math.max(0, capacity - inCups);
+            return (
+              <div
+                key={l.key}
+                className="flex items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2 dark:bg-stone-800/50"
+              >
+                <span className="flex items-center gap-2 text-sm">
+                  <span
+                    className={`h-2 w-2 rounded-full ${out ? "bg-red-500" : "bg-green-500"}`}
+                  />
+                  <span className="font-medium text-stone-700 dark:text-stone-300">
+                    {l.size ?? "Stock"}
+                  </span>
+                  <span className="text-xs font-medium tabular-nums">
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {sold}
+                    </span>
+                    <span className="text-stone-300 dark:text-stone-600"> / </span>
+                    <span className="text-stone-500 dark:text-stone-400">
+                      {capacity}
+                    </span>
+                  </span>
+                </span>
+                <input
+                  value={values[l.key]}
+                  onChange={(e) => set(l.key, e.target.value)}
+                  inputMode="numeric"
+                  disabled={!editing}
+                  className={`${INPUT} w-20 text-right disabled:cursor-not-allowed disabled:opacity-60`}
                 />
-                <span className="font-medium text-stone-700 dark:text-stone-300">
-                  {l.size ?? "Stock"}
-                </span>
-                <span className="text-xs font-medium tabular-nums">
-                  <span className="text-amber-600 dark:text-amber-400">
-                    {sold}
-                  </span>
-                  <span className="text-stone-300 dark:text-stone-600"> / </span>
-                  <span className="text-stone-500 dark:text-stone-400">
-                    {capacity}
-                  </span>
-                </span>
-              </span>
-              <input
-                value={values[l.key]}
-                onChange={(e) => set(l.key, e.target.value)}
-                inputMode="numeric"
-                disabled={!editing}
-                className={`${INPUT} w-20 text-right disabled:cursor-not-allowed disabled:opacity-60`}
-              />
-            </div>
-          );
-        })}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add new sizes to this product (edit mode only) */}
       {editing && (
