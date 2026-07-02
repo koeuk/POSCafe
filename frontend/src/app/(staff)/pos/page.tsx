@@ -559,25 +559,27 @@ function ProductCard({
       <span className="line-clamp-1 font-semibold text-stone-900 dark:text-stone-100">
         {product.name}
       </span>
-      <div className="mt-1 flex items-baseline gap-1.5">
-        <span className="font-semibold text-stone-900 dark:text-stone-100">{priceLabel}</span>
-        {hasDiscount(product) && sizes.length === 0 && (
-          <span className="text-xs text-stone-400 line-through dark:text-stone-500">
-            {formatPrice(product.price)}
-          </span>
-        )}
+      <div className="mt-1 flex w-full items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+          <span className="truncate font-semibold text-stone-900 dark:text-stone-100">{priceLabel}</span>
+          {hasDiscount(product) && sizes.length === 0 && (
+            <span className="shrink-0 text-xs text-stone-400 line-through dark:text-stone-500">
+              {formatPrice(product.price)}
+            </span>
+          )}
+        </div>
+        <span
+          className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+            soldOut
+              ? "bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500"
+              : stock <= 5
+                ? "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+          }`}
+        >
+          {soldOut ? "Out of stock" : `${sold} / ${capacity} sold`}
+        </span>
       </div>
-      <span
-        className={`mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-          soldOut
-            ? "bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500"
-            : stock <= 5
-              ? "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-        }`}
-      >
-        {soldOut ? "Out of stock" : `${sold} / ${capacity} sold`}
-      </span>
 
       <div className="mt-auto pt-3">
         {sizes.length > 0 ? (
