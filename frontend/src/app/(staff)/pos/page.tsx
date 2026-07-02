@@ -590,7 +590,7 @@ function ProductCard({
                   type="button"
                   disabled={sizeOut}
                   onClick={() => onAdd(product, size)}
-                  className="flex w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
+                  className={["flex", sizes.length === 3 && index === 2 ? "col-span-2" : "", "w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"].join(" ")}
                 >
                   <span className="min-w-0 break-words text-left leading-snug">
                     {size.size}

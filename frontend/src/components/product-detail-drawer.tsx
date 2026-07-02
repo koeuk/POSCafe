@@ -171,7 +171,7 @@ export function ProductDetailDrawer({
                       type="button"
                       disabled={!onAdd || sizeOut}
                       onClick={() => onAdd?.(product, size)}
-                      className="flex w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:hover:border-amber-400"
+                      className={["flex", sizes.length === 3 && index === 2 ? "col-span-2" : "", "w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:hover:border-amber-400"].join(" ")}
                     >
                       <span className="min-w-0 break-words text-left font-medium leading-snug text-stone-700 dark:text-stone-300">
                         {size.size}
