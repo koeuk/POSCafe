@@ -162,8 +162,8 @@ export function ProductDetailDrawer({
               <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
                 Sizes
               </h4>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {sizes.map((size) => {
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((size, index) => {
                   const sizeOut = sizeStock(product, size.size) <= 0;
                   return (
                     <button
@@ -171,15 +171,15 @@ export function ProductDetailDrawer({
                       type="button"
                       disabled={!onAdd || sizeOut}
                       onClick={() => onAdd?.(product, size)}
-                      className="flex items-center justify-between rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:hover:border-amber-400"
+                      className={`flex ${sizes.length === 2 || (sizes.length === 3 && index < 2) ? "flex-1 basis-[calc(50%-0.25rem)]" : sizes.length === 3 ? "w-full" : size.size.length > 12 ? "w-full" : "w-auto min-w-[8rem]"} max-w-full items-center justify-between gap-3 rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:hover:border-amber-400`}
                     >
-                      <span className="font-medium text-stone-700 dark:text-stone-300">
+                      <span className="min-w-0 break-words text-left font-medium leading-snug text-stone-700 dark:text-stone-300">
                         {size.size}
                         {sizeOut && (
                           <span className="ml-1.5 text-xs text-red-500">out</span>
                         )}
                       </span>
-                      <span className="font-semibold text-stone-900 dark:text-stone-100">
+                      <span className="shrink-0 font-semibold tabular-nums text-stone-900 dark:text-stone-100">
                         {formatPrice(effectivePrice(product, size))}
                       </span>
                     </button>

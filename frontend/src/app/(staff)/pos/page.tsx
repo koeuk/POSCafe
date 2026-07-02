@@ -581,8 +581,8 @@ function ProductCard({
 
       <div className="mt-auto pt-3">
         {sizes.length > 0 ? (
-          <div className="grid grid-cols-1 gap-1.5">
-            {sizes.map((size) => {
+          <div className="flex flex-wrap gap-1.5">
+            {sizes.map((size, index) => {
               const sizeOut = sizeStock(product, size.size) <= 0;
               return (
                 <button
@@ -590,15 +590,15 @@ function ProductCard({
                   type="button"
                   disabled={sizeOut}
                   onClick={() => onAdd(product, size)}
-                  className="flex items-center justify-between rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
+                  className={`flex ${sizes.length === 2 || (sizes.length === 3 && index < 2) ? "flex-1 basis-[calc(50%-0.1875rem)]" : sizes.length === 3 ? "w-full" : size.size.length > 10 ? "w-full" : "w-auto min-w-[5.75rem]"} max-w-full items-center justify-between gap-3 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800`}
                 >
-                  <span>
+                  <span className="min-w-0 break-words text-left leading-snug">
                     {size.size}
                     {sizeOut && (
                       <span className="ml-1 text-[10px] text-red-500">out</span>
                     )}
                   </span>
-                  <span>{formatPrice(effectivePrice(product, size))}</span>
+                  <span className="shrink-0 tabular-nums">{formatPrice(effectivePrice(product, size))}</span>
                 </button>
               );
             })}
