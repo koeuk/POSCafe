@@ -82,7 +82,12 @@ function OrdersQueue() {
         method: "PATCH",
         body: { status },
       });
-      setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
+      setOrders((prev) =>
+        prev
+          .map((o) => (o.id === id ? updated : o))
+          .filter((o) => o.status === updated.status),
+      );
+      setFilter(updated.status);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
     } finally {
