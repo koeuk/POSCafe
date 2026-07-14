@@ -125,3 +125,28 @@ export interface Order {
   items: OrderItem[];
   createdAt: string;
 }
+
+// Order joined with the cashier who created it (GET /orders includes `user`).
+export interface OrderWithUser extends Order {
+  user?: { id: number; name: string; role: Role };
+}
+
+// A recorded payment (GET /payments/order/:id, POST /payments).
+// Decimal fields are strings, matching the DECIMAL-as-string note above.
+export interface Payment {
+  id: number;
+  orderId: number;
+  method: PaymentMethod;
+  amount: string;
+  tendered: string;
+  change: string;
+  createdAt: string;
+}
+
+// Editable size row used by the product form and the stock manager:
+// raw string inputs, parsed/validated on save.
+export interface SizeRow {
+  size: string;
+  price: string;
+  stock: string;
+}

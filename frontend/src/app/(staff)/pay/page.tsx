@@ -11,17 +11,7 @@ import {
 } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
-import { PaymentMethod, type Order } from "@/lib/types";
-
-interface Payment {
-  id: number;
-  orderId: number;
-  method: PaymentMethod;
-  amount: number | string;
-  tendered: number | string;
-  change: number | string;
-  createdAt: string;
-}
+import { PaymentMethod, type Order, type Payment } from "@/lib/types";
 
 const QUICK_CASH = [5, 10, 20, 50];
 

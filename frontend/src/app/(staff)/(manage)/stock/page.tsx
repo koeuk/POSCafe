@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api } from "@/lib/api";
 import { sizeStock, totalStock } from "@/lib/pricing";
-import { type Product, type Size } from "@/lib/types";
+import { type Product, type Size, type SizeRow } from "@/lib/types";
 
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
@@ -330,12 +330,6 @@ function linesFor(product: Product): StockLine[] {
   ];
 }
 
-interface NewSizeRow {
-  size: string;
-  price: string;
-  stock: string;
-}
-
 function ProductStock({
   product,
   catalog,
@@ -359,7 +353,7 @@ function ProductStock({
     useState<Record<string, string>>(initialSizeValues);
   const [priceValues, setPriceValues] =
     useState<Record<string, string>>(initialPriceValues);
-  const [newRows, setNewRows] = useState<NewSizeRow[]>([]);
+  const [newRows, setNewRows] = useState<SizeRow[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -404,7 +398,7 @@ function ProductStock({
     ]);
   }
 
-  function updateRow(index: number, patch: Partial<NewSizeRow>) {
+  function updateRow(index: number, patch: Partial<SizeRow>) {
     setNewRows((rows) =>
       rows.map((r, i) => (i === index ? { ...r, ...patch } : r)),
     );

@@ -3,13 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { api } from "@/lib/api";
-import { OrderStatus, type Order } from "@/lib/types";
+import { OrderStatus, type OrderWithUser } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
-
-// The orders endpoint joins the cashier; extend locally.
-interface OrderWithUser extends Order {
-  user?: { id: number; name: string; role: string };
-}
 
 const STATUS_FILTERS: { label: string; value: OrderStatus | "all" }[] = [
   { label: "All", value: "all" },

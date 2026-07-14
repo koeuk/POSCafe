@@ -7,7 +7,7 @@ import { api, uploadImage } from "@/lib/api";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { rolePathBase } from "@/lib/permissions";
 import { formatPrice } from "@/lib/pricing";
-import type { Category, Product, Size } from "@/lib/types";
+import type { Category, Product, Size, SizeRow } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 interface CategoryForm {
@@ -19,11 +19,6 @@ interface CategoryForm {
 }
 
 // A size row on the product form: chosen size name + its price + stock qty.
-interface SizeRow {
-  size: string;
-  price: string;
-  stock: string;
-}
 
 interface ProductForm {
   id: number | null;

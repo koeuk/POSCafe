@@ -15,14 +15,12 @@ _Generated from a full backend + frontend maintainability audit. Ordered by prio
 
 ---
 
-## Phase 1 — Frontend quick wins (pure deletions/dedup, ~400 lines, no behavior change)
+## Phase 1 — Frontend quick wins ✅ DONE (net −~180 lines, no behavior change)
 
-- [ ] 🧹 **3 copies of `ConfirmDialog`** → use shared `components/confirm-dialog.tsx`
-  Inline copies at `components/admin-product-management.tsx:1341`, `app/(staff)/(manage)/settings/page.tsx:611`. Only the shared one handles Escape/backdrop.
-- [ ] 🧹 **`pay`'s `money()` duplicates `formatPrice`** — `app/(staff)/pay/page.tsx:33-36` is byte-for-byte `pricing.formatPrice`. Delete; import `formatPrice`. Also inline `$${…toFixed(2)}` in `orders`, `order-history`, `manage-orders`.
-- [ ] 🧹 **`order-history` ≈ `manage-orders`** — ~193 identical lines (198 each). Extract one `OrderHistoryView`; each route becomes an ~8-line wrapper (`StaffShell` vs `RequireAuth role={ADMIN}`).
-- [ ] 🧹 **Duplicated inline types → `lib/types.ts`**
-  `OrderWithUser` (in `orders`, `order-history`, `manage-orders`), `Payment` (`pay/page.tsx:15-23`), `SizeRow` (product form + stock page). Use `Role` instead of `role: string`; pin decimal fields to `string`.
+- [x] ✅ 🧹 **ConfirmDialog** — `admin-product-management` now imports the shared `components/confirm-dialog.tsx` (near-identical; gained Escape/backdrop dismiss). ⚠️ `settings/page.tsx` keeps its own **richer** dialog (trash icon + animation) — deduping it would change its look; do only with sign-off.
+- [x] ✅ 🧹 **`pay` `money()` deleted** → uses `pricing.formatPrice` (byte-for-byte identical) at all 9 call sites.
+- [x] ✅ 🧹 **`order-history` + `manage-orders` collapsed** → shared `components/order-history-view.tsx`; each route is now a ~12-line wrapper. **396 → 219 lines.**
+- [x] ✅ 🧹 **Inline types centralized** → `OrderWithUser` (now `role: Role`), `Payment` (decimal fields pinned to `string`), `SizeRow` moved to `lib/types.ts`; removed from `orders`, `order-history-view`, `pay`, `admin-product-management`, `stock` (`NewSizeRow`→`SizeRow`). tsc + eslint clean.
 
 ---
 
