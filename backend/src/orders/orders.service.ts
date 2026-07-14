@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  type OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -23,27 +22,13 @@ export interface FindOrdersFilter {
 }
 
 @Injectable()
-export class OrdersService implements OnModuleInit {
+export class OrdersService {
   constructor(
     @InjectRepository(Order)
     private readonly repo: Repository<Order>,
     private readonly dataSource: DataSource,
     private readonly gateway: OrdersGateway,
   ) {}
-
-  // Backfill paymentStatus for orders created before this column existed:
-  // any order that already has a payment row is marked paid.
-  async onModuleInit() {
-    try {
-      await this.repo.query(
-        `UPDATE orders o SET o.paymentStatus = 'paid'
-         WHERE o.paymentStatus <> 'paid'
-           AND EXISTS (SELECT 1 FROM payments p WHERE p.orderId = o.id)`,
-      );
-    } catch {
-      // Tables may not exist yet on a fresh database — safe to ignore.
-    }
-  }
 
   /**
    * Creates an order atomically: validates each product, snapshots prices,
@@ -56,8 +41,11 @@ export class OrdersService implements OnModuleInit {
       const items: OrderItem[] = [];
 
       for (const line of dto.items) {
+        // Lock the product row for the duration of the transaction so two
+        // concurrent orders can't both read the same stock and oversell.
         const product = await manager.findOne(Product, {
           where: { id: line.productId },
+          lock: { mode: 'pessimistic_write' },
         });
         if (!product) {
           throw new NotFoundException(`Product #${line.productId} not found`);
@@ -103,6 +91,7 @@ export class OrdersService implements OnModuleInit {
         const variant = size
           ? await manager.findOne(ProductVariant, {
               where: { productId: product.id, size },
+              lock: { mode: 'pessimistic_write' },
             })
           : null;
         if (variant) {
@@ -134,14 +123,20 @@ export class OrdersService implements OnModuleInit {
         );
       }
 
+      // Derive the order number from the auto-increment id so it's always
+      // unique — a timestamp collides when two orders are created in the same
+      // millisecond and trips the unique constraint. Insert with a temporary
+      // placeholder first, then set the final number once the id is known.
       const order = manager.create(Order, {
-        orderNumber: `ORD-${Date.now()}`,
+        orderNumber: `TMP-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
         status: OrderStatus.PENDING,
         total,
         userId,
         items, // cascade-inserted
       });
       const saved = await manager.save(order);
+      saved.orderNumber = `ORD-${String(saved.id).padStart(6, '0')}`;
+      await manager.save(saved);
       return saved.id;
     });
 
@@ -203,8 +198,42 @@ export class OrdersService implements OnModuleInit {
     return order;
   }
 
+  // Legal kitchen-status transitions. COMPLETED and CANCELLED are terminal.
+  // Every active state may jump straight to COMPLETED (payment completes the
+  // order from wherever it is) or CANCELLED.
+  private static readonly STATUS_TRANSITIONS: Record<
+    OrderStatus,
+    OrderStatus[]
+  > = {
+    [OrderStatus.PENDING]: [
+      OrderStatus.PREPARING,
+      OrderStatus.READY,
+      OrderStatus.COMPLETED,
+      OrderStatus.CANCELLED,
+    ],
+    [OrderStatus.PREPARING]: [
+      OrderStatus.READY,
+      OrderStatus.COMPLETED,
+      OrderStatus.CANCELLED,
+    ],
+    [OrderStatus.READY]: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+    [OrderStatus.COMPLETED]: [],
+    [OrderStatus.CANCELLED]: [],
+  };
+
   async updateStatus(id: number, status: OrderStatus): Promise<Order> {
     const order = await this.findOne(id);
+
+    // No-op is fine; otherwise the transition must be allowed.
+    if (
+      order.status !== status &&
+      !OrdersService.STATUS_TRANSITIONS[order.status].includes(status)
+    ) {
+      throw new BadRequestException(
+        `Cannot change order status from "${order.status}" to "${status}"`,
+      );
+    }
+
     order.status = status;
     await this.repo.save(order);
 
@@ -214,11 +243,14 @@ export class OrdersService implements OnModuleInit {
     return updated;
   }
 
-  /** Marks an order paid (called when a payment is recorded). */
-  async markPaid(id: number): Promise<Order> {
-    await this.repo.update(id, { paymentStatus: PaymentStatus.PAID });
-    const updated = await this.findOne(id);
-    this.gateway.emitOrderUpdated(updated);
-    return updated;
+  /**
+   * Reloads an order and broadcasts it to all screens. Used by other services
+   * (e.g. payments) that mutate an order inside their own transaction and just
+   * need the live update pushed out after the commit.
+   */
+  async broadcastUpdate(id: number): Promise<Order> {
+    const order = await this.findOne(id);
+    this.gateway.emitOrderUpdated(order);
+    return order;
   }
 }

@@ -23,7 +23,7 @@ export function StaffFrame({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F6] dark:bg-stone-950">
+    <div className="min-h-screen bg-pos-page">
       <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
       <div
         className={`transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${

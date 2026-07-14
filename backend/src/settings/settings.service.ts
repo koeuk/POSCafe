@@ -18,7 +18,7 @@ export class SettingsService implements OnModuleInit {
   async onModuleInit() {
     if (!(await this.repo.findOne({ where: { id: SETTINGS_ID } }))) {
       await this.repo.save(
-        this.repo.create({ id: SETTINGS_ID, appName: 'POSCAFE', logoUrl: null }),
+        this.repo.create({ id: SETTINGS_ID, appName: 'POSCAFE' }),
       );
     }
   }
@@ -27,8 +27,7 @@ export class SettingsService implements OnModuleInit {
     // onModuleInit guarantees the row exists; fall back defensively anyway.
     const settings = await this.repo.findOne({ where: { id: SETTINGS_ID } });
     return (
-      settings ??
-      this.repo.create({ id: SETTINGS_ID, appName: 'POSCAFE', logoUrl: null })
+      settings ?? this.repo.create({ id: SETTINGS_ID, appName: 'POSCAFE' })
     );
   }
 
@@ -36,6 +35,11 @@ export class SettingsService implements OnModuleInit {
     const settings = await this.find();
     if (dto.appName !== undefined) settings.appName = dto.appName.trim();
     if (dto.logoUrl !== undefined) settings.logoUrl = dto.logoUrl;
+    if (dto.buttonColor !== undefined) settings.buttonColor = dto.buttonColor;
+    if (dto.pageBg !== undefined) settings.pageBg = dto.pageBg;
+    if (dto.sidebarBg !== undefined) settings.sidebarBg = dto.sidebarBg;
+    if (dto.sidebarActiveColor !== undefined)
+      settings.sidebarActiveColor = dto.sidebarActiveColor;
     return this.repo.save(settings);
   }
 }

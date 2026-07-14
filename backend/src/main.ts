@@ -7,8 +7,14 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Allow the Next.js frontend to call the API (REST + Socket.IO).
-  app.enableCors({ origin: true, credentials: true });
+  // Allow only the known Next.js frontend origin(s) to call the API
+  // (REST + Socket.IO). Reflecting any origin with credentials enabled would
+  // let every website make authenticated cross-origin requests.
+  const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: corsOrigins, credentials: true });
 
   // Serve uploaded images statically at /uploads/<filename>.
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });

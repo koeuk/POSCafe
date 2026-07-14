@@ -62,6 +62,37 @@ export class UsersService {
   }
 
   /**
+   * Self-signup creation: the very first account becomes ADMIN, everyone else
+   * a CASHIER. Runs the count→insert in one transaction with a row-range lock
+   * so two simultaneous first registrations can't both read an empty table and
+   * both become admin. `password` must already be hashed.
+   */
+  async createSelfSignup(data: {
+    name: string;
+    username: string;
+    password: string;
+  }): Promise<User> {
+    return this.repo.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(User);
+      const existing = await repo.findOne({
+        where: { username: data.username },
+      });
+      if (existing) {
+        throw new ConflictException('Username already taken');
+      }
+      // FOR UPDATE over the users range serializes concurrent registrations
+      // (InnoDB gap-locks the empty range), so the bootstrap admin is unique.
+      const count = await repo
+        .createQueryBuilder('u')
+        .setLock('pessimistic_write')
+        .getCount();
+      const role = count === 0 ? Role.ADMIN : Role.CASHIER;
+      const user = repo.create({ ...data, role });
+      return repo.save(user);
+    });
+  }
+
+  /**
    * Admin-facing user creation: rejects duplicate usernames, hashes the
    * password, and returns the user without the password field.
    */

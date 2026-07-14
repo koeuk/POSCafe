@@ -118,7 +118,7 @@ function OrderHistory() {
               onClick={() => setFilter(f.value)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 filter === f.value
-                  ? "bg-[#2A1D15] text-white"
+                  ? "bg-pos-button text-white"
                   : "bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700"
               }`}
             >

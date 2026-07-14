@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { CategoriesService } from '../categories/categories.service';
 import { CreateProductDto, ProductSizeDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -67,7 +71,24 @@ export class ProductsService {
 
   async remove(id: number): Promise<void> {
     const product = await this.findOne(id);
-    await this.repo.remove(product); // variants cascade-delete
+    try {
+      await this.repo.remove(product); // variants cascade-delete
+    } catch (err) {
+      // order_items.product is ON DELETE RESTRICT, so a product that appears in
+      // any past order can't be deleted. Surface a clear 409 instead of a raw
+      // 500 from the FK violation.
+      const driver = (err as { driverError?: { errno?: number; code?: string } })
+        .driverError;
+      if (
+        err instanceof QueryFailedError &&
+        (driver?.errno === 1451 || driver?.code === 'ER_ROW_IS_REFERENCED_2')
+      ) {
+        throw new ConflictException(
+          `"${product.name}" can't be deleted because it appears in past orders. Mark it unavailable instead.`,
+        );
+      }
+      throw err;
+    }
   }
 
   /**

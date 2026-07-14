@@ -1,7 +1,26 @@
 // Shared API client for the POSCAFE backend (NestJS).
 // Attaches the JWT (stored client-side) to every request.
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+// Backend port (override with NEXT_PUBLIC_API_PORT if it ever moves off 3001).
+const API_PORT = process.env.NEXT_PUBLIC_API_PORT ?? "3001";
+
+/**
+ * Base URL of the NestJS backend.
+ * - An explicit NEXT_PUBLIC_API_URL always wins (e.g. a separate API host).
+ * - Otherwise, in the browser, talk to the SAME host the app was opened from,
+ *   on the backend port. This means localhost and the LAN IP both work with no
+ *   reconfiguration — a phone opening http://192.168.x.x:3000 automatically
+ *   calls http://192.168.x.x:3001.
+ * - On the server (SSR) fall back to localhost, since the Next and Nest
+ *   processes share a machine.
+ */
+export function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
+  }
+  return `http://localhost:${API_PORT}`;
+}
 
 const TOKEN_KEY = "poscafe_token";
 
@@ -29,7 +48,7 @@ export async function api<T = unknown>(
   const { body, headers, ...rest } = options;
   const token = getToken();
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getApiUrl()}${path}`, {
     ...rest,
     headers: {
       "Content-Type": "application/json",
@@ -64,7 +83,7 @@ export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_URL}/uploads/image`, {
+  const res = await fetch(`${getApiUrl()}/uploads/image`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
@@ -82,5 +101,5 @@ export async function uploadImage(file: File): Promise<string> {
   }
 
   const data = (await res.json()) as { path: string };
-  return `${API_URL}${data.path}`;
+  return `${getApiUrl()}${data.path}`;
 }

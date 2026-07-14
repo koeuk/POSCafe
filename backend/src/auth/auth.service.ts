@@ -1,11 +1,6 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { Role } from '../common/enums/role.enum';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -19,21 +14,16 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.usersService.findByUsername(dto.username);
-    if (existing) {
-      throw new ConflictException('Username already taken');
-    }
-
-    // The very first registered user becomes the admin; others default to cashier.
-    const isFirstUser = (await this.usersService.count()) === 0;
-    const role = isFirstUser ? Role.ADMIN : (dto.role ?? Role.CASHIER);
-
+    // The very first registered user becomes the admin; self-signup can never
+    // request a role — everyone else is a cashier. The admin/username checks
+    // run atomically inside createSelfSignup so concurrent registrations can't
+    // both become admin or both claim a username. Elevating a user afterwards
+    // is an admin-only action via UsersController.
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const user = await this.usersService.create({
+    const user = await this.usersService.createSelfSignup({
       name: dto.name,
       username: dto.username,
       password: hashedPassword,
-      role,
     });
 
     return this.buildAuthResponse(user);

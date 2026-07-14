@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   effectivePrice,
   formatPrice,
@@ -27,6 +27,16 @@ export function ProductDetailDrawer({
 }) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
+  // Keep the latest onClose in a ref so the Escape/scroll-lock effect below can
+  // depend only on `product`. onClose is a fresh closure on every parent render
+  // (it's usually an inline arrow), so including it in the deps would tear down
+  // and re-install the listener — and momentarily unlock body scroll — on every
+  // parent re-render, e.g. each time an item is added from the drawer.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   // Reset the previewed image whenever a different product opens.
   useEffect(() => {
     setActiveImage(product?.image ?? null);
@@ -36,7 +46,7 @@ export function ProductDetailDrawer({
   useEffect(() => {
     if (!product) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -45,7 +55,7 @@ export function ProductDetailDrawer({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [product, onClose]);
+  }, [product]);
 
   if (!product) return null;
 
@@ -209,7 +219,7 @@ export function ProductDetailDrawer({
               type="button"
               disabled={soldOut}
               onClick={() => onAdd(product)}
-              className="w-full rounded-xl bg-[#2A1D15] py-3 text-sm font-semibold text-white transition hover:bg-[#3A2A20] disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-pos-button py-3 text-sm font-semibold text-white transition hover:bg-[#3A2A20] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {soldOut ? "Sold out" : "Add to order"}
             </button>

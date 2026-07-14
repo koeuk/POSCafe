@@ -221,7 +221,7 @@ function NavLinks({
       {pill && (
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-0 rounded-xl bg-[#2A1D15] shadow-sm transition-[transform,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-amber-500"
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 rounded-xl bg-pos-active shadow-sm transition-[transform,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ transform: `translateY(${pill.top}px)`, height: pill.height }}
         />
       )}
@@ -283,7 +283,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
           className="h-9 w-9 flex-shrink-0 rounded-xl object-cover shadow-sm"
         />
       ) : (
-        <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
+        <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-pos-button text-lg text-amber-50 shadow-sm">
           ☕
         </span>
       )}
@@ -347,7 +347,7 @@ function ThemeSwitch() {
             title={o.label}
             className={`grid h-7 w-7 place-items-center rounded-full transition ${
               active
-                ? "bg-[#2A1D15] text-amber-50 dark:bg-amber-500 dark:text-stone-950"
+                ? "bg-pos-button text-amber-50 dark:bg-pos-button dark:text-stone-950"
                 : "text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
             }`}
           >
@@ -481,7 +481,7 @@ export function Sidebar({
     <>
       {/* Desktop: fixed sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden flex-col justify-between border-r border-white/60 bg-white/70 p-4 backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex dark:border-stone-800/60 dark:bg-stone-900/70 ${
+        className={`fixed inset-y-0 left-0 z-30 hidden flex-col justify-between border-r border-white/60 bg-pos-sidebar p-4 backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex dark:border-stone-800/60 ${
           collapsed ? "lg:w-20" : "lg:w-64"
         }`}
       >
@@ -514,7 +514,7 @@ export function Sidebar({
       </aside>
 
       {/* Mobile: top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-white/70 px-4 py-3 backdrop-blur-xl lg:hidden dark:border-stone-800/60 dark:bg-stone-900/70">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-pos-sidebar px-4 py-3 backdrop-blur-xl lg:hidden dark:border-stone-800/60">
         <Brand />
         <div className="flex items-center gap-2">
           <ThemeSwitch />
@@ -535,7 +535,7 @@ export function Sidebar({
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-white/60 bg-white/85 p-4 backdrop-blur-xl dark:border-stone-800/60 dark:bg-stone-900/90">
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-white/60 bg-pos-sidebar p-4 backdrop-blur-xl dark:border-stone-800/60">
             <div className="space-y-6">
               <Brand />
               <NavLinks

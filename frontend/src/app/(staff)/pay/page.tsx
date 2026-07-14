@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { api } from "@/lib/api";
+import { formatPrice } from "@/lib/pricing";
 import { PaymentMethod, type Order } from "@/lib/types";
 
 interface Payment {
@@ -29,11 +30,6 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   [PaymentMethod.QR]: "QR",
   [PaymentMethod.CARD]: "Card",
 };
-
-function money(value: number | string): string {
-  const n = Number(value);
-  return Number.isFinite(n) ? `$${n.toFixed(2)}` : String(value);
-}
 
 function PayScreen() {
   const params = useSearchParams();
@@ -69,7 +65,9 @@ function PayScreen() {
           );
           if (!cancelled) {
             setOrder(ord);
-            setAlreadyPaid(existing !== null);
+            // The API client returns `undefined` (not `null`) for an empty
+            // body, so use a loose check to catch both "no payment" cases.
+            setAlreadyPaid(existing != null);
           }
         } else {
           const list = await api<Order[]>("/orders?unpaid=true");
@@ -99,7 +97,7 @@ function PayScreen() {
     !!order &&
     !alreadyPaid &&
     !paid &&
-    due > 0 &&
+    due >= 0 &&
     (method !== PaymentMethod.CASH || tenderedNum >= due);
 
   const press = useCallback((key: string) => {
@@ -163,7 +161,7 @@ function PayScreen() {
                     </span>
                   </span>
                   <span className="font-semibold text-stone-900 dark:text-stone-100">
-                    {money(o.total)}
+                    {formatPrice(o.total)}
                   </span>
                 </Link>
               </li>
@@ -201,11 +199,11 @@ function PayScreen() {
             Payment complete
           </p>
           <p className="mt-1 text-sm text-green-700 dark:text-green-300">
-            {order?.orderNumber} · {METHOD_LABELS[paid.method]} paid {money(paid.amount)}
+            {order?.orderNumber} · {METHOD_LABELS[paid.method]} paid {formatPrice(paid.amount)}
           </p>
           {Number(paid.change) > 0 && (
             <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900 dark:bg-stone-900 dark:text-stone-100">
-              Change {money(paid.change)}
+              Change {formatPrice(paid.change)}
             </p>
           )}
         </div>
@@ -246,13 +244,13 @@ function PayScreen() {
                 <span>
                   {it.quantity}× {it.product?.name ?? `#${it.productId}`}
                 </span>
-                <span>{money(it.subtotal)}</span>
+                <span>{formatPrice(it.subtotal)}</span>
               </li>
             ))}
           </ul>
           <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900 dark:border-stone-800 dark:text-stone-100">
             <span>Total due</span>
-            <span>{money(due)}</span>
+            <span>{formatPrice(due)}</span>
           </div>
           <BackLink />
         </div>
@@ -283,14 +281,14 @@ function PayScreen() {
                   Cash received
                 </p>
                 <p className="text-3xl font-bold text-stone-900 dark:text-stone-100">
-                  {money(tendered === "" ? 0 : tendered)}
+                  {formatPrice(tendered === "" ? 0 : tendered)}
                 </p>
                 <p
                   className={`mt-1 text-sm font-medium ${
                     tenderedNum >= due ? "text-green-600 dark:text-green-400" : "text-stone-400 dark:text-stone-500"
                   }`}
                 >
-                  Change {money(change >= 0 ? change : 0)}
+                  Change {formatPrice(change >= 0 ? change : 0)}
                 </p>
               </div>
 
@@ -321,7 +319,7 @@ function PayScreen() {
                 {METHOD_LABELS[method]} payment
               </p>
               <p className="mt-2 text-3xl font-bold text-stone-900 dark:text-stone-100">
-                {money(due)}
+                {formatPrice(due)}
               </p>
               <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
                 Confirm after the terminal or QR transfer succeeds.
@@ -338,7 +336,7 @@ function PayScreen() {
           >
             {submitting
               ? "Processing..."
-              : `Confirm ${METHOD_LABELS[method].toLowerCase()} payment · ${money(due)}`}
+              : `Confirm ${METHOD_LABELS[method].toLowerCase()} payment · ${formatPrice(due)}`}
           </button>
         </div>
       </div>

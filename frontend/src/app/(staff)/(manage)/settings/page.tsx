@@ -94,7 +94,7 @@ function Settings() {
                 aria-current={active ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
                   active
-                    ? "bg-[#2A1D15] text-amber-50 dark:bg-amber-500 dark:text-stone-950"
+                    ? "bg-pos-button text-amber-50 dark:bg-pos-button dark:text-stone-950"
                     : "text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
                 }`}
               >
@@ -127,26 +127,101 @@ function Settings() {
   );
 }
 
-// ── General: app name & logo ─────────────────────────────────────────────
+// ── General: app name, logo & theme colours ──────────────────────────────
+
+// Each themeable colour: which settings field, its <input type=color> fallback
+// swatch, and the CSS variable it drives for the live preview.
+const COLOR_FIELDS = [
+  {
+    key: "buttonColor",
+    cssVar: "--pos-button",
+    label: "Button color",
+    hint: "Primary buttons & accents",
+    fallback: "#2a1d15",
+  },
+  {
+    key: "pageBg",
+    cssVar: "--pos-page",
+    label: "Background color",
+    hint: "Main content area",
+    fallback: "#f5f5f6",
+  },
+  {
+    key: "sidebarBg",
+    cssVar: "--pos-sidebar",
+    label: "Sidebar background",
+    hint: "Left navigation panel",
+    fallback: "#ffffff",
+  },
+  {
+    key: "sidebarActiveColor",
+    cssVar: "--pos-active",
+    label: "Sidebar active item",
+    hint: "Selected menu highlight",
+    fallback: "#2a1d15",
+  },
+] as const;
+
+type ColorKey = (typeof COLOR_FIELDS)[number]["key"];
+type Colors = Record<ColorKey, string | null>;
 
 function AppSettingsPanel() {
-  const { appName, logoUrl, refresh } = useBranding();
+  const branding = useBranding();
+  const { appName, logoUrl, refresh } = branding;
   const [name, setName] = useState(appName);
   const [logo, setLogo] = useState<string | null>(logoUrl);
+  const [colors, setColors] = useState<Colors>(() => pickColors(branding));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Sync local fields once branding has loaded from the backend.
+  // The saved colours are just the branding context values (they only change
+  // when we refresh after a save).
+  const saved = pickColors(branding);
+  // Mirrored into a ref (updated in an effect) so the unmount cleanup can read
+  // the latest saved colours without depending on them.
+  const savedRef = useRef<Colors>(saved);
+  useEffect(() => {
+    savedRef.current = saved;
+  });
+
+  // Sync local fields once branding has loaded / changed from the backend.
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     setName(appName);
     setLogo(logoUrl);
+    setColors(pickColors(branding));
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [appName, logoUrl]);
+    // Depend on the primitive colour values, not the branding object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    appName,
+    logoUrl,
+    branding.buttonColor,
+    branding.pageBg,
+    branding.sidebarBg,
+    branding.sidebarActiveColor,
+  ]);
 
-  const dirty = name.trim() !== appName || logo !== logoUrl;
+  // Live preview: reflect the in-progress colours on the page immediately.
+  useEffect(() => {
+    applyColorVars(colors);
+  }, [colors]);
+
+  // On leaving the panel, drop any unsaved preview back to the saved colours.
+  useEffect(() => {
+    return () => applyColorVars(savedRef.current);
+  }, []);
+
+  const colorsDirty = COLOR_FIELDS.some(
+    (f) => (colors[f.key] ?? null) !== (saved[f.key] ?? null),
+  );
+  const dirty = name.trim() !== appName || logo !== logoUrl || colorsDirty;
   const canSave = name.trim().length > 0 && dirty && !saving;
+
+  function setColor(key: ColorKey, value: string | null) {
+    setColors((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -156,7 +231,7 @@ function AppSettingsPanel() {
     try {
       await api("/settings", {
         method: "PATCH",
-        body: { appName: name.trim(), logoUrl: logo },
+        body: { appName: name.trim(), logoUrl: logo, ...colors },
       });
       await refresh();
       setSuccess("App settings saved.");
@@ -197,6 +272,29 @@ function AppSettingsPanel() {
         </Field>
       </div>
 
+      <div className="mt-7 border-t border-stone-100 pt-5 dark:border-stone-800">
+        <h3 className="font-semibold text-stone-900 dark:text-stone-100">
+          Theme colors
+        </h3>
+        <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
+          Personalize the interface. Changes preview instantly — save to keep
+          them.
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {COLOR_FIELDS.map((f) => (
+            <ColorField
+              key={f.key}
+              label={f.label}
+              hint={f.hint}
+              value={colors[f.key]}
+              fallback={f.fallback}
+              onChange={(v) => setColor(f.key, v)}
+            />
+          ))}
+        </div>
+      </div>
+
       {error && (
         <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
@@ -211,11 +309,100 @@ function AppSettingsPanel() {
       <button
         type="submit"
         disabled={!canSave}
-        className="mt-5 rounded-xl bg-[#2A1D15] px-5 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+        className="mt-5 rounded-xl bg-pos-button px-5 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
       >
         {saving ? "Saving…" : "Save changes"}
       </button>
     </form>
+  );
+}
+
+// Pull just the colour fields out of the branding settings.
+function pickColors(s: Colors): Colors {
+  return {
+    buttonColor: s.buttonColor,
+    pageBg: s.pageBg,
+    sidebarBg: s.sidebarBg,
+    sidebarActiveColor: s.sidebarActiveColor,
+  };
+}
+
+// Reflect a colour set onto <html> as CSS variables (null → clear override).
+function applyColorVars(colors: Colors) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  for (const f of COLOR_FIELDS) {
+    const value = colors[f.key];
+    if (value) root.style.setProperty(f.cssVar, value);
+    else root.style.removeProperty(f.cssVar);
+  }
+}
+
+// A single colour control: swatch (native picker) + hex input + reset.
+function ColorField({
+  label,
+  hint,
+  value,
+  fallback,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: string | null;
+  fallback: string;
+  onChange: (value: string | null) => void;
+}) {
+  const custom = value !== null;
+  const swatch = value ?? fallback;
+
+  return (
+    <div className="rounded-xl border border-stone-200 p-3 dark:border-stone-700">
+      <div className="flex items-center justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-stone-700 dark:text-stone-300">
+            {label}
+          </p>
+          <p className="truncate text-xs text-stone-400 dark:text-stone-500">
+            {hint}
+          </p>
+        </div>
+        {custom && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2.5 flex items-center gap-2">
+        <label
+          className="relative h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-stone-200 shadow-sm dark:border-stone-600"
+          style={{ backgroundColor: swatch }}
+          title="Pick a colour"
+        >
+          <input
+            type="color"
+            value={swatch}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </label>
+        <input
+          type="text"
+          value={custom ? value : ""}
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            onChange(v === "" ? null : v);
+          }}
+          placeholder={`${fallback} (default)`}
+          spellCheck={false}
+          className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 font-mono text-xs text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:focus:border-amber-500 dark:focus:ring-amber-500/20"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -258,7 +445,7 @@ function LogoPicker({
           className="h-14 w-14 rounded-2xl object-cover shadow-sm"
         />
       ) : (
-        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#2A1D15] text-2xl text-amber-50 shadow-sm dark:bg-amber-500 dark:text-stone-950">
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-pos-button text-2xl text-amber-50 shadow-sm dark:bg-pos-button dark:text-stone-950">
           ☕
         </span>
       )}
@@ -358,7 +545,7 @@ function StaffPanel() {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 dark:bg-amber-500 dark:text-stone-950"
+            className="flex items-center gap-1.5 rounded-xl bg-pos-button px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 dark:bg-pos-button dark:text-stone-950"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
               <path d="M12 5v14M5 12h14" />
@@ -598,7 +785,7 @@ function CreateUserModal({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="flex-1 rounded-xl bg-[#2A1D15] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
           >
             {submitting ? "Creating…" : "Create user"}
           </button>
@@ -935,7 +1122,7 @@ function EditUserModal({
           <button
             type="submit"
             disabled={!canSave}
-            className="flex-1 rounded-xl bg-[#2A1D15] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
@@ -1037,7 +1224,7 @@ function PermissionsModal({
           <button
             type="submit"
             disabled={saving || pages.length === 0}
-            className="flex-1 rounded-xl bg-[#2A1D15] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
           >
             {saving ? "Saving…" : "Save access"}
           </button>
@@ -1075,7 +1262,7 @@ function PagePermissions({
             aria-pressed={active}
             className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition ${
               active
-                ? "border-[#2A1D15] bg-[#2A1D15] text-amber-50 dark:border-amber-500 dark:bg-amber-500 dark:text-stone-950"
+                ? "border-[#2A1D15] bg-pos-button text-amber-50 dark:border-amber-500 dark:bg-pos-button dark:text-stone-950"
                 : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
             }`}
           >
@@ -1204,7 +1391,7 @@ function RolePicker({
             onClick={() => onChange(role)}
             className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
               active
-                ? "border-[#2A1D15] bg-[#2A1D15] text-amber-50 dark:border-amber-500 dark:bg-amber-500 dark:text-stone-950"
+                ? "border-[#2A1D15] bg-pos-button text-amber-50 dark:border-amber-500 dark:bg-pos-button dark:text-stone-950"
                 : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
             }`}
           >

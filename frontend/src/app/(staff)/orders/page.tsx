@@ -125,7 +125,7 @@ function OrdersQueue() {
               onClick={() => setFilter(f.value)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 filter === f.value
-                  ? "bg-[#2A1D15] text-white"
+                  ? "bg-pos-button text-white"
                   : "border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
               }`}
             >
@@ -209,7 +209,7 @@ function OrdersQueue() {
                         <button
                           onClick={() => changeStatus(order.id, next.status)}
                           disabled={busy}
-                          className="rounded-lg bg-[#2A1D15] px-4 py-1.5 text-sm font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
+                          className="rounded-lg bg-pos-button px-4 py-1.5 text-sm font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
                         >
                           {busy ? "…" : next.label}
                         </button>

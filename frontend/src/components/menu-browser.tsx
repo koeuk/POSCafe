@@ -82,7 +82,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                   className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-orange-900/25"
                 />
               ) : (
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#3a2a16] text-amber-50 shadow-lg shadow-orange-900/25 dark:bg-amber-500 dark:text-stone-950">
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#3a2a16] text-amber-50 shadow-lg shadow-orange-900/25 dark:bg-pos-button dark:text-stone-950">
                   <CupIcon />
                 </span>
               )}
@@ -287,7 +287,7 @@ function Chip({
       onClick={onClick}
       className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
         active
-          ? "bg-[#3a2a16] text-amber-50 shadow-md shadow-orange-900/15 dark:bg-amber-500 dark:text-stone-950"
+          ? "bg-[#3a2a16] text-amber-50 shadow-md shadow-orange-900/15 dark:bg-pos-button dark:text-stone-950"
           : "bg-white/80 text-stone-600 ring-1 ring-stone-200 backdrop-blur hover:bg-white dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-700 dark:hover:bg-stone-800"
       }`}
     >

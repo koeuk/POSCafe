@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { rolePathBase } from "@/lib/permissions";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product, Size } from "@/lib/types";
@@ -1257,7 +1258,7 @@ function ManagementSection({
         </div>
         <button
           onClick={onCreate}
-          className="rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
+          className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
         >
           {actionLabel}
         </button>
@@ -1338,45 +1339,6 @@ function SidePanel({
   );
 }
 
-function ConfirmDialog({
-  title,
-  message,
-  busy,
-  onCancel,
-  onConfirm,
-}: {
-  title: string;
-  message: string;
-  busy: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
-        <h2 className="text-lg font-bold text-stone-900 dark:text-stone-100">{title}</h2>
-        <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">{message}</p>
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            disabled={busy}
-            className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={busy}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
-          >
-            {busy ? "Deleting..." : "Delete"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PanelActions({
   busy,
   submitLabel,
@@ -1399,7 +1361,7 @@ function PanelActions({
       <button
         type="submit"
         disabled={busy}
-        className="rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
+        className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
       >
         {busy ? "Saving..." : submitLabel}
       </button>

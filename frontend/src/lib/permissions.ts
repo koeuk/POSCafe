@@ -1,9 +1,11 @@
 // Sidebar pages an admin can grant to a cashier.
 //
 // `key` must match the `key` on the corresponding NAV item in
-// components/sidebar.tsx. Only pages whose backend endpoints a cashier may
-// already call are assignable here — Dashboard, Categories, Products, Stock and
-// Reports stay admin-only and are intentionally absent.
+// components/sidebar.tsx. Every sidebar page is grantable — management pages
+// (Dashboard, Categories, Products, Stock, Reports) have cashier routes under
+// /cashier/* (see CASHIER_PAGE_HREFS) and are only visible once an admin grants
+// them via allowedPages. Routes with no page key here (e.g. /settings) stay
+// admin-only — see ADMIN_ONLY_PREFIXES below.
 
 export interface PagePermission {
   key: string;

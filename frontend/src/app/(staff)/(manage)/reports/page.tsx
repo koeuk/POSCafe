@@ -8,12 +8,48 @@ import { downloadExcel } from "@/lib/export-excel";
 
 type Period = "day" | "week" | "month" | "year";
 
-const PERIODS: { value: Period; label: string; days: number }[] = [
-  { value: "day", label: "Today", days: 1 },
-  { value: "week", label: "This Week", days: 7 },
-  { value: "month", label: "This Month", days: 30 },
-  { value: "year", label: "This Year", days: 365 },
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "day", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "year", label: "This Year" },
 ];
+
+// Parse a "YYYY-MM-DD" string as a LOCAL date. `new Date("YYYY-MM-DD")` parses
+// as UTC midnight, which then renders as the previous day in negative-UTC
+// timezones — this keeps the label on the correct day everywhere.
+function parseLocalDate(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// "YYYY-MM-DD" key for a local date.
+function toLocalDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// How many days the selected period covers, ending today. "This Month"/"This
+// Year" are true calendar-to-date windows (1st of month / Jan 1 → today), not
+// rolling 30/365-day spans.
+function periodDays(period: Period): number {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  switch (period) {
+    case "day":
+      return 1;
+    case "week":
+      return 7;
+    case "month":
+      return today.getDate();
+    case "year": {
+      const start = new Date(today.getFullYear(), 0, 1);
+      return Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1;
+    }
+  }
+}
 
 interface ReportSummary {
   today: { orders: number; revenue: number };
@@ -49,6 +85,7 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>("week");
 
   const periodMeta = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
+  const windowDays = useMemo(() => periodDays(period), [period]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +97,7 @@ export default function ReportsPage() {
         const [nextSummary, nextDaily, nextBestProducts, nextStock] =
           await Promise.all([
             api<ReportSummary>("/reports/summary"),
-            api<DailySale[]>(`/reports/daily-sales?days=${periodMeta.days}`),
+            api<DailySale[]>(`/reports/daily-sales?days=${windowDays}`),
             api<BestProduct[]>("/reports/best-products?limit=8"),
             api<StockReport>("/reports/stock"),
           ]);
@@ -83,15 +120,24 @@ export default function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [periodMeta.days]);
+  }, [windowDays]);
 
-  const sortedDaily = useMemo(
-    () =>
-      [...daily].sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      ),
-    [daily],
-  );
+  // Backend only returns days that had sales; fill in every day of the window
+  // (oldest → newest) with zeros so the chart shows a continuous axis instead
+  // of collapsing empty days into adjacent bars.
+  const sortedDaily = useMemo(() => {
+    const byDate = new Map(daily.map((d) => [d.date, d]));
+    const now = new Date();
+    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const out: DailySale[] = [];
+    for (let i = windowDays - 1; i >= 0; i--) {
+      const d = new Date(base);
+      d.setDate(base.getDate() - i);
+      const key = toLocalDateKey(d);
+      out.push(byDate.get(key) ?? { date: key, orders: 0, revenue: 0 });
+    }
+    return out;
+  }, [daily, windowDays]);
   const maxRevenue = Math.max(1, ...sortedDaily.map((d) => d.revenue));
   const totalWindowRevenue = sortedDaily.reduce((sum, d) => sum + d.revenue, 0);
   const totalWindowOrders = sortedDaily.reduce((sum, d) => sum + d.orders, 0);
@@ -103,31 +149,25 @@ export default function ReportsPage() {
         title: `Summary (${periodMeta.label})`,
         columns: ["Metric", "Value"],
         rows: [
-          ["Today Revenue", formatPrice(summary?.today.revenue ?? 0)],
+          // Revenue as raw numbers so Excel/Sheets can SUM and sort them
+          // numerically (a "$3.50" string sorts lexically and breaks SUM).
+          ["Today Revenue", summary?.today.revenue ?? 0],
           ["Today Orders", summary?.today.orders ?? 0],
-          ["All-time Revenue", formatPrice(summary?.allTime.revenue ?? 0)],
+          ["All-time Revenue", summary?.allTime.revenue ?? 0],
           ["All-time Orders", summary?.allTime.orders ?? 0],
-          ["Window Revenue", formatPrice(totalWindowRevenue)],
+          ["Window Revenue", totalWindowRevenue],
           ["Window Orders", totalWindowOrders],
         ],
       },
       {
         title: `Daily Sales — ${periodMeta.label}`,
         columns: ["Date", "Orders", "Revenue"],
-        rows: sortedDaily.map((d) => [
-          d.date,
-          d.orders,
-          formatPrice(d.revenue),
-        ]),
+        rows: sortedDaily.map((d) => [d.date, d.orders, d.revenue]),
       },
       {
         title: "Best Products",
         columns: ["Product", "Sold", "Revenue"],
-        rows: bestProducts.map((p) => [
-          p.name,
-          p.quantitySold,
-          formatPrice(p.revenue),
-        ]),
+        rows: bestProducts.map((p) => [p.name, p.quantitySold, p.revenue]),
       },
       ...(stock
         ? [
@@ -174,7 +214,7 @@ export default function ReportsPage() {
             type="button"
             onClick={handleExport}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+            className="inline-flex items-center gap-2 rounded-lg bg-pos-button px-4 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
           >
             <svg
               viewBox="0 0 24 24"
@@ -230,7 +270,7 @@ export default function ReportsPage() {
               <div key={day.date} className="flex min-w-16 flex-1 flex-col items-center gap-2">
                 <div className="flex h-48 w-full items-end rounded-xl bg-stone-50 px-2 pb-2 dark:bg-stone-800/50">
                   <div
-                    className="w-full rounded-lg bg-[#2A1D15] transition-all"
+                    className="w-full rounded-lg bg-pos-button transition-all"
                     style={{
                       height: `${Math.max(4, (day.revenue / maxRevenue) * 100)}%`,
                     }}
@@ -239,7 +279,7 @@ export default function ReportsPage() {
                 </div>
                 <div className="text-center leading-tight">
                   <p className="text-xs font-medium text-stone-600 dark:text-stone-400">
-                    {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {parseLocalDate(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </p>
                   <p className="text-[11px] text-stone-400 dark:text-stone-500">
                     {formatPrice(day.revenue)}

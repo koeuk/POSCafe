@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { OrderStatus } from '../common/enums/order-status.enum';
+import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
@@ -64,7 +64,7 @@ export class ReportsService {
     };
   }
 
-  /** Today's and all-time completed-order totals. */
+  /** Today's and all-time paid-order totals (revenue = money received). */
   async summary() {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -73,14 +73,14 @@ export class ReportsService {
       .createQueryBuilder('o')
       .select('COUNT(*)', 'orders')
       .addSelect('COALESCE(SUM(o.total), 0)', 'revenue')
-      .where('o.status = :status', { status: OrderStatus.COMPLETED })
+      .where('o.paymentStatus = :paid', { paid: PaymentStatus.PAID })
       .getRawOne();
 
     const today = await this.orderRepo
       .createQueryBuilder('o')
       .select('COUNT(*)', 'orders')
       .addSelect('COALESCE(SUM(o.total), 0)', 'revenue')
-      .where('o.status = :status', { status: OrderStatus.COMPLETED })
+      .where('o.paymentStatus = :paid', { paid: PaymentStatus.PAID })
       .andWhere('o.createdAt >= :start', { start: todayStart })
       .getRawOne();
 
@@ -93,7 +93,7 @@ export class ReportsService {
     };
   }
 
-  /** Revenue + order count per day for the last `days` days (completed orders). */
+  /** Revenue + order count per day for the last `days` days (paid orders). */
   async dailySales(days = 7) {
     const since = new Date();
     since.setHours(0, 0, 0, 0);
@@ -104,7 +104,7 @@ export class ReportsService {
       .select("DATE_FORMAT(o.createdAt, '%Y-%m-%d')", 'date')
       .addSelect('COUNT(*)', 'orders')
       .addSelect('SUM(o.total)', 'revenue')
-      .where('o.status = :status', { status: OrderStatus.COMPLETED })
+      .where('o.paymentStatus = :paid', { paid: PaymentStatus.PAID })
       .andWhere('o.createdAt >= :since', { since })
       .groupBy("DATE_FORMAT(o.createdAt, '%Y-%m-%d')")
       .orderBy('date', 'DESC')
@@ -118,7 +118,7 @@ export class ReportsService {
   }
 
   /**
-   * Sales per category (completed orders), most popular first. Used by the
+   * Sales per category (paid orders), most popular first. Used by the
    * dashboard "Popular Categories" chart.
    */
   async categorySales() {
@@ -132,7 +132,7 @@ export class ReportsService {
       .addSelect('SUM(oi.quantity)', 'quantitySold')
       .addSelect('COUNT(DISTINCT o.id)', 'orders')
       .addSelect('SUM(oi.subtotal)', 'revenue')
-      .where('o.status = :status', { status: OrderStatus.COMPLETED })
+      .where('o.paymentStatus = :paid', { paid: PaymentStatus.PAID })
       .groupBy('c.id')
       .addGroupBy('c.name')
       .orderBy('quantitySold', 'DESC')
@@ -147,7 +147,7 @@ export class ReportsService {
     }));
   }
 
-  /** Top-selling products by quantity (completed orders). */
+  /** Top-selling products by quantity (paid orders). */
   async bestProducts(limit = 5) {
     const rows = await this.itemRepo
       .createQueryBuilder('oi')
@@ -157,7 +157,7 @@ export class ReportsService {
       .addSelect('p.name', 'name')
       .addSelect('SUM(oi.quantity)', 'quantitySold')
       .addSelect('SUM(oi.subtotal)', 'revenue')
-      .where('o.status = :status', { status: OrderStatus.COMPLETED })
+      .where('o.paymentStatus = :paid', { paid: PaymentStatus.PAID })
       .groupBy('p.id')
       .addGroupBy('p.name')
       .orderBy('quantitySold', 'DESC')

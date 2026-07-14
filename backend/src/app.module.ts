@@ -32,7 +32,13 @@ import { UsersModule } from './users/users.module';
         password: config.get<string>('DB_PASSWORD', ''),
         database: config.get<string>('DB_NAME', 'poscafe'),
         autoLoadEntities: true,
-        synchronize: true, // dev only — auto-creates tables. Disable in production.
+        // Auto-create/alter tables only outside production. In prod this can
+        // silently drop columns and lose data — use migrations there. Set
+        // DB_SYNCHRONIZE=true to force it on, or NODE_ENV=production to force
+        // it off.
+        synchronize:
+          config.get<string>('DB_SYNCHRONIZE') === 'true' ||
+          config.get<string>('NODE_ENV') !== 'production',
       }),
     }),
     UsersModule,

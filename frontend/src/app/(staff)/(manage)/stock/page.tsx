@@ -284,7 +284,7 @@ function SizesManager({
           type="button"
           onClick={add}
           disabled={busy || !newName.trim()}
-          className="rounded-lg bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-amber-500 dark:text-stone-950"
+          className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-pos-button dark:text-stone-950"
         >
           Add size
         </button>
@@ -628,7 +628,7 @@ function ProductStock({
                 type="button"
                 onClick={save}
                 disabled={!dirty || saving}
-                className="rounded-lg bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-amber-500 dark:text-stone-950"
+                className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-pos-button dark:text-stone-950"
               >
                 {saving ? "Saving…" : "Save"}
               </button>

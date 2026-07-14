@@ -216,7 +216,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#2A1D15] py-3 font-semibold text-amber-50 shadow-sm transition hover:bg-[#3a2a1f] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-500 dark:text-stone-950 dark:hover:bg-amber-400"
+              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-pos-button py-3 font-semibold text-amber-50 shadow-sm transition hover:bg-[#3a2a1f] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-pos-button dark:text-stone-950 dark:hover:bg-amber-400"
             >
               {submitting ? (
                 "Signing in…"

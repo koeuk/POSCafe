@@ -115,7 +115,7 @@ function ProductView({ id }: { id: string }) {
           </Link>
           <Link
             href={`${base}/products?edit=${product.id}`}
-            className="rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-medium text-amber-50 transition hover:opacity-90 dark:bg-amber-500 dark:text-stone-950"
+            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-amber-50 transition hover:opacity-90 dark:bg-pos-button dark:text-stone-950"
           >
             Edit product
           </Link>

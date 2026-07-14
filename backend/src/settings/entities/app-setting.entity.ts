@@ -17,4 +17,18 @@ export class AppSetting {
   // Absolute URL to the uploaded logo, or null to fall back to the ☕ mark.
   @Column({ type: 'text', nullable: true })
   logoUrl: string | null;
+
+  // Theme colours (hex, e.g. "#2A1D15"). null on any field = use the built-in
+  // default for that surface. Applied as CSS variables on the frontend.
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  buttonColor: string | null;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  pageBg: string | null;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  sidebarBg: string | null;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  sidebarActiveColor: string | null;
 }

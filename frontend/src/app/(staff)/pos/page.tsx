@@ -306,7 +306,7 @@ function POSScreen() {
               {itemCount > 0 && (
                 <span
                   key={itemCount}
-                  className="pos-pop rounded-full bg-[#2A1D15] px-2.5 py-0.5 text-xs font-semibold text-amber-50"
+                  className="pos-pop rounded-full bg-pos-button px-2.5 py-0.5 text-xs font-semibold text-amber-50"
                 >
                   {itemCount} item{itemCount === 1 ? "" : "s"}
                 </span>
@@ -451,7 +451,7 @@ function POSScreen() {
             <button
               onClick={handleCheckout}
               disabled={cart.length === 0 || placing}
-              className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2A1D15] py-3.5 font-semibold text-amber-50 shadow-lg shadow-amber-900/10 transition-all hover:bg-[#3b2a1e] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
+              className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-pos-button py-3.5 font-semibold text-amber-50 shadow-lg shadow-amber-900/10 transition-all hover:bg-[#3b2a1e] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
             >
               {placing ? (
                 "Placing order…"
@@ -615,7 +615,7 @@ function ProductCard({
             type="button"
             disabled={soldOut}
             onClick={() => onAdd(product, null)}
-            className="w-full rounded-lg bg-[#2A1D15] px-3 py-2 text-sm font-semibold text-amber-50 transition hover:bg-[#3b2a1e] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+            className="w-full rounded-lg bg-pos-button px-3 py-2 text-sm font-semibold text-amber-50 transition hover:bg-[#3b2a1e] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
           >
             Add
           </button>
@@ -639,7 +639,7 @@ function CategoryTab({
       onClick={onClick}
       className={`rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
         active
-          ? "bg-[#2A1D15] text-amber-50 shadow-sm"
+          ? "bg-pos-button text-amber-50 shadow-sm"
           : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
       }`}
     >

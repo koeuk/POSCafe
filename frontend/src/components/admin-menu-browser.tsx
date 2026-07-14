@@ -54,7 +54,7 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
           </div>
           <Link
             href="/products"
-            className="rounded-lg bg-[#2A1D15] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
+            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
           >
             Manage products
           </Link>
@@ -224,7 +224,7 @@ function FilterChip({
       onClick={onClick}
       className={`rounded-full px-4 py-2 text-sm font-medium transition ${
         active
-          ? "bg-[#2A1D15] text-white"
+          ? "bg-pos-button text-white"
           : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
       }`}
     >

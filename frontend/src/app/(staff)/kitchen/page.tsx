@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { api, getToken } from "@/lib/api";
+import { api, getApiUrl, getToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { OrderStatus, type Order } from "@/lib/types";
 
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:3001";
+// Same host the app was opened from — see getApiUrl(). An explicit
+// NEXT_PUBLIC_SOCKET_URL still wins if the realtime server lives elsewhere.
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? getApiUrl();
 
 // Columns shown on the board (completed/cancelled drop off).
 const COLUMNS: { status: OrderStatus; title: string; accent: string }[] = [
@@ -198,7 +199,7 @@ function KitchenScreen() {
                       </ul>
                       <button
                         onClick={() => advance(order)}
-                        className="mt-4 w-full rounded-lg bg-[#2A1D15] py-2 text-sm font-semibold text-white transition hover:bg-[#3a2a1f]"
+                        className="mt-4 w-full rounded-lg bg-pos-button py-2 text-sm font-semibold text-white transition hover:bg-[#3a2a1f]"
                       >
                         {NEXT_LABEL[order.status] ?? "Next"}
                       </button>

@@ -6,16 +6,33 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Themeable surfaces (overridable per-shop in Settings → General).
+     Defaults mirror the built-in light-mode look. An admin override is
+     applied as an inline style on <html>, which wins over these. */
+  --pos-button: #2a1d15; /* primary button / accent background */
+  --pos-page: #f5f5f6; /* main content area background */
+  --pos-sidebar: rgba(255, 255, 255, 0.7); /* sidebar background */
+  --pos-active: #2a1d15; /* active sidebar menu item */
 }
 
 .dark {
   --background: #0c0a09;
   --foreground: #ededed;
+
+  --pos-button: #f59e0b; /* amber-500 */
+  --pos-page: #0c0a09; /* stone-950 */
+  --pos-sidebar: rgba(28, 25, 23, 0.7); /* stone-900/70 */
+  --pos-active: #f59e0b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-pos-button: var(--pos-button);
+  --color-pos-page: var(--pos-page);
+  --color-pos-sidebar: var(--pos-sidebar);
+  --color-pos-active: var(--pos-active);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
