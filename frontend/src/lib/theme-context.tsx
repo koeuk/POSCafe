@@ -56,7 +56,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Intentional: the initial render stays "system" to match the SSR
       // output and the inline no-flash script; we sync the stored preference
       // into state only after hydration, so this is not a render-time update.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(stored);
     }
   }, []);
