@@ -88,23 +88,27 @@ function applyDocumentBranding(settings: AppSettings) {
 
   document.title = settings.appName || DEFAULTS.appName;
 
-  const head = document.head;
-  // Remove every icon link the framework already injected (e.g. the default
-  // /favicon.ico); otherwise the browser prefers the built-in .ico over our
-  // logo and the tab never updates.
-  head
-    .querySelectorAll(
-      'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]',
-    )
-    .forEach((el) => el.remove());
-
   const href = settings.logoUrl || "/favicon.ico";
-  const link = document.createElement("link");
-  link.rel = "icon";
   const type = iconMimeType(href);
+
+  // Manage a single icon <link> that we own (data-app-icon) and update it in
+  // place. We deliberately do NOT remove framework-injected icon links:
+  // deleting <head> nodes that React/Next still track corrupts their fiber
+  // tree and throws "Cannot read properties of null (reading 'removeChild')"
+  // on the next navigation. A trailing <link rel="icon"> wins in the browser
+  // anyway, so ours takes effect without touching their nodes.
+  let link = document.head.querySelector<HTMLLinkElement>(
+    'link[data-app-icon="true"]',
+  );
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    link.dataset.appIcon = "true";
+    document.head.appendChild(link);
+  }
   if (type) link.type = type;
+  else link.removeAttribute("type");
   link.href = href;
-  head.appendChild(link);
 }
 
 function readCache(): AppSettings {
