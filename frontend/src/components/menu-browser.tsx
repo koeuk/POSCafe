@@ -267,7 +267,7 @@ function Chip({
       onClick={onClick}
       className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
         active
-          ? "bg-[#3a2a16] text-amber-50 shadow-md shadow-orange-900/15 dark:bg-pos-button dark:text-stone-950"
+          ? "bg-pos-button text-pos-button-fg shadow-md shadow-orange-900/15"
           : "bg-white/80 text-stone-600 ring-1 ring-stone-200 backdrop-blur hover:bg-white dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-700 dark:hover:bg-stone-800"
       }`}
     >

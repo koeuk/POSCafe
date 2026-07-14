@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { BrandingProvider } from "@/lib/branding-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { InlineScript } from "@/components/inline-script";
 
 // Runs before paint to set the .dark class, preventing a light-mode flash.
 const NO_FLASH_SCRIPT = `
@@ -43,7 +44,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />
+        <InlineScript html={NO_FLASH_SCRIPT} />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider>

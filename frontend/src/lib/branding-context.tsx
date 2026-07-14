@@ -43,6 +43,29 @@ const COLOR_VARS: Record<string, keyof AppSettings> = {
   "--pos-active": "sidebarActiveColor",
 };
 
+/**
+ * Readable text colour (near-black or near-white) for a given hex background,
+ * by perceived luminance. Keeps label text legible on whatever accent colour
+ * an admin picks — otherwise a dark custom button colour leaves the built-in
+ * dark button text unreadable.
+ */
+function readableForeground(hex: string): string {
+  const raw = hex.replace("#", "").trim();
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return "#fff7ed";
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#0c0a09" : "#fff7ed";
+}
+
 /** Push (or clear) the colour overrides as inline CSS variables on <html>. */
 function applyColors(settings: AppSettings) {
   if (typeof document === "undefined") return;
@@ -54,6 +77,17 @@ function applyColors(settings: AppSettings) {
     } else {
       root.style.removeProperty(cssVar); // fall back to the globals.css default
     }
+  }
+
+  // Pair a readable foreground with a custom accent colour so text on the
+  // accent stays legible; clear it to fall back to the per-mode default.
+  if (settings.buttonColor) {
+    root.style.setProperty(
+      "--pos-button-fg",
+      readableForeground(settings.buttonColor),
+    );
+  } else {
+    root.style.removeProperty("--pos-button-fg");
   }
 }
 
