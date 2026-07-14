@@ -42,8 +42,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // The inline no-flash script (in layout) has already set the class before
   // paint; here we just read the stored preference to drive the UI.
   const [theme, setThemeState] = useState<Theme>("system");
+  // Until mounted, `resolved` stays deterministic ("light") so the server and
+  // first client render agree. `systemPrefersDark()` reads window.matchMedia,
+  // which is false on the server but the real OS value on the client — using it
+  // during the first render would mismatch and break hydration.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
     if (stored === "light" || stored === "dark" || stored === "system") {
       // Intentional: the initial render stays "system" to match the SSR
@@ -69,8 +75,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", onChange);
   }, [theme]);
 
-  const resolved: "light" | "dark" =
-    theme === "system" ? (systemPrefersDark() ? "dark" : "light") : theme;
+  const resolved: "light" | "dark" = !mounted
+    ? // Deterministic on the server and the first client render.
+      theme === "system"
+      ? "light"
+      : theme
+    : theme === "system"
+      ? systemPrefersDark()
+        ? "dark"
+        : "light"
+      : theme;
 
   const toggle = useCallback(() => {
     setTheme(resolved === "dark" ? "light" : "dark");
