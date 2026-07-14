@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { useFetch } from "@/lib/use-api";
 import { formatPrice } from "@/lib/pricing";
 import { GLASS } from "@/lib/ui";
 import { downloadExcel } from "@/lib/export-excel";
@@ -76,51 +77,30 @@ interface StockReport {
 }
 
 export default function ReportsPage() {
-  const [summary, setSummary] = useState<ReportSummary | null>(null);
-  const [daily, setDaily] = useState<DailySale[]>([]);
-  const [bestProducts, setBestProducts] = useState<BestProduct[]>([]);
-  const [stock, setStock] = useState<StockReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("week");
 
   const periodMeta = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
   const windowDays = useMemo(() => periodDays(period), [period]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [nextSummary, nextDaily, nextBestProducts, nextStock] =
-          await Promise.all([
-            api<ReportSummary>("/reports/summary"),
-            api<DailySale[]>(`/reports/daily-sales?days=${windowDays}`),
-            api<BestProduct[]>("/reports/best-products?limit=8"),
-            api<StockReport>("/reports/stock"),
-          ]);
-        if (!cancelled) {
-          setSummary(nextSummary);
-          setDaily(nextDaily);
-          setBestProducts(nextBestProducts);
-          setStock(nextStock);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load reports");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [windowDays]);
+  const { data, loading, error } = useFetch(
+    async () => {
+      const [summary, daily, bestProducts, stock] = await Promise.all([
+        api<ReportSummary>("/reports/summary"),
+        api<DailySale[]>(`/reports/daily-sales?days=${windowDays}`),
+        api<BestProduct[]>("/reports/best-products?limit=8"),
+        api<StockReport>("/reports/stock"),
+      ]);
+      return { summary, daily, bestProducts, stock };
+    },
+    [windowDays],
+    { fallback: "Failed to load reports" },
+  );
+  const { summary, daily, bestProducts, stock } = data ?? {
+    summary: null as ReportSummary | null,
+    daily: [] as DailySale[],
+    bestProducts: [] as BestProduct[],
+    stock: null as StockReport | null,
+  };
 
   // Backend only returns days that had sales; fill in every day of the window
   // (oldest → newest) with zeros so the chart shows a continuous axis instead

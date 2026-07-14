@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { RequireAuth } from "@/components/require-auth";
+import { useClickOutside } from "@/lib/use-click-outside";
 import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
 import { api, uploadImage } from "@/lib/api";
@@ -129,8 +130,31 @@ function Settings() {
 
 // ── General: app name, logo & theme colours ──────────────────────────────
 
+// Quick-pick palettes. Accent colours suit buttons / active items; surface
+// colours (light + dark) suit page & sidebar backgrounds.
+const ACCENT_PRESETS = [
+  "#2a1d15",
+  "#111827",
+  "#1d4ed8",
+  "#0d9488",
+  "#059669",
+  "#dc2626",
+  "#ea580c",
+  "#7c3aed",
+];
+const SURFACE_PRESETS = [
+  "#ffffff",
+  "#f5f5f6",
+  "#f1f5f9",
+  "#fef3c7",
+  "#1c1917",
+  "#0f172a",
+  "#1e293b",
+  "#0c0a09",
+];
+
 // Each themeable colour: which settings field, its <input type=color> fallback
-// swatch, and the CSS variable it drives for the live preview.
+// swatch, the CSS variable it drives for the live preview, and quick presets.
 const COLOR_FIELDS = [
   {
     key: "buttonColor",
@@ -138,6 +162,7 @@ const COLOR_FIELDS = [
     label: "Button color",
     hint: "Primary buttons & accents",
     fallback: "#2a1d15",
+    presets: ACCENT_PRESETS,
   },
   {
     key: "pageBg",
@@ -145,6 +170,7 @@ const COLOR_FIELDS = [
     label: "Background color",
     hint: "Main content area",
     fallback: "#f5f5f6",
+    presets: SURFACE_PRESETS,
   },
   {
     key: "sidebarBg",
@@ -152,6 +178,7 @@ const COLOR_FIELDS = [
     label: "Sidebar background",
     hint: "Left navigation panel",
     fallback: "#ffffff",
+    presets: SURFACE_PRESETS,
   },
   {
     key: "sidebarActiveColor",
@@ -159,6 +186,7 @@ const COLOR_FIELDS = [
     label: "Sidebar active item",
     hint: "Selected menu highlight",
     fallback: "#2a1d15",
+    presets: ACCENT_PRESETS,
   },
 ] as const;
 
@@ -289,6 +317,7 @@ function AppSettingsPanel() {
               hint={f.hint}
               value={colors[f.key]}
               fallback={f.fallback}
+              presets={f.presets}
               onChange={(v) => setColor(f.key, v)}
             />
           ))}
@@ -338,22 +367,25 @@ function applyColorVars(colors: Colors) {
   }
 }
 
-// A single colour control: swatch (native picker) + hex input + reset.
+// A single colour control: preset swatches + native picker + hex input + reset.
 function ColorField({
   label,
   hint,
   value,
   fallback,
+  presets,
   onChange,
 }: {
   label: string;
   hint: string;
   value: string | null;
   fallback: string;
+  presets: readonly string[];
   onChange: (value: string | null) => void;
 }) {
   const custom = value !== null;
   const swatch = value ?? fallback;
+  const selected = (value ?? "").toLowerCase();
 
   return (
     <div className="rounded-xl border border-stone-200 p-3 dark:border-stone-700">
@@ -401,6 +433,29 @@ function ColorField({
           spellCheck={false}
           className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 font-mono text-xs text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:focus:border-amber-500 dark:focus:ring-amber-500/20"
         />
+      </div>
+
+      {/* Quick-pick presets */}
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {presets.map((c) => {
+          const active = selected === c.toLowerCase();
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onChange(c)}
+              title={c}
+              aria-label={`Use ${c}`}
+              aria-pressed={active}
+              className={`h-6 w-6 rounded-md border shadow-sm transition hover:scale-110 ${
+                active
+                  ? "border-stone-900 ring-2 ring-stone-900/20 dark:border-white dark:ring-white/30"
+                  : "border-stone-200 dark:border-stone-600"
+              }`}
+              style={{ backgroundColor: c }}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -878,16 +933,7 @@ function StaffRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [menuOpen]);
+  useClickOutside(menuRef, () => setMenuOpen(false), menuOpen);
 
   return (
     <li className="flex items-center gap-3 rounded-xl px-2 py-3 transition-shadow duration-200 hover:bg-stone-50 hover:shadow-md dark:hover:bg-stone-800/40">

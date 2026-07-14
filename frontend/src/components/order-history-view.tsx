@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusDropdown } from "@/components/status-dropdown";
 import { api } from "@/lib/api";
+import { STATUS_FILTERS } from "@/lib/orders";
 import { OrderStatus, PaymentStatus, type OrderWithUser } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
@@ -21,15 +22,6 @@ function PaymentBadge({ status }: { status: PaymentStatus }) {
     </span>
   );
 }
-
-const STATUS_FILTERS: { label: string; value: OrderStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Pending", value: OrderStatus.PENDING },
-  { label: "Preparing", value: OrderStatus.PREPARING },
-  { label: "Ready", value: OrderStatus.READY },
-  { label: "Completed", value: OrderStatus.COMPLETED },
-  { label: "Cancelled", value: OrderStatus.CANCELLED },
-];
 
 /**
  * Full order-history view (filter + list + inline status change). Shared by the

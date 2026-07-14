@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { api, getApiUrl, getToken } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
 import { OrderStatus, type Order } from "@/lib/types";
 
 // Same host the app was opened from — see getApiUrl(). An explicit
@@ -37,7 +36,6 @@ const ACTIVE = new Set<OrderStatus>([
 ]);
 
 function KitchenScreen() {
-  const { logout } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -139,12 +137,6 @@ function KitchenScreen() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <button
-            onClick={logout}
-            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-100 dark:border-stone-600 dark:text-stone-300 dark:hover:bg-stone-800"
-          >
-            Logout
-          </button>
         </div>
       </header>
 

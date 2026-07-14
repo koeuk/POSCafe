@@ -3,17 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { api } from "@/lib/api";
+import { STATUS_FILTERS } from "@/lib/orders";
 import { OrderStatus, type OrderWithUser } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
-
-const STATUS_FILTERS: { label: string; value: OrderStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Pending", value: OrderStatus.PENDING },
-  { label: "Preparing", value: OrderStatus.PREPARING },
-  { label: "Ready", value: OrderStatus.READY },
-  { label: "Completed", value: OrderStatus.COMPLETED },
-  { label: "Cancelled", value: OrderStatus.CANCELLED },
-];
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   [OrderStatus.PENDING]: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",

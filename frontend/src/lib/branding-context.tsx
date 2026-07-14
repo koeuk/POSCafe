@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -56,6 +57,56 @@ function applyColors(settings: AppSettings) {
   }
 }
 
+// Best-guess MIME type for a favicon URL, so the browser accepts non-.ico
+// images (uploaded logos are usually PNG/JPEG/WebP/SVG).
+function iconMimeType(url: string): string | null {
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    case "ico":
+      return "image/x-icon";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Reflect the branding in the browser tab: document title = app name, and the
+ * favicon = the uploaded logo (falling back to the default mark). Kept in sync
+ * imperatively because the title/icon are dynamic (admin-configurable).
+ */
+function applyDocumentBranding(settings: AppSettings) {
+  if (typeof document === "undefined") return;
+
+  document.title = settings.appName || DEFAULTS.appName;
+
+  const head = document.head;
+  // Remove every icon link the framework already injected (e.g. the default
+  // /favicon.ico); otherwise the browser prefers the built-in .ico over our
+  // logo and the tab never updates.
+  head
+    .querySelectorAll(
+      'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]',
+    )
+    .forEach((el) => el.remove());
+
+  const href = settings.logoUrl || "/favicon.ico";
+  const link = document.createElement("link");
+  link.rel = "icon";
+  const type = iconMimeType(href);
+  if (type) link.type = type;
+  link.href = href;
+  head.appendChild(link);
+}
+
 function readCache(): AppSettings {
   if (typeof window === "undefined") return DEFAULTS;
   try {
@@ -76,6 +127,7 @@ const BrandingContext = createContext<BrandingContextValue | null>(null);
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULTS);
+  const pathname = usePathname();
 
   const refresh = useCallback(async () => {
     try {
@@ -84,6 +136,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       const next: AppSettings = { ...DEFAULTS, ...data };
       setSettings(next);
       applyColors(next);
+      applyDocumentBranding(next);
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(next));
       } catch {
@@ -99,10 +152,18 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     // refresh from the backend. Intentional post-mount state sync.
     const cached = readCache();
     applyColors(cached);
+    applyDocumentBranding(cached);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSettings(cached);
     void refresh();
   }, [refresh]);
+
+  // Re-assert the tab title + favicon after each navigation: Next re-applies
+  // the static metadata title on soft navigations, which would otherwise
+  // overwrite the dynamic app name.
+  useEffect(() => {
+    applyDocumentBranding(settings);
+  }, [settings, pathname]);
 
   const value = useMemo(() => ({ ...settings, refresh }), [settings, refresh]);
 

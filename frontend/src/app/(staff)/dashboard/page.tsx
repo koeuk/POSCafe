@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
+import { useFetch } from "@/lib/use-api";
+import { useClickOutside } from "@/lib/use-click-outside";
 import { formatPrice } from "@/lib/pricing";
 import { OrderStatus, type Order, type Product } from "@/lib/types";
 
@@ -85,38 +81,25 @@ function startOfWeek(d: Date) {
 
 function Dashboard() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<CategorySales[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("this_week");
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [o, p, c] = await Promise.all([
-          api<Order[]>("/orders"),
-          api<Product[]>("/products"),
-          api<CategorySales[]>("/reports/categories"),
-        ]);
-        if (!cancelled) {
-          setOrders(o);
-          setProducts(p);
-          setCategories(c);
-        }
-      } catch (err) {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "Failed to load data");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data, loading, error } = useFetch(
+    async () => {
+      const [orders, products, categories] = await Promise.all([
+        api<Order[]>("/orders"),
+        api<Product[]>("/products"),
+        api<CategorySales[]>("/reports/categories"),
+      ]);
+      return { orders, products, categories };
+    },
+    [],
+    { fallback: "Failed to load data" },
+  );
+  const { orders, products, categories } = data ?? {
+    orders: [] as Order[],
+    products: [] as Product[],
+    categories: [] as CategorySales[],
+  };
 
   const stats = useMemo(() => {
     const completed = orders.filter((o) => o.status === OrderStatus.COMPLETED);
@@ -610,21 +593,7 @@ function PeriodMenu({
   const current = PERIODS.find((p) => p.value === value)?.label ?? "This Week";
 
   // Close on outside click or Escape.
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  useClickOutside(ref, () => setOpen(false), open, { escape: true });
 
   return (
     <div ref={ref} className="relative">

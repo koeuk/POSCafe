@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
 import { useTheme, type Theme } from "@/lib/theme-context";
 import { resolveCashierPages } from "@/lib/permissions";
+import { useClickOutside } from "@/lib/use-click-outside";
 
 interface NavItem {
   /** Stable id; cashier-assignable keys live in lib/permissions. */
@@ -365,16 +366,7 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const initial = (user?.name ?? "?").charAt(0).toUpperCase();
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  useClickOutside(ref, () => setOpen(false), open);
 
   return (
     <div

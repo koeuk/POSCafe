@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { api, uploadImage } from "@/lib/api";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useClickOutside } from "@/lib/use-click-outside";
 import { rolePathBase } from "@/lib/permissions";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product, Size, SizeRow } from "@/lib/types";
@@ -1431,19 +1432,7 @@ function CategoryCombobox({
   }, []);
 
   // Close on outside click while open.
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        close();
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, close]);
+  useClickOutside(containerRef, close, open);
 
   function pick(id: string) {
     onChange(id);
@@ -1558,16 +1547,7 @@ function StockCell({ product }: { product: Product }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
+  useClickOutside(ref, () => setOpen(false), open);
 
   const sized = !!product.sizes && product.sizes.length > 0;
   const lines = sized
