@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, type SelectQueryBuilder } from 'typeorm';
+import {
+  Repository,
+  type ObjectLiteral,
+  type SelectQueryBuilder,
+} from 'typeorm';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { toNumber } from '../common/money';
 import { OrderItem } from '../orders/entities/order-item.entity';
@@ -54,7 +58,9 @@ export class ReportsService {
   ) {}
 
   /** Restricts a query on order alias `o` to paid orders. */
-  private paidOnly<T>(qb: SelectQueryBuilder<T>): SelectQueryBuilder<T> {
+  private paidOnly<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+  ): SelectQueryBuilder<T> {
     return qb.where('o.paymentStatus = :paid', { paid: PaymentStatus.PAID });
   }
 

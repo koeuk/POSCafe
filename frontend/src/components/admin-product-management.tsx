@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { api, uploadImage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useClickOutside } from "@/lib/use-click-outside";
+import { useImageUpload } from "@/lib/use-image-upload";
 import { rolePathBase } from "@/lib/permissions";
 import { formatPrice } from "@/lib/pricing";
 import type { Category, Product, Size, SizeRow } from "@/lib/types";
@@ -104,7 +105,7 @@ export function AdminProductManagement({
   const [categoryImageMode, setCategoryImageMode] = useState<"upload" | "link">(
     "upload",
   );
-  const [uploading, setUploading] = useState(false);
+  const { upload, uploading } = useImageUpload();
   const [galleryLink, setGalleryLink] = useState("");
   const pageCopy = VIEW_COPY[view];
   const searchParams = useSearchParams();
@@ -133,43 +134,34 @@ export function AdminProductManagement({
 
   async function handleMainImageUpload(file: File | undefined) {
     if (!file) return;
-    setUploading(true);
     setError(null);
     try {
-      const url = await uploadImage(file);
+      const [url] = await upload(file);
       setProductForm((form) => ({ ...form, image: url }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
     }
   }
 
   async function handleCategoryImageUpload(file: File | undefined) {
     if (!file) return;
-    setUploading(true);
     setError(null);
     try {
-      const url = await uploadImage(file);
+      const [url] = await upload(file);
       setCategoryForm((form) => ({ ...form, image: url }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
     }
   }
 
   async function handleGalleryUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
-    setUploading(true);
     setError(null);
     try {
-      const urls = await Promise.all(Array.from(files).map((file) => uploadImage(file)));
+      const urls = await upload(files);
       setProductForm((form) => ({ ...form, gallery: [...form.gallery, ...urls] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
     }
   }
 

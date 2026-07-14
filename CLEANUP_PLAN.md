@@ -39,6 +39,23 @@ _Generated from a full backend + frontend maintainability audit. Ordered by prio
 
 ---
 
+## ✅ FINAL STATUS (this pass)
+
+**Done & verified (tsc + eslint clean on every touched file):**
+- Phase 1: P1.1 ConfirmDialog dedup · P1.2 `money()`→`formatPrice` · P1.3 order-history/manage-orders merged (−177 lines) · P1.4 inline types→`types.ts`
+- Phase 2: P2.5 `useFetch`+`toErrorMessage` (reports/dashboard) · P2.6 `useClickOutside` (5 popovers) · P2.7 `lib/orders.ts` · P2.8 tokens (already done) · P2.9 backend `money.ts` · P2.10 `useImageUpload` (admin-product)
+- Phase 3: P3.13 `useMenuFilter` (both browsers)
+- Phase 4: P4.15 reports.service typed rows + `paidOnly` · P4.18 `ParseIntPipe`+clamp + `@ArrayUnique` · P4.19 menu.service QueryBuilder
+
+**Skipped (per user):** P3.11/P3.12 god-component splits · P4.16 3-way size-model.
+**Skipped (not safe on inspection):** P4.17 users/settings naming (existing `create` vs `createUser` collision + auth coupling; settings is a legit singleton).
+
+**Behavior notes:** menu product-sort now uses SQL collation (was JS `localeCompare`) — minor ordering change for non-ASCII names. `settings/page.tsx` keeps its own richer ConfirmDialog.
+
+**Pre-existing lint (untouched files, not from this pass):** `staff-frame.tsx` setState-in-effect · `uploads.controller.ts` multer `any` · `users.service.ts` prettier nit.
+
+---
+
 ## Phase 3 — Structural refactors (schedule deliberately)
 
 - [ ] 🏗️ **Split `components/admin-product-management.tsx` (1721 lines)** — one component owns category+product CRUD, 3 fetches, deep-linking, uploads, combobox, stock popover, validation.

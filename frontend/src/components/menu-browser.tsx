@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useBranding } from "@/lib/branding-context";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
+import { useMenuFilter } from "@/lib/use-menu-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 // Editorial display serif — gives the menu its warm, artisanal voice.
@@ -17,8 +18,8 @@ const display = Fraunces({
 
 export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
   const { appName, logoUrl } = useBranding();
-  const [query, setQuery] = useState("");
-  const [activeCat, setActiveCat] = useState<number | "all">("all");
+  const { query, setQuery, activeCat, setActiveCat, visible } =
+    useMenuFilter(menu);
 
   // Best discount across the menu — drives the promo banner.
   const topDiscount = useMemo(
@@ -33,27 +34,6 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
       ),
     [menu],
   );
-
-  // Filter by active category + search (matches product name OR category name).
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return menu
-      .filter((cat) => activeCat === "all" || cat.id === activeCat)
-      .map((cat) => {
-        const catMatches = cat.name.toLowerCase().includes(q);
-        const products = !q
-          ? cat.products
-          : catMatches
-            ? cat.products // typing a category name shows all its products
-            : cat.products.filter(
-                (p) =>
-                  p.name.toLowerCase().includes(q) ||
-                  (p.description ?? "").toLowerCase().includes(q),
-              );
-        return { ...cat, products };
-      })
-      .filter((cat) => cat.products.length > 0);
-  }, [menu, query, activeCat]);
 
   const hasResults = visible.length > 0;
 

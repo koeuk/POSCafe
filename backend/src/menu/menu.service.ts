@@ -18,23 +18,26 @@ export class MenuService {
   ) {}
 
   async getMenu() {
-    const categories = await this.categoryRepo.find({
-      where: { isActive: true },
-      relations: { products: true },
-      order: { name: 'ASC' },
-    });
+    // Only active categories that have at least one available product
+    // (inner join drops empties), with available products attached and
+    // everything ordered in SQL — no JS post-filtering/sorting.
+    const categories = await this.categoryRepo
+      .createQueryBuilder('c')
+      .innerJoinAndSelect('c.products', 'p', 'p.isAvailable = :available', {
+        available: true,
+      })
+      .where('c.isActive = :active', { active: true })
+      .orderBy('c.name', 'ASC')
+      .addOrderBy('p.name', 'ASC')
+      .getMany();
 
-    return categories
-      .map((category) => ({
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        image: category.image,
-        products: (category.products ?? [])
-          .filter((product) => product.isAvailable)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      }))
-      .filter((category) => category.products.length > 0);
+    return categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
+      image: category.image,
+      products: category.products,
+    }));
   }
 
   /** A single available product with its category, for the detail page. */

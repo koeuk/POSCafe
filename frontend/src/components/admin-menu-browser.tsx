@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
+import { useMenuFilter } from "@/lib/use-menu-filter";
 import { GLASS } from "@/lib/ui";
 
 export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
-  const [query, setQuery] = useState("");
-  const [activeCat, setActiveCat] = useState<number | "all">("all");
+  const { query, setQuery, activeCat, setActiveCat, visible } =
+    useMenuFilter(menu);
 
   const summary = useMemo(() => {
     const products = menu.flatMap((cat) => cat.products);
@@ -19,26 +20,6 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
       stocked: products.filter((product) => product.stock > 0).length,
     };
   }, [menu]);
-
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return menu
-      .filter((cat) => activeCat === "all" || cat.id === activeCat)
-      .map((cat) => {
-        const catMatches = cat.name.toLowerCase().includes(q);
-        const products = !q
-          ? cat.products
-          : catMatches
-            ? cat.products
-            : cat.products.filter(
-                (product) =>
-                  product.name.toLowerCase().includes(q) ||
-                  (product.description ?? "").toLowerCase().includes(q),
-              );
-        return { ...cat, products };
-      })
-      .filter((cat) => cat.products.length > 0);
-  }, [menu, query, activeCat]);
 
   return (
     <main className="mx-auto max-w-7xl">
