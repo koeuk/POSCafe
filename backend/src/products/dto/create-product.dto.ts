@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsInt,
@@ -43,6 +44,9 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayUnique((s: ProductSizeDto) => s.size, {
+    message: 'Duplicate size names are not allowed',
+  })
   @ValidateNested({ each: true })
   @Type(() => ProductSizeDto)
   sizes?: ProductSizeDto[] | null;

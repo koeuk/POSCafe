@@ -24,7 +24,10 @@ _Generated from a full backend + frontend maintainability audit. Ordered by prio
 
 ---
 
-## Phase 2 — Shared helpers (removes repetition across ~12 files)
+## Phase 2 — Shared helpers  (P2.5–2.8 ✅ / 2.9–2.10 pending)
+
+**Progress:** ✅ `lib/use-api.ts` (`useFetch`+`toErrorMessage`, migrated `reports`+`dashboard`) · ✅ `lib/use-click-outside.ts` (migrated sidebar, dashboard, admin-product ×2, settings; `status-dropdown` left — 2 refs + reposition) · ✅ `lib/orders.ts` (`STATUS_FILTERS` deduped from 2 files + `ORDER_STATUS_LABEL`) · ⏭️ **P2.8 tokens: mostly pre-done** by the user's `--pos-button` var; the remaining 23 `#2A1D15` literals are intentional light/dark pairs and the 3 input classes differ by context — unifying = visual change, skipped.
+
 
 - [ ] 🧹 **`lib/use-api.ts` — `useFetch<T>(fn, deps)`** returning `{data, loading, error, reload}` + `toErrorMessage(err, fallback)`.
   The `loading/error/cancelled` triad is copy-pasted in ~12 files (`pos`, `dashboard`, `pay`, `orders`, `order-history`, `manage-orders`, `stock`, `settings`, `admin-product-management`, `kitchen`, `reports`, admin views). Optional `{ pollMs }` to unify `orders`/`kitchen` polling.

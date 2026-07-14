@@ -11,6 +11,7 @@ import { OrderStatus } from '../common/enums/order-status.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { Order } from '../orders/entities/order.entity';
 import { OrdersService } from '../orders/orders.service';
+import { roundCents, toNumber } from '../common/money';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { Payment } from './entities/payment.entity';
 
@@ -52,7 +53,7 @@ export class PaymentsService {
         throw new ConflictException('Order has already been paid');
       }
 
-      const amount = Number(order.total);
+      const amount = toNumber(order.total);
       let tendered = amount;
       let change = 0;
 
@@ -66,7 +67,7 @@ export class PaymentsService {
           );
         }
         tendered = dto.tendered;
-        change = Math.round((tendered - amount) * 100) / 100;
+        change = roundCents(tendered - amount);
       }
 
       const payment = manager.create(Payment, {

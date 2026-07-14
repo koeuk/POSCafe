@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
+import { roundCents, toNumber } from '../common/money';
 import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -56,7 +57,7 @@ export class OrdersService {
 
         // Resolve the base price: from the chosen size if the product has
         // size options, otherwise the product's own price.
-        let basePrice = Number(product.price);
+        let basePrice = toNumber(product.price);
         let size: string | null = null;
         if (product.sizes && product.sizes.length > 0) {
           if (!line.size) {
@@ -70,7 +71,7 @@ export class OrdersService {
               `Invalid size "${line.size}" for "${product.name}"`,
             );
           }
-          basePrice = Number(match.price);
+          basePrice = toNumber(match.price);
           size = match.size;
         }
 
@@ -80,9 +81,8 @@ export class OrdersService {
           Math.max(product.discountPercent ?? 0, 0),
           100,
         );
-        const unitPrice =
-          Math.round(basePrice * (1 - discount / 100) * 100) / 100;
-        const subtotal = Math.round(unitPrice * line.quantity * 100) / 100;
+        const unitPrice = roundCents(basePrice * (1 - discount / 100));
+        const subtotal = roundCents(unitPrice * line.quantity);
         total += subtotal;
 
         // Decrement stock. Sized items draw from their per-size variant (the

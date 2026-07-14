@@ -1,4 +1,10 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  DefaultValuePipe,
+  Get,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import { ReportsService } from './reports.service';
 
@@ -14,14 +20,18 @@ export class ReportsController {
 
   @RequiresPage('reports')
   @Get('daily-sales')
-  dailySales(@Query('days') days?: string) {
-    return this.reportsService.dailySales(days ? Number(days) : 7);
+  dailySales(
+    @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number,
+  ) {
+    return this.reportsService.dailySales(days);
   }
 
   @RequiresPage('reports')
   @Get('best-products')
-  bestProducts(@Query('limit') limit?: string) {
-    return this.reportsService.bestProducts(limit ? Number(limit) : 5);
+  bestProducts(
+    @Query('limit', new DefaultValuePipe(5), ParseIntPipe) limit: number,
+  ) {
+    return this.reportsService.bestProducts(limit);
   }
 
   // Also used by the Stock page's overview.
