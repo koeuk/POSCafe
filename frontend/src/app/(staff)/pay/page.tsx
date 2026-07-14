@@ -9,9 +9,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { PageGuard } from "@/components/page-guard";
-import { RequireAuth } from "@/components/require-auth";
-import { StaffFrame } from "@/components/staff-frame";
 import { api } from "@/lib/api";
 import { PaymentMethod, type Order } from "@/lib/types";
 
@@ -418,20 +415,14 @@ function PadBtn({
 
 export default function PayPage() {
   return (
-    <RequireAuth>
-      <PageGuard>
-        <StaffFrame>
-          <Suspense
-            fallback={
-              <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
-                Loading…
-              </div>
-            }
-          >
-            <PayScreen />
-          </Suspense>
-        </StaffFrame>
-      </PageGuard>
-    </RequireAuth>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
+          Loading…
+        </div>
+      }
+    >
+      <PayScreen />
+    </Suspense>
   );
 }
