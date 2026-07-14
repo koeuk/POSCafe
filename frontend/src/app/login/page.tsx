@@ -4,6 +4,7 @@ import { Fraunces } from "next/font/google";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useBranding } from "@/lib/branding-context";
 
 // Warm display serif for the brand & headings — matches the POS screen.
 const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -13,6 +14,7 @@ const HERO = "/coffee-login.jpg";
 
 export default function LoginPage() {
   const { user, loading, login } = useAuth();
+  const { appName, logoUrl } = useBranding();
   const router = useRouter();
 
   const [username, setUsername] = useState("");
@@ -60,13 +62,22 @@ export default function LoginPage() {
           className="ios-rise mb-8 flex flex-col items-center text-center"
           style={{ animationDelay: "60ms" }}
         >
-          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-amber-50/10 text-3xl ring-1 ring-inset ring-amber-50/20 backdrop-blur-sm">
-            ☕
-          </span>
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={appName}
+              className="h-14 w-14 rounded-2xl object-cover ring-1 ring-inset ring-amber-50/20"
+            />
+          ) : (
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-amber-50/10 text-3xl ring-1 ring-inset ring-amber-50/20 backdrop-blur-sm">
+              ☕
+            </span>
+          )}
           <h1
             className={`${display.className} mt-5 text-5xl font-semibold leading-none text-amber-50`}
           >
-            POS<span className="text-amber-400">CAFE</span>
+            {appName}
           </h1>
           <p className="mt-3 text-sm text-amber-50/60">
             Point of sale, brewed for your counter
@@ -233,7 +244,7 @@ export default function LoginPage() {
           className="ios-rise mt-6 text-center text-xs text-amber-50/40"
           style={{ animationDelay: "260ms" }}
         >
-          POSCAFE · Coffee shop point of sale
+          {appName} · Coffee shop point of sale
         </p>
       </div>
     </main>

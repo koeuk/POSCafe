@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
 import { useMemo, useState } from "react";
+import { useBranding } from "@/lib/branding-context";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -15,6 +16,7 @@ const display = Fraunces({
 });
 
 export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
+  const { appName, logoUrl } = useBranding();
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<number | "all">("all");
 
@@ -72,14 +74,23 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
         <div className="relative mx-auto max-w-6xl">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3.5">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#3a2a16] text-amber-50 shadow-lg shadow-orange-900/25 dark:bg-amber-500 dark:text-stone-950">
-                <CupIcon />
-              </span>
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={appName}
+                  className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-orange-900/25"
+                />
+              ) : (
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#3a2a16] text-amber-50 shadow-lg shadow-orange-900/25 dark:bg-amber-500 dark:text-stone-950">
+                  <CupIcon />
+                </span>
+              )}
               <div>
                 <h1
                   className={`${display.className} text-3xl font-black leading-none tracking-tight`}
                 >
-                  POSCAFE
+                  {appName}
                 </h1>
                 <p className="mt-1.5 text-sm font-medium text-[#7a5a30] dark:text-amber-200/70">
                   Freshly brewed, made to order

@@ -583,8 +583,11 @@ function ProductCard({
 
       <div className="mt-auto pt-3">
         {sizes.length > 0 ? (
-          <div className={sizes.length === 1 ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-2 gap-1.5"}>
-            {sizes.map((size, index) => {
+          <div
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${sizes.length}, minmax(0, 1fr))` }}
+          >
+            {sizes.map((size) => {
               const sizeOut = sizeStock(product, size.size) <= 0;
               return (
                 <button
@@ -592,15 +595,17 @@ function ProductCard({
                   type="button"
                   disabled={sizeOut}
                   onClick={() => onAdd(product, size)}
-                  className={["flex", sizes.length === 3 && index === 2 ? "col-span-2" : "", "w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"].join(" ")}
+                  className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-stone-200 px-1 py-1.5 text-xs font-medium text-stone-700 transition hover:border-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500 dark:hover:bg-stone-800"
                 >
-                  <span className="min-w-0 break-words text-left leading-snug">
+                  <span className="max-w-full truncate leading-none">
                     {size.size}
                     {sizeOut && (
-                      <span className="ml-1 text-[10px] text-red-500">out</span>
+                      <span className="ml-0.5 text-[10px] text-red-500">out</span>
                     )}
                   </span>
-                  <span className="shrink-0 tabular-nums">{formatPrice(effectivePrice(product, size))}</span>
+                  <span className="tabular-nums text-[10px] leading-none text-stone-500 dark:text-stone-400">
+                    {formatPrice(effectivePrice(product, size))}
+                  </span>
                 </button>
               );
             })}

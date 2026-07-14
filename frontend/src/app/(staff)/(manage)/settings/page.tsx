@@ -9,6 +9,7 @@ import {
 } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/lib/auth-context";
+import { useBranding } from "@/lib/branding-context";
 import { api, uploadImage } from "@/lib/api";
 import { Role, type User } from "@/lib/types";
 import {
@@ -30,18 +31,277 @@ const ROLE_META: Record<Role, { label: string; pill: string }> = {
 
 const EMPTY = { name: "", username: "", password: "", role: Role.CASHIER };
 
+const sw = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.7,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+type Tab = "general" | "staff";
+
+const TABS: { key: Tab; label: string; hint: string; icon: ReactNode }[] = [
+  {
+    key: "general",
+    label: "General",
+    hint: "App name & logo",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" {...sw}>
+        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+      </svg>
+    ),
+  },
+  {
+    key: "staff",
+    label: "Staff",
+    hint: "Accounts & access",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" {...sw}>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+];
+
 function Settings() {
-  const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(EMPTY);
-  const [avatar, setAvatar] = useState<string | null>(null);
-  // Sidebar pages a new cashier may see (only used when role === cashier).
-  const [pages, setPages] = useState<string[]>(DEFAULT_CASHIER_PAGES);
-  const [submitting, setSubmitting] = useState(false);
+  const [tab, setTab] = useState<Tab>("general");
+
+  return (
+    <main className="mx-auto max-w-7xl">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+          Settings
+        </h1>
+        <p className="text-sm text-stone-500 dark:text-stone-400">
+          Manage your app branding, staff accounts and access levels.
+        </p>
+      </header>
+
+      <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+        {/* Section sidebar */}
+        <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1">
+          {TABS.map((t) => {
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                aria-current={active ? "page" : undefined}
+                className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                  active
+                    ? "bg-[#2A1D15] text-amber-50 dark:bg-amber-500 dark:text-stone-950"
+                    : "text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
+                }`}
+              >
+                <span className="shrink-0">{t.icon}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold leading-tight">
+                    {t.label}
+                  </span>
+                  <span
+                    className={`hidden text-xs lg:block ${
+                      active
+                        ? "text-amber-50/70 dark:text-stone-950/70"
+                        : "text-stone-400 dark:text-stone-500"
+                    }`}
+                  >
+                    {t.hint}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Active section */}
+        <div className="min-w-0">
+          {tab === "general" ? <AppSettingsPanel /> : <StaffPanel />}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ── General: app name & logo ─────────────────────────────────────────────
+
+function AppSettingsPanel() {
+  const { appName, logoUrl, refresh } = useBranding();
+  const [name, setName] = useState(appName);
+  const [logo, setLogo] = useState<string | null>(logoUrl);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Sync local fields once branding has loaded from the backend.
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setName(appName);
+    setLogo(logoUrl);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [appName, logoUrl]);
+
+  const dirty = name.trim() !== appName || logo !== logoUrl;
+  const canSave = name.trim().length > 0 && dirty && !saving;
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setSaving(true);
+    try {
+      await api("/settings", {
+        method: "PATCH",
+        body: { appName: name.trim(), logoUrl: logo },
+      });
+      await refresh();
+      setSuccess("App settings saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSave}
+      className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
+    >
+      <h2 className="font-semibold text-stone-900 dark:text-stone-100">
+        App branding
+      </h2>
+      <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
+        The name and logo shown in the sidebar, login screen and menu.
+      </p>
+
+      <div className="mt-5 space-y-4">
+        <Field label="Logo" hint="Optional — square image works best">
+          <LogoPicker value={logo} onChange={setLogo} onError={setError} />
+        </Field>
+
+        <Field label="App name" hint="Up to 60 characters">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={60}
+            placeholder="POSCAFE"
+            autoComplete="off"
+            className={inputClass}
+          />
+        </Field>
+      </div>
+
+      {error && (
+        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="mt-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
+          {success}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={!canSave}
+        className="mt-5 rounded-xl bg-[#2A1D15] px-5 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+      >
+        {saving ? "Saving…" : "Save changes"}
+      </button>
+    </form>
+  );
+}
+
+// Logo upload control — mirrors AvatarPicker but with a rounded-square preview.
+function LogoPicker({
+  value,
+  onChange,
+  onError,
+}: {
+  value: string | null;
+  onChange: (url: string | null) => void;
+  onError: (msg: string | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    onError(null);
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      onChange(url);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      {value ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={value}
+          alt="Logo preview"
+          className="h-14 w-14 rounded-2xl object-cover shadow-sm"
+        />
+      ) : (
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#2A1D15] text-2xl text-amber-50 shadow-sm dark:bg-amber-500 dark:text-stone-950">
+          ☕
+        </span>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+        >
+          {uploading ? "Uploading…" : value ? "Change" : "Upload"}
+        </button>
+        {value && !uploading && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="hidden"
+      />
+    </div>
+  );
+}
+
+// ── Staff: accounts & access ─────────────────────────────────────────────
+
+function StaffPanel() {
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Whether the "Create user" modal is open.
+  const [creating, setCreating] = useState(false);
   // The user currently being edited (drives the modal).
   const [editing, setEditing] = useState<User | null>(null);
   // The user pending deletion (drives the confirm dialog).
@@ -68,36 +328,6 @@ function Settings() {
     void loadUsers();
   }, [loadUsers]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setSubmitting(true);
-    try {
-      const created = await api<User>("/users", {
-        method: "POST",
-        body: {
-          name: form.name.trim(),
-          username: form.username.trim(),
-          password: form.password,
-          role: form.role,
-          avatar,
-          // Page restrictions only apply to cashiers.
-          ...(form.role === Role.CASHIER ? { allowedPages: pages } : {}),
-        },
-      });
-      setSuccess(`${created.name} (${ROLE_META[created.role].label}) created.`);
-      setForm(EMPTY);
-      setAvatar(null);
-      setPages(DEFAULT_CASHIER_PAGES);
-      await loadUsers();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create user");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function confirmDelete() {
     if (!deleting) return;
     setDeleteBusy(true);
@@ -113,164 +343,71 @@ function Settings() {
     }
   }
 
-  const canSubmit =
-    form.name.trim().length > 0 &&
-    form.username.trim().length >= 3 &&
-    form.password.length >= 6 &&
-    // A cashier locked out of every page can't use the app (and PageGuard would
-    // bounce them to /login), so require at least one granted page.
-    (form.role !== Role.CASHIER || pages.length > 0) &&
-    !submitting;
-
   return (
-    <main className="mx-auto max-w-7xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-          Settings
-        </h1>
-        <p className="text-sm text-stone-500 dark:text-stone-400">
-          Manage staff accounts and access levels.
-        </p>
-      </header>
-
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Create user form */}
-        <section className="lg:col-span-2">
-          <form
-            onSubmit={handleSubmit}
-            className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
-          >
+    <>
+      <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-md dark:border-stone-800 dark:bg-stone-900">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
             <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-              Create user
+              Staff
             </h2>
-            <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-              Add a new admin or cashier account.
-            </p>
-
-            <div className="mt-5 space-y-4">
-              <Field label="Profile photo" hint="Optional">
-                <AvatarPicker
-                  value={avatar}
-                  name={form.name}
-                  onChange={setAvatar}
-                  onError={setError}
-                />
-              </Field>
-
-              <Field label="Full name">
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Jane Doe"
-                  autoComplete="off"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Username" hint="At least 3 characters">
-                <input
-                  type="text"
-                  value={form.username}
-                  onChange={(e) =>
-                    setForm({ ...form, username: e.target.value })
-                  }
-                  placeholder="jane"
-                  autoComplete="off"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Password" hint="At least 6 characters">
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Role">
-                <RolePicker
-                  value={form.role}
-                  onChange={(role) => setForm({ ...form, role })}
-                />
-              </Field>
-
-              {form.role === Role.CASHIER && (
-                <Field
-                  label="Page access"
-                  hint="Sidebar pages this cashier can see"
-                >
-                  <PagePermissions value={pages} onChange={setPages} />
-                </Field>
-              )}
-            </div>
-
-            {error && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-                {error}
-              </p>
-            )}
-            {success && (
-              <p className="mt-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
-                {success}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="mt-5 w-full rounded-xl bg-[#2A1D15] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
-            >
-              {submitting ? "Creating…" : "Create user"}
-            </button>
-          </form>
-        </section>
-
-        {/* User list */}
-        <section className="lg:col-span-3">
-          <div className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-md dark:border-stone-800 dark:bg-stone-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-                Staff
-              </h2>
-              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-                {users.length} {users.length === 1 ? "account" : "accounts"}
-              </span>
-            </div>
-
-            {loading ? (
-              <p className="text-sm text-stone-500 dark:text-stone-400">
-                Loading users…
-              </p>
-            ) : users.length === 0 ? (
-              <p className="text-sm text-stone-400 dark:text-stone-500">
-                No users yet.
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {[...users]
-                  .sort((a, b) => b.id - a.id)
-                  .map((u) => (
-                  <StaffRow
-                    key={u.id}
-                    user={u}
-                    isSelf={u.id === currentUser?.id}
-                    onEdit={() => setEditing(u)}
-                    onDelete={() => setDeleting(u)}
-                    onPermissions={() => setPermitting(u)}
-                  />
-                ))}
-              </ul>
-            )}
+            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+              {users.length} {users.length === 1 ? "account" : "accounts"}
+            </span>
           </div>
-        </section>
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-[#2A1D15] px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 dark:bg-amber-500 dark:text-stone-950"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add user
+          </button>
+        </div>
+
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            {error}
+          </p>
+        )}
+
+        {loading ? (
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            Loading users…
+          </p>
+        ) : users.length === 0 ? (
+          <p className="text-sm text-stone-400 dark:text-stone-500">
+            No users yet.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {[...users]
+              .sort((a, b) => b.id - a.id)
+              .map((u) => (
+              <StaffRow
+                key={u.id}
+                user={u}
+                isSelf={u.id === currentUser?.id}
+                onEdit={() => setEditing(u)}
+                onDelete={() => setDeleting(u)}
+                onPermissions={() => setPermitting(u)}
+              />
+            ))}
+          </ul>
+        )}
       </div>
+
+      {creating && (
+        <CreateUserModal
+          onClose={() => setCreating(false)}
+          onCreated={async () => {
+            setCreating(false);
+            await loadUsers();
+          }}
+        />
+      )}
 
       {editing && (
         <EditUserModal
@@ -304,7 +441,170 @@ function Settings() {
           }}
         />
       )}
-    </main>
+    </>
+  );
+}
+
+// ── Create modal ─────────────────────────────────────────────────────────
+
+function CreateUserModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [form, setForm] = useState(EMPTY);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  // Sidebar pages a new cashier may see (only used when role === cashier).
+  const [pages, setPages] = useState<string[]>(DEFAULT_CASHIER_PAGES);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await api<User>("/users", {
+        method: "POST",
+        body: {
+          name: form.name.trim(),
+          username: form.username.trim(),
+          password: form.password,
+          role: form.role,
+          avatar,
+          // Page restrictions only apply to cashiers.
+          ...(form.role === Role.CASHIER ? { allowedPages: pages } : {}),
+        },
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const canSubmit =
+    form.name.trim().length > 0 &&
+    form.username.trim().length >= 3 &&
+    form.password.length >= 6 &&
+    // A cashier locked out of every page can't use the app (and PageGuard would
+    // bounce them to /login), so require at least one granted page.
+    (form.role !== Role.CASHIER || pages.length > 0) &&
+    !submitting;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleSubmit}
+        className="pos-drop max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-stone-200 bg-white p-5 shadow-xl dark:border-stone-800 dark:bg-stone-900"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-stone-900 dark:text-stone-100">
+              Create user
+            </h2>
+            <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
+              Add a new admin or cashier account.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <Field label="Profile photo" hint="Optional">
+            <AvatarPicker
+              value={avatar}
+              name={form.name}
+              onChange={setAvatar}
+              onError={setError}
+            />
+          </Field>
+
+          <Field label="Full name">
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Jane Doe"
+              autoComplete="off"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field label="Username" hint="At least 3 characters">
+            <input
+              type="text"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              placeholder="jane"
+              autoComplete="off"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field label="Password" hint="At least 6 characters">
+            <input
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field label="Role">
+            <RolePicker
+              value={form.role}
+              onChange={(role) => setForm({ ...form, role })}
+            />
+          </Field>
+
+          {form.role === Role.CASHIER && (
+            <Field label="Page access" hint="Sidebar pages this cashier can see">
+              <PagePermissions value={pages} onChange={setPages} />
+            </Field>
+          )}
+        </div>
+
+        {error && (
+          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="flex-1 rounded-xl bg-[#2A1D15] px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:text-stone-950"
+          >
+            {submitting ? "Creating…" : "Create user"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -801,14 +1101,6 @@ function PagePermissions({
 }
 
 // ── Shared bits ──────────────────────────────────────────────────────────
-
-const sw = {
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.7,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-};
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-amber-500 dark:focus:ring-amber-500/20";

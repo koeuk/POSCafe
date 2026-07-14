@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useBranding } from "@/lib/branding-context";
 import { useTheme, type Theme } from "@/lib/theme-context";
 import { resolveCashierPages } from "@/lib/permissions";
 
@@ -267,21 +268,31 @@ function NavLinks({
 }
 
 function Brand({ collapsed }: { collapsed?: boolean }) {
+  const { appName, logoUrl } = useBranding();
   return (
     <div
       className={`flex items-center gap-2.5 px-2 ${
         collapsed ? "lg:justify-center lg:px-0" : ""
       }`}
     >
-      <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
-        ☕
-      </span>
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={logoUrl}
+          alt={appName}
+          className="h-9 w-9 flex-shrink-0 rounded-xl object-cover shadow-sm"
+        />
+      ) : (
+        <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-[#2A1D15] text-lg text-amber-50 shadow-sm">
+          ☕
+        </span>
+      )}
       <span
-        className={`text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100 ${
+        className={`truncate text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100 ${
           collapsed ? "lg:hidden" : ""
         }`}
       >
-        POSCAFE
+        {appName}
       </span>
     </div>
   );
