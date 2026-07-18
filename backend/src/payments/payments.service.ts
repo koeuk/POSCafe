@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,6 +18,8 @@ import { Payment } from './entities/payment.entity';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     @InjectRepository(Payment)
     private readonly repo: Repository<Payment>,
@@ -88,7 +91,17 @@ export class PaymentsService {
     });
 
     // Broadcast the now-paid, completed order to the kitchen / cashier screens.
-    await this.ordersService.broadcastUpdate(dto.orderId);
+    // The money is already committed at this point, so a failed broadcast must
+    // not fail the request: the cashier would see "payment failed", retry, and
+    // hit the already-paid conflict with no way to read back the change due.
+    try {
+      await this.ordersService.broadcastUpdate(dto.orderId);
+    } catch (err) {
+      this.logger.error(
+        `Payment for order #${dto.orderId} committed but the live update failed to broadcast`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
 
     return saved;
   }

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { roundCents, toNumber } from '../common/money';
@@ -130,7 +130,7 @@ export class OrdersService {
       const order = manager.create(Order, {
         orderNumber: `TMP-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
         status: OrderStatus.PENDING,
-        total,
+        total: roundCents(total),
         userId,
         items, // cascade-inserted
       });
@@ -222,25 +222,94 @@ export class OrdersService {
   };
 
   async updateStatus(id: number, status: OrderStatus): Promise<Order> {
-    const order = await this.findOne(id);
+    await this.dataSource.transaction(async (manager) => {
+      // Lock the order row for the whole transaction. Without this, a status
+      // change racing a payment does a read-modify-write over the payment's
+      // committed status and can leave the order CANCELLED but PAID.
+      // Locked without relations — a pessimistic lock over a join would also
+      // lock the joined item rows, which isn't what we want here.
+      const order = await manager.findOne(Order, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) {
+        throw new NotFoundException(`Order #${id} not found`);
+      }
 
-    // No-op is fine; otherwise the transition must be allowed.
-    if (
-      order.status !== status &&
-      !OrdersService.STATUS_TRANSITIONS[order.status].includes(status)
-    ) {
-      throw new BadRequestException(
-        `Cannot change order status from "${order.status}" to "${status}"`,
-      );
-    }
+      // No-op is fine; otherwise the transition must be allowed.
+      if (order.status === status) {
+        return;
+      }
+      if (!OrdersService.STATUS_TRANSITIONS[order.status].includes(status)) {
+        throw new BadRequestException(
+          `Cannot change order status from "${order.status}" to "${status}"`,
+        );
+      }
 
-    order.status = status;
-    await this.repo.save(order);
+      // A paid order has money against it; cancelling would strand that
+      // payment and still count it as revenue. Refunds are out of scope.
+      if (
+        status === OrderStatus.CANCELLED &&
+        order.paymentStatus === PaymentStatus.PAID
+      ) {
+        throw new BadRequestException(
+          'Cannot cancel an order that has already been paid',
+        );
+      }
+
+      // Cancelling returns the reserved cups to inventory. `create()` decrements
+      // stock up front, so without this the units are lost for good.
+      if (status === OrderStatus.CANCELLED) {
+        const items = await manager.find(OrderItem, {
+          where: { orderId: order.id },
+        });
+        await this.restockItems(manager, items);
+      }
+
+      order.status = status;
+      await manager.save(order);
+    });
 
     // Broadcast the status change so every screen stays in sync.
     const updated = await this.findOne(id);
     this.gateway.emitOrderUpdated(updated);
     return updated;
+  }
+
+  /**
+   * Returns an order's items to stock, mirroring the decrement in `create()`:
+   * sized items go back to their per-size variant, everything else to the
+   * whole-product stock. Runs inside the caller's transaction.
+   */
+  private async restockItems(
+    manager: EntityManager,
+    items: OrderItem[],
+  ): Promise<void> {
+    for (const item of items) {
+      const variant = item.size
+        ? await manager.findOne(ProductVariant, {
+            where: { productId: item.productId, size: item.size },
+            lock: { mode: 'pessimistic_write' },
+          })
+        : null;
+
+      if (variant) {
+        variant.stock += item.quantity;
+        await manager.save(variant);
+        continue;
+      }
+
+      const product = await manager.findOne(Product, {
+        where: { id: item.productId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      // The product may have been deleted since the order was placed — there
+      // is nothing to restock, and that shouldn't block the cancellation.
+      if (product) {
+        product.stock += item.quantity;
+        await manager.save(product);
+      }
+    }
   }
 
   /**

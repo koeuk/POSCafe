@@ -43,7 +43,10 @@ export class ProductsService {
   async create(dto: CreateProductDto): Promise<Product> {
     // Ensure the category exists (throws NotFound otherwise).
     await this.categoriesService.findOne(dto.categoryId);
-    const product = this.repo.create(dto);
+    const product = this.repo.create({
+      ...dto,
+      sizes: ProductsService.toSizeOptions(dto.sizes),
+    });
     // Seed the capacity high-water mark from the initial stock.
     product.totalStock = dto.stock ?? 0;
     const saved = await this.repo.save(product);
@@ -57,9 +60,18 @@ export class ProductsService {
       await this.categoriesService.findOne(dto.categoryId);
     }
     Object.assign(product, dto);
+    if (dto.sizes !== undefined) {
+      product.sizes = ProductsService.toSizeOptions(dto.sizes);
+    }
     // Raise the capacity high-water mark when stock is (re)set.
     if (dto.stock !== undefined) {
       product.totalStock = Math.max(product.totalStock ?? 0, dto.stock);
+    }
+    // `findOne` eager-loads `category`, and TypeORM resolves the join column
+    // from that relation object in preference to the raw `categoryId` — so
+    // leaving a stale relation attached would silently undo a category move.
+    if (dto.categoryId !== undefined) {
+      Reflect.deleteProperty(product, 'category');
     }
     await this.repo.save(product);
     // Only reconcile stock variants when sizes were part of the update.
@@ -77,8 +89,9 @@ export class ProductsService {
       // order_items.product is ON DELETE RESTRICT, so a product that appears in
       // any past order can't be deleted. Surface a clear 409 instead of a raw
       // 500 from the FK violation.
-      const driver = (err as { driverError?: { errno?: number; code?: string } })
-        .driverError;
+      const driver = (
+        err as { driverError?: { errno?: number; code?: string } }
+      ).driverError;
       if (
         err instanceof QueryFailedError &&
         (driver?.errno === 1451 || driver?.code === 'ER_ROW_IS_REFERENCED_2')
@@ -89,6 +102,22 @@ export class ProductsService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Narrows the incoming size DTOs to what the `sizes` JSON column actually
+   * models: the menu options `{size, price}`. The DTO also carries `stock`,
+   * which belongs to product_variants — persisting it here would create a
+   * second copy that never decrements as orders are placed and is then served
+   * stale on the public /menu endpoint.
+   */
+  private static toSizeOptions(
+    sizes: ProductSizeDto[] | null | undefined,
+  ): Product['sizes'] {
+    if (!sizes) {
+      return sizes ?? null;
+    }
+    return sizes.map(({ size, price }) => ({ size, price }));
   }
 
   /**

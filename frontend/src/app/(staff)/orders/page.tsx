@@ -72,9 +72,13 @@ function OrdersQueue() {
       setOrders((prev) =>
         prev
           .map((o) => (o.id === id ? updated : o))
-          .filter((o) => o.status === updated.status),
+          // The list is server-filtered, so an order that no longer matches the
+          // active tab drops out of view — but only that one. Filtering the
+          // whole list on the *updated* order's status would clear every other
+          // order off the screen, and switching the tab to follow it would move
+          // the cashier away from the queue they were working.
+          .filter((o) => filter === "all" || o.status === filter),
       );
-      setFilter(updated.status);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
     } finally {

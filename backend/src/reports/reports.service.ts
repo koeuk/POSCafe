@@ -9,6 +9,7 @@ import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { toNumber } from '../common/money';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
+import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
 
 // Raw aggregate rows (MySQL returns COUNT/SUM as strings; toNumber coerces).
@@ -55,7 +56,12 @@ export class ReportsService {
     private readonly itemRepo: Repository<OrderItem>,
     @InjectRepository(ProductVariant)
     private readonly variantRepo: Repository<ProductVariant>,
+    @InjectRepository(Product)
+    private readonly productRepo: Repository<Product>,
   ) {}
+
+  // Label for the stock-report group covering products that have no sizes.
+  private static readonly UNSIZED_LABEL = 'No size';
 
   /** Restricts a query on order alias `o` to paid orders. */
   private paidOnly<T extends ObjectLiteral>(
@@ -66,8 +72,10 @@ export class ReportsService {
 
   /**
    * Cup stock by size: how many cups of each size are in stock, and how many
-   * size-variants are out of stock. Sized products only (per-size stock lives
-   * in product_variants).
+   * size-variants are out of stock. Sized products draw from product_variants;
+   * products with no variant rows keep their stock on the product itself and
+   * are reported under a single UNSIZED_LABEL group, so the totals cover the
+   * whole catalogue rather than just sized items.
    */
   async stock() {
     const bySizeRaw = await this.variantRepo
@@ -87,7 +95,34 @@ export class ReportsService {
       outOfStock: toNumber(r.outOfStock),
     }));
 
-    const outOfStockItems = await this.variantRepo
+    // Products with no variant rows: stock lives on the product itself.
+    const unsizedQb = () =>
+      this.productRepo.createQueryBuilder('p').where((qb) => {
+        const sub = qb
+          .subQuery()
+          .select('1')
+          .from(ProductVariant, 'v')
+          .where('v.productId = p.id')
+          .getQuery();
+        return `NOT EXISTS ${sub}`;
+      });
+
+    const unsizedRaw = await unsizedQb()
+      .select('COALESCE(SUM(p.stock), 0)', 'inStock')
+      .addSelect('COUNT(*)', 'variants')
+      .addSelect('SUM(CASE WHEN p.stock <= 0 THEN 1 ELSE 0 END)', 'outOfStock')
+      .getRawOne<Omit<StockBySizeRow, 'size'>>();
+
+    const unsized = {
+      size: ReportsService.UNSIZED_LABEL,
+      inStock: toNumber(unsizedRaw?.inStock ?? 0),
+      variants: toNumber(unsizedRaw?.variants ?? 0),
+      outOfStock: toNumber(unsizedRaw?.outOfStock ?? 0),
+    };
+    // Only surface the group when there are sizeless products at all.
+    const groups = unsized.variants > 0 ? [...bySize, unsized] : bySize;
+
+    const outOfStockVariants = await this.variantRepo
       .createQueryBuilder('v')
       .innerJoin('v.product', 'p')
       .select('v.productId', 'productId')
@@ -97,17 +132,31 @@ export class ReportsService {
       .orderBy('p.name', 'ASC')
       .getRawMany<OutOfStockRow>();
 
+    const outOfStockUnsized = await unsizedQb()
+      .andWhere('p.stock <= 0')
+      .select('p.id', 'productId')
+      .addSelect('p.name', 'productName')
+      .orderBy('p.name', 'ASC')
+      .getRawMany<Omit<OutOfStockRow, 'size'>>();
+
     return {
-      bySize,
+      bySize: groups,
       totals: {
-        inStock: bySize.reduce((s, b) => s + b.inStock, 0),
-        outOfStock: bySize.reduce((s, b) => s + b.outOfStock, 0),
+        inStock: groups.reduce((s, b) => s + b.inStock, 0),
+        outOfStock: groups.reduce((s, b) => s + b.outOfStock, 0),
       },
-      outOfStockItems: outOfStockItems.map((r) => ({
-        productId: r.productId,
-        productName: r.productName,
-        size: r.size,
-      })),
+      outOfStockItems: [
+        ...outOfStockVariants.map((r) => ({
+          productId: r.productId,
+          productName: r.productName,
+          size: r.size,
+        })),
+        ...outOfStockUnsized.map((r) => ({
+          productId: r.productId,
+          productName: r.productName,
+          size: ReportsService.UNSIZED_LABEL,
+        })),
+      ].sort((a, b) => a.productName.localeCompare(b.productName)),
     };
   }
 

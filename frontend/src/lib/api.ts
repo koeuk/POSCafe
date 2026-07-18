@@ -24,6 +24,17 @@ export function getApiUrl(): string {
 
 const TOKEN_KEY = "poscafe_token";
 
+// Cached user record, kept alongside the token so a reload can render the shell
+// immediately while /auth/me revalidates in the background.
+export const USER_KEY = "poscafe_user";
+
+/** Drops the whole client-side session (token + cached user). */
+export function clearSession(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
@@ -40,6 +51,17 @@ export function clearToken(): void {
 }
 
 type ApiOptions = Omit<RequestInit, "body"> & { body?: unknown };
+
+/** A non-2xx response. Carries the status so callers can branch on it. */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
 export async function api<T = unknown>(
   path: string,
@@ -66,7 +88,21 @@ export async function api<T = unknown>(
     } catch {
       // ignore non-JSON error bodies
     }
-    throw new Error(message);
+
+    // An expired or revoked token otherwise leaves the app rendering a
+    // logged-in shell whose every action fails with a red banner and no way
+    // back to login. Drop the dead session and bounce to the login screen.
+    //
+    // /auth/* is excluded: a 401 from /auth/login is just a wrong password,
+    // and /auth/me is the hydration probe that AuthProvider handles itself.
+    if (res.status === 401 && token && !path.startsWith("/auth/")) {
+      clearSession();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
+
+    throw new ApiError(message, res.status);
   }
 
   // 204 No Content, or an empty body (e.g. an endpoint that returned null —

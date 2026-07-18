@@ -362,6 +362,28 @@ function ProductStock({
   const [removedSizes, setRemovedSizes] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
 
+  // Reseed every edit buffer from the product as it stands right now.
+  //
+  // The buffers are useState *initialisers*, so they only run on mount — and
+  // each row is keyed by product id, so refetching the list never remounts it.
+  // Entering edit mode must therefore re-read the product, or a buffer holding
+  // pre-sale numbers stays "dirty" against fresh server stock and saving writes
+  // the old figure back, resurrecting cups that have since been sold.
+  function resetBuffers() {
+    setValues(initialStockValues());
+    setSizeValues(initialSizeValues());
+    setPriceValues(initialPriceValues());
+    setNewRows([]);
+    setRemovedSizes(new Set());
+  }
+
+  function startEdit() {
+    resetBuffers();
+    setError(null);
+    setSaved(false);
+    setEditing(true);
+  }
+
   const activeLines = useMemo(
     () => lines.filter((line) => !line.size || !removedSizes.has(line.size)),
     [lines, removedSizes],
@@ -428,11 +450,7 @@ function ProductStock({
   }
 
   function cancelEdit() {
-    setValues(initialStockValues());
-    setSizeValues(initialSizeValues());
-    setPriceValues(initialPriceValues());
-    setNewRows([]);
-    setRemovedSizes(new Set());
+    resetBuffers();
     setEditing(false);
     setError(null);
     setSaved(false);
@@ -630,7 +648,7 @@ function ProductStock({
           ) : (
             <button
               type="button"
-              onClick={() => setEditing(true)}
+              onClick={startEdit}
               className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
             >
               {saved ? "Saved ✓" : "Edit"}
@@ -743,7 +761,13 @@ function ProductStock({
                   </span>
                 </span>
                 <input
-                  value={values[l.key]}
+                  // Outside edit mode always show the server's number: the
+                  // buffer is only authoritative while an edit is in progress.
+                  value={
+                    editing
+                      ? (values[l.key] ?? String(l.current))
+                      : String(l.current)
+                  }
                   onChange={(e) => set(l.key, e.target.value)}
                   inputMode="numeric"
                   disabled={!editing}

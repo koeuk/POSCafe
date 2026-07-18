@@ -57,7 +57,21 @@ function KitchenScreen() {
       try {
         const all = await api<Order[]>("/orders");
         if (!cancelled) {
-          setOrders(all.filter((o) => ACTIVE.has(o.status)));
+          // The socket usually connects before this GET resolves, so an order
+          // placed during page load arrives via `order.created` first.
+          // Overwriting the list here would silently drop that ticket — and
+          // with no polling on this screen it would never come back, so the
+          // drink is never made. Merge instead, letting anything already in
+          // state win: it came from a live event, so it's strictly newer.
+          setOrders((prev) => {
+            const merged = new Map(
+              all.filter((o) => ACTIVE.has(o.status)).map((o) => [o.id, o]),
+            );
+            for (const order of prev) {
+              merged.set(order.id, order);
+            }
+            return [...merged.values()];
+          });
         }
       } catch (err) {
         if (!cancelled) {
