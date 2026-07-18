@@ -1,3 +1,14 @@
+# Dependencies & build output. The per-package .gitignore files cover the
+# standard paths; these catch-alls also cover ad-hoc variants (a .next-preview
+# or .next_root_old copy made while debugging) so build artifacts can never be
+# committed from the repo root.
+node_modules/
+.next*/
+dist/
+dist-dev/
+out/
+*.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db

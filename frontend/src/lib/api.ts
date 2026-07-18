@@ -45,11 +45,6 @@ export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
 }
 
-export function clearToken(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(TOKEN_KEY);
-}
-
 type ApiOptions = Omit<RequestInit, "body"> & { body?: unknown };
 
 /** A non-2xx response. Carries the status so callers can branch on it. */

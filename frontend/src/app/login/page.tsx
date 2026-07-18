@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
+import { landingHref } from "@/lib/permissions";
 
 // Warm display serif for the brand & headings — matches the POS screen.
 const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -26,7 +27,7 @@ export default function LoginPage() {
   // Already signed in → send them where they belong.
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/dashboard");
+      router.replace(landingHref(user.role, user.allowedPages));
     }
   }, [user, loading, router]);
 
@@ -35,8 +36,10 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(username, password);
-      router.replace("/dashboard");
+      // Use the user returned by login(), not the one from context — context
+      // hasn't re-rendered with the new session yet at this point.
+      const signedIn = await login(username, password);
+      router.replace(landingHref(signedIn.role, signedIn.allowedPages));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

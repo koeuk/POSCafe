@@ -9,10 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, clearToken, getToken, setToken } from "./api";
+import { api, clearSession, getToken, setToken, USER_KEY } from "./api";
 import { Role, type AuthResponse, type User } from "./types";
-
-const USER_KEY = "poscafe_user";
 
 interface AuthContextValue {
   user: User | null;
@@ -52,10 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Verify the token is still valid against the backend.
         const me = await api<User>("/auth/me");
+        // Write the fresh record back to the cache. Without this the cached
+        // copy stays frozen at whatever login() stored, so a permission change
+        // never reaches the optimistic render above and revoked pages briefly
+        // reappear on every reload.
+        localStorage.setItem(USER_KEY, JSON.stringify(me));
         if (!cancelled) setUser((prev) => ({ ...prev, ...me }));
       } catch {
-        clearToken();
-        localStorage.removeItem(USER_KEY);
+        clearSession();
         if (!cancelled) setUser(null);
       } finally {
         if (!cancelled) setLoading(false);
@@ -80,8 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    clearToken();
-    localStorage.removeItem(USER_KEY);
+    clearSession();
     setUser(null);
   }, []);
 

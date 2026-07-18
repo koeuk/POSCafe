@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { landingHref } from "@/lib/permissions";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -13,7 +14,7 @@ export default function Home() {
     if (!user) {
       router.replace("/login");
     } else {
-      router.replace("/dashboard");
+      router.replace(landingHref(user.role, user.allowedPages));
     }
   }, [user, loading, router]);
 

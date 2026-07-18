@@ -26,10 +26,10 @@ export class OrdersController {
     return this.ordersService.create(userId, dto);
   }
 
-  // Read by the Orders, Order History, Kitchen and Take Payment screens.
-  // Optional filters: ?status=pending, ?mine=true (only my orders),
+  // Read by the Orders, Order History, Kitchen, Take Payment and Dashboard
+  // screens. Optional filters: ?status=pending, ?mine=true (only my orders),
   // ?unpaid=true (orders without a payment yet — for the Take Payment screen).
-  @RequiresPage('orders', 'order-history', 'kitchen', 'payments')
+  @RequiresPage('orders', 'order-history', 'kitchen', 'payments', 'dashboard')
   @Get()
   findAll(
     @CurrentUser('id') userId: number,

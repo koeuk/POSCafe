@@ -46,6 +46,10 @@ export function OrderHistoryView() {
       setLoading(true);
       try {
         const data = await load();
+        // Clear any previous failure — otherwise one bad fetch pins the error
+        // banner on screen for the rest of the session, through every
+        // subsequent filter change that loads perfectly well.
+        if (!cancelled) setError(null);
         if (!cancelled) setOrders(data);
       } catch (err) {
         if (!cancelled) {

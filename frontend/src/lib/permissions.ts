@@ -75,13 +75,21 @@ export function rolePathBase(pathname: string): "" | "/cashier" {
   return pathname.startsWith("/cashier") ? "/cashier" : "";
 }
 
+// Drops the optional /cashier namespace so a route is always matched against
+// its clean form. Every path comparison in this file must go through this —
+// checking a raw pathname against a clean prefix silently lets the namespaced
+// variant (e.g. /cashier/settings) slip past the admin-only test below.
+function stripCashierPrefix(pathname: string): string {
+  return pathname.startsWith("/cashier/")
+    ? pathname.slice("/cashier".length)
+    : pathname;
+}
+
 // Which page a pathname belongs to. The optional /cashier prefix is stripped
 // first so both /reports and /cashier/reports resolve to the same key
 // (longest-prefix match so nested routes like /products/12 still resolve).
 export function pageKeyForPath(pathname: string): string | null {
-  const path = pathname.startsWith("/cashier/")
-    ? pathname.slice("/cashier".length)
-    : pathname;
+  const path = stripCashierPrefix(pathname);
   let best: string | null = null;
   let bestLen = -1;
   for (const [key, href] of Object.entries(CLEAN_PAGE_HREFS)) {
@@ -98,6 +106,18 @@ export function pageKeyForPath(pathname: string): string | null {
 export function firstAllowedHref(allowed: string[]): string | null {
   const page = CASHIER_PAGES.find((p) => allowed.includes(p.key));
   return page ? CASHIER_PAGE_HREFS[page.key] : null;
+}
+
+// Where a signed-in user should land. Admins get the dashboard; a cashier goes
+// straight to their first granted page. Sending everyone to /dashboard means a
+// cashier without that grant gets bounced by PageGuard, flashing a
+// "Redirecting…" screen on every single login.
+export function landingHref(
+  role: string,
+  allowedPages: string[] | null | undefined,
+): string {
+  if (role === "admin") return "/dashboard";
+  return firstAllowedHref(resolveCashierPages(allowedPages)) ?? "/dashboard";
 }
 
 // Admin-only routes that have no cashier-assignable page key. Cashiers are
@@ -117,8 +137,9 @@ export function isPathAllowed(
   if (role === "admin") return true;
   const key = pageKeyForPath(pathname);
   if (key) return resolveCashierPages(allowedPages).includes(key);
+  const path = stripCashierPrefix(pathname);
   const adminOnly = ADMIN_ONLY_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
+    (p) => path === p || path.startsWith(`${p}/`),
   );
   return !adminOnly;
 }

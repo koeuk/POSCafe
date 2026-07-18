@@ -48,6 +48,9 @@ function POSScreen() {
   const [placing, setPlacing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
+  // Set when the post-checkout product refresh failed, so the stock numbers
+  // on screen are known to be behind the server.
+  const [stockStale, setStockStale] = useState(false);
 
   // Load the menu (categories + products) once.
   useEffect(() => {
@@ -189,11 +192,16 @@ function POSScreen() {
       });
       setLastOrder(order);
       setCart([]);
-      // Refresh products so stock numbers stay accurate.
+      // Refresh products so stock numbers stay accurate. The order itself is
+      // already placed, so a failure here isn't fatal — but it must not pass
+      // silently either: the cashier would keep building orders against
+      // pre-sale stock numbers and only discover the shortfall at checkout,
+      // after the customer has ordered.
       try {
         setProducts(await api<Product[]>("/products"));
+        setStockStale(false);
       } catch {
-        // non-fatal — menu will refresh on next load
+        setStockStale(true);
       }
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Checkout failed");
@@ -323,6 +331,12 @@ function POSScreen() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
+            {stockStale && (
+              <div className="mx-2 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
+                Stock numbers may be out of date — the menu couldn&apos;t be
+                refreshed. Reload the page before relying on them.
+              </div>
+            )}
             {lastOrder && (
               <div className="pos-drop mx-2 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
                 <div className="flex items-center gap-2 font-semibold">
