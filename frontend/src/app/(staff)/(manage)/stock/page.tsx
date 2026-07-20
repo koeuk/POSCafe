@@ -192,6 +192,8 @@ function SizesManager({
 }) {
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Size | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function add() {
@@ -224,14 +226,20 @@ function SizesManager({
     }
   }
 
-  async function remove(size: Size) {
-    if (!window.confirm(`Delete size "${size.name}"?`)) return;
+  async function remove() {
+    const size = pendingDelete;
+    if (!size) return;
+    setDeleting(true);
     setError(null);
     try {
       await api(`/sizes/${size.id}`, { method: "DELETE" });
       await onChanged();
+      setPendingDelete(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete size");
+      setPendingDelete(null);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -257,7 +265,7 @@ function SizesManager({
             />
             <button
               type="button"
-              onClick={() => remove(s)}
+              onClick={() => setPendingDelete(s)}
               aria-label={`Delete ${s.name}`}
               className="grid h-6 w-6 place-items-center rounded-full text-stone-400 transition hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/20"
             >
@@ -292,6 +300,16 @@ function SizesManager({
 
       {error && (
         <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete size"
+          message={`Delete size "${pendingDelete.name}"? Products using it will lose that option.`}
+          busy={deleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={remove}
+        />
       )}
     </section>
   );

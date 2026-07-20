@@ -29,12 +29,23 @@ export function ConfirmDialog({
     return () => document.removeEventListener("keydown", onKey);
   }, [busy, onCancel]);
 
+  // Freeze the page behind the dialog: no scrolling, nothing else clickable.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-stone-950/40 px-4"
       onClick={() => !busy && onCancel()}
     >
       <div
+        role="dialog"
+        aria-modal="true"
         className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900"
         onClick={(e) => e.stopPropagation()}
       >

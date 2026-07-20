@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/lib/api";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useClickOutside } from "@/lib/use-click-outside";
@@ -1303,8 +1304,8 @@ function SidePanel({
   return (
     <div className="fixed inset-0 z-50">
       {/* Backdrop is non-dismissing — only Close/Cancel can close the form. */}
-      <div className="absolute inset-0 bg-stone-950/30" />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-stone-900">
+      <div className="drawer-overlay-in absolute inset-0 bg-stone-950/30" />
+      <aside className="drawer-panel-in absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-stone-900">
         <header className="border-b border-stone-200 px-6 py-5 dark:border-stone-800">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -1532,55 +1533,139 @@ function buildSizes(
   return sizes;
 }
 
-// Stock summary for the products table: how many sizes are out vs in stock,
-// with a popover breaking it down per size. Sizeless products count as a
-// single line (their base stock).
+// A size is "low" once it drops to this many cups or fewer (but not zero).
+const LOW_STOCK = 5;
+const STOCK_MENU_WIDTH = 240; // matches w-60
+
+type StockTone = "out" | "low" | "ok";
+
+const STOCK_TONE: Record<StockTone, { dot: string; text: string; bar: string }> =
+  {
+    out: {
+      dot: "bg-red-500",
+      text: "text-red-600 dark:text-red-400",
+      bar: "bg-red-500",
+    },
+    low: {
+      dot: "bg-amber-500",
+      text: "text-amber-600 dark:text-amber-400",
+      bar: "bg-amber-500",
+    },
+    ok: {
+      dot: "bg-green-500",
+      text: "text-stone-700 dark:text-stone-200",
+      bar: "bg-green-500",
+    },
+  };
+
+function stockTone(qty: number): StockTone {
+  if (qty <= 0) return "out";
+  if (qty <= LOW_STOCK) return "low";
+  return "ok";
+}
+
+/**
+ * Stock summary for the products table: total cups on hand, with a popover
+ * breaking it down per size. Sizeless products count as a single line (their
+ * base stock). The menu is portalled with fixed positioning so the table's
+ * `overflow-x-auto` wrapper can't clip it.
+ */
 function StockCell({ product }: { product: Product }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(
+    null,
+  );
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside(ref, () => setOpen(false), open);
+  const close = useCallback(() => setOpen(false), []);
+
+  // Anchor the fixed menu under the trigger, flipping left if it would
+  // overflow the viewport's right edge.
+  const reposition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const left = Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - STOCK_MENU_WIDTH - 8),
+    );
+    setCoords({ top: rect.bottom + 6, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open) reposition();
+  }, [open, reposition]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      close();
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") close();
+    }
+    // Keep the menu glued to the trigger as the page/table scrolls.
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, close, reposition]);
 
   const sized = !!product.sizes && product.sizes.length > 0;
   const lines = sized
     ? product.sizes!.map((s) => ({
         label: s.size,
-        qty: product.variants?.find((v) => v.size === s.size)?.stock ?? 0,
+        qty: Math.max(
+          0,
+          product.variants?.find((v) => v.size === s.size)?.stock ?? 0,
+        ),
       }))
-    : [{ label: "Stock", qty: product.stock }];
+    : [{ label: "Stock", qty: Math.max(0, product.stock) }];
 
-  // out = number of sizes that are sold out; in = total cups across all sizes.
-  const out = lines.filter((l) => l.qty <= 0).length;
-  const inStock = lines.reduce((sum, l) => sum + Math.max(0, l.qty), 0);
+  const total = lines.reduce((sum, l) => sum + l.qty, 0);
+  const outCount = lines.filter((l) => l.qty <= 0).length;
+  const lowCount = lines.filter((l) => l.qty > 0 && l.qty <= LOW_STOCK).length;
+  // Worst size drives the trigger's colour, so a single sold-out size is visible
+  // without opening the menu.
+  const tone: StockTone =
+    total <= 0 ? "out" : outCount > 0 || lowCount > 0 ? "low" : "ok";
+  const peak = Math.max(...lines.map((l) => l.qty), 1);
+
+  const summary =
+    outCount > 0
+      ? `${outCount} of ${lines.length} sold out`
+      : lowCount > 0
+        ? `${lowCount} running low`
+        : "All sizes stocked";
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="true"
+        aria-haspopup="dialog"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-medium transition hover:bg-stone-100 dark:hover:bg-stone-800"
+        aria-label={`Stock: ${total} in stock, ${summary.toLowerCase()}`}
+        className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/40 dark:hover:bg-stone-800"
       >
-        <span
-          className={
-            out > 0
-              ? "text-red-600 dark:text-red-400"
-              : "text-stone-400 dark:text-stone-500"
-          }
-        >
-          out {out}
-        </span>
-        <span className="text-stone-300 dark:text-stone-600">/</span>
-        <span
-          className={
-            inStock > 0
-              ? "text-green-600 dark:text-green-400"
-              : "text-stone-400 dark:text-stone-500"
-          }
-        >
-          in {inStock}
-        </span>
+        <span className={`h-2 w-2 shrink-0 rounded-full ${STOCK_TONE[tone].dot}`} />
+        <span className={`tabular-nums ${STOCK_TONE[tone].text}`}>{total}</span>
+        {outCount > 0 && (
+          <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-500/15 dark:text-red-400">
+            {outCount} out
+          </span>
+        )}
         <svg
           viewBox="0 0 24 24"
           className={`h-3.5 w-3.5 text-stone-400 transition-transform ${open ? "rotate-180" : ""}`}
@@ -1595,49 +1680,68 @@ function StockCell({ product }: { product: Product }) {
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute left-0 z-20 mt-1 w-48 rounded-xl border border-stone-200 bg-white p-2 text-left shadow-lg dark:border-stone-800 dark:bg-stone-900">
-          <div className="flex items-center justify-between px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-            <span>Stock by size</span>
-            <span>in / out</span>
-          </div>
-          <ul className="space-y-0.5">
-            {lines.map((l) => {
-              const isOut = l.qty <= 0;
-              const inCups = Math.max(0, l.qty);
-              return (
-                <li
-                  key={l.label}
-                  className="flex items-center justify-between gap-3 rounded-md px-1.5 py-1 text-sm"
-                >
-                  <span className="flex items-center gap-2 text-stone-600 dark:text-stone-300">
-                    <span
-                      className={`h-2 w-2 rounded-full ${isOut ? "bg-red-500" : "bg-green-500"}`}
-                    />
-                    {l.label}
-                  </span>
-                  <span className="text-xs font-medium tabular-nums">
-                    <span className="text-green-600 dark:text-green-400">
-                      {inCups}
-                    </span>
-                    <span className="text-stone-300 dark:text-stone-600"> / </span>
-                    <span
-                      className={
-                        isOut
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-stone-400 dark:text-stone-500"
-                      }
-                    >
-                      {isOut ? 1 : 0}
-                    </span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
+      {open &&
+        coords &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="dialog"
+            aria-label={`Stock breakdown for ${product.name}`}
+            style={{ top: coords.top, left: coords.left }}
+            className="pos-drop fixed z-50 w-60 overflow-hidden rounded-xl border border-stone-200 bg-white text-left shadow-lg dark:border-stone-800 dark:bg-stone-900"
+          >
+            <div className="border-b border-stone-100 px-3 py-2.5 dark:border-stone-800">
+              <p className="truncate text-sm font-semibold text-stone-900 dark:text-stone-100">
+                {product.name}
+              </p>
+              <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">
+                <span className="font-medium tabular-nums">{total}</span> in
+                stock · {summary}
+              </p>
+            </div>
+
+            <ul className="p-1.5">
+              {lines.map((l) => {
+                const lineTone = stockTone(l.qty);
+                return (
+                  <li key={l.label} className="rounded-lg px-1.5 py-1.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-sm text-stone-600 dark:text-stone-300">
+                        {l.label}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {lineTone !== "ok" && (
+                          <span
+                            className={`text-[10px] font-semibold uppercase tracking-wide ${STOCK_TONE[lineTone].text}`}
+                          >
+                            {lineTone === "out" ? "Sold out" : "Low"}
+                          </span>
+                        )}
+                        <span
+                          className={`text-sm font-semibold tabular-nums ${STOCK_TONE[lineTone].text}`}
+                        >
+                          {l.qty}
+                        </span>
+                      </span>
+                    </div>
+                    {/* Relative fill against the best-stocked size, so the eye
+                        can rank sizes without reading every number. */}
+                    <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                      <div
+                        className={`h-full rounded-full transition-[width] ${STOCK_TONE[lineTone].bar}`}
+                        style={{
+                          width: `${Math.max(l.qty > 0 ? 4 : 0, (l.qty / peak) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 

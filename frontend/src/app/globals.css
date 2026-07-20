@@ -70,9 +70,11 @@ button:not(:disabled),
 @keyframes drawer-panel-in {
   from {
     transform: translateX(100%);
+    opacity: 0;
   }
   to {
     transform: translateX(0);
+    opacity: 1;
   }
 }
 .drawer-panel-in {
