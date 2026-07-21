@@ -165,16 +165,45 @@ function SummaryCard({
   value: number;
   tone: "neutral" | "ok" | "danger";
 }) {
+  // "neutral" is the hero card: an opaque deep-green gradient with white text
+  // (matching the dashboard/reports revenue cards). ok/danger keep a soft
+  // status tint with a coloured value.
+  const solid = tone === "neutral";
+  const accent = tone === "danger" ? "#EF4444" : "#22C55E";
   const valueColor =
     tone === "danger"
       ? "text-red-600 dark:text-red-400"
-      : tone === "ok"
-        ? "text-green-600 dark:text-green-400"
-        : "text-stone-900 dark:text-stone-100";
+      : "text-green-600 dark:text-green-400";
   return (
-    <div className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-stone-800 dark:bg-stone-900 dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-      <p className={`text-2xl font-bold tabular-nums ${valueColor}`}>{value}</p>
-      <p className="mt-0.5 text-xs font-medium text-stone-500 dark:text-stone-400">
+    <div
+      className="rounded-2xl border border-stone-200/70 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-stone-800 dark:bg-stone-900 dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
+      style={
+        solid
+          ? {
+              backgroundImage:
+                "linear-gradient(135deg, #059669, color-mix(in srgb, #059669 45%, #052e16))",
+              borderColor: "color-mix(in srgb, #059669 28%, transparent)",
+            }
+          : {
+              backgroundImage:
+                `linear-gradient(135deg, color-mix(in srgb, ${accent} 12%, transparent), ` +
+                `color-mix(in srgb, ${accent} 2%, transparent))`,
+              borderColor: `color-mix(in srgb, ${accent} 25%, transparent)`,
+            }
+      }
+    >
+      <p
+        className={`text-2xl font-bold tabular-nums ${
+          solid ? "text-white" : valueColor
+        }`}
+      >
+        {value}
+      </p>
+      <p
+        className={`mt-0.5 text-xs font-medium ${
+          solid ? "text-white/75" : "text-stone-500 dark:text-stone-400"
+        }`}
+      >
         {label}
       </p>
     </div>

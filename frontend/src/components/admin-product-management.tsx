@@ -590,41 +590,20 @@ export function AdminProductManagement({
                   </button>
                 )}
               </div>
-              <div className="relative shrink-0">
-                <select
-                  value={
-                    categoryFilter === "all" ? "all" : String(categoryFilter)
-                  }
-                  onChange={(e) =>
-                    setCategoryFilter(
-                      e.target.value === "all" ? "all" : Number(e.target.value),
-                    )
-                  }
-                  aria-label="Filter by category"
-                  className={`${INPUT_CLASS} !w-56 cursor-pointer appearance-none pr-9 transition hover:border-stone-400 dark:hover:border-stone-600`}
-                >
-                  <option value="all">All categories ({products.length})</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({productCountByCategory.get(c.id) ?? 0})
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.25"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </span>
-              </div>
+              <CategoryFilterDropdown
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+                options={[
+                  {
+                    value: "all" as const,
+                    label: `All categories (${products.length})`,
+                  },
+                  ...categories.map((c) => ({
+                    value: c.id,
+                    label: `${c.name} (${productCountByCategory.get(c.id) ?? 0})`,
+                  })),
+                ]}
+              />
               {(productQuery || categoryFilter !== "all") && (
                 <button
                   type="button"
@@ -1751,4 +1730,100 @@ function productPriceLabel(product: Product): string {
     return `from ${formatPrice(min)}`;
   }
   return formatPrice(product.price);
+}
+
+// Custom category filter for the products toolbar — replaces the native
+// <select> with the same pop-in menu style used by the dashboard and reports
+// dropdowns. Menu scrolls when there are many categories.
+function CategoryFilterDropdown({
+  value,
+  onChange,
+  options,
+}: {
+  value: number | "all";
+  onChange: (value: number | "all") => void;
+  options: { value: number | "all"; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useClickOutside(ref, () => setOpen(false), open, { escape: true });
+
+  const current =
+    options.find((o) => o.value === value)?.label ?? "All categories";
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Filter by category"
+        className={`${INPUT_CLASS} flex w-56 cursor-pointer items-center justify-between gap-2 text-left transition hover:border-stone-400 dark:hover:border-stone-600`}
+      >
+        <span className="truncate">{current}</span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 dark:text-stone-500 ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Filter by category"
+          className={`absolute right-0 z-20 mt-2 max-h-72 w-full origin-top-right overflow-y-auto rounded-xl p-1 ${GLASS}`}
+          style={{ animation: "menu-pop 160ms cubic-bezier(0.22,1,0.36,1)" }}
+        >
+          {options.map((o) => {
+            const active = o.value === value;
+            return (
+              <button
+                key={String(o.value)}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                  active
+                    ? "bg-stone-100 text-stone-900 dark:bg-stone-700/60 dark:text-stone-100"
+                    : "text-stone-600 hover:bg-stone-100/70 dark:text-stone-300 dark:hover:bg-stone-700/40"
+                }`}
+              >
+                <span className="truncate">{o.label}</span>
+                {active && (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 shrink-0 text-pos-button"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m5 13 4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }

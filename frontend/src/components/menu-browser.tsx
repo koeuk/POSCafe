@@ -40,15 +40,17 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
   return (
     <div className="font-ios flex h-screen flex-col bg-amber-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
       {/* Header (pinned) */}
-      <header className="relative flex-shrink-0 overflow-hidden bg-gradient-to-br from-amber-300 via-amber-400 to-orange-400 px-5 pb-7 pt-9 text-[#3a2a16] dark:from-stone-900 dark:via-stone-900 dark:to-stone-950 dark:text-amber-50">
+      {/* Tighter vertical rhythm on phones — the header is pinned, so every
+          pixel it takes is a pixel of menu the customer can't see. */}
+      <header className="relative flex-shrink-0 overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-green-900 px-4 pb-4 pt-5 text-emerald-50 sm:px-5 sm:pb-7 sm:pt-9 dark:from-stone-900 dark:via-stone-900 dark:to-stone-950 dark:text-amber-50">
         {/* Soft depth glows */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-orange-300/50 blur-3xl dark:bg-amber-500/10"
+          className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-emerald-400/30 blur-3xl dark:bg-amber-500/10"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -left-12 bottom-0 h-44 w-44 rounded-full bg-amber-200/60 blur-2xl dark:bg-stone-700/30"
+          className="pointer-events-none absolute -left-12 bottom-0 h-44 w-44 rounded-full bg-green-300/20 blur-2xl dark:bg-stone-700/30"
         />
 
         <div className="relative mx-auto max-w-6xl">
@@ -59,10 +61,10 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                 <img
                   src={logoUrl}
                   alt={appName}
-                  className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-orange-900/25"
+                  className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-emerald-950/40"
                 />
               ) : (
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pos-button text-pos-button-fg shadow-lg shadow-orange-900/25">
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pos-button text-pos-button-fg shadow-lg shadow-emerald-950/40">
                   <CupIcon />
                 </span>
               )}
@@ -72,7 +74,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                 >
                   {appName}
                 </h1>
-                <p className="mt-1.5 text-sm font-medium text-[#7a5a30] dark:text-amber-200/70">
+                <p className="mt-1 text-sm font-medium text-emerald-100/75 sm:mt-1.5 dark:text-amber-200/70">
                   Freshly brewed, made to order
                 </p>
               </div>
@@ -81,7 +83,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
           </div>
 
           {/* Search */}
-          <div className="relative mt-6">
+          <div className="relative mt-4 sm:mt-6">
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
               <SearchIcon />
             </span>
@@ -90,7 +92,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search a drink, pastry, or category…"
-              className="w-full rounded-2xl border border-white/70 bg-white/95 py-3.5 pl-11 pr-11 text-sm text-stone-900 shadow-lg shadow-orange-900/5 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-400/30 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
+              className="w-full rounded-2xl border border-white/70 bg-white/95 py-3 pl-11 pr-11 text-sm text-stone-900 shadow-lg shadow-emerald-950/20 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/40 sm:py-3.5 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
             {query && (
               <button
@@ -104,7 +106,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
           </div>
 
           {/* Category filter — lives on the header, stays visible while scrolling */}
-          <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pt-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pt-1 pb-1 sm:mt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <Chip
               label="All"
               active={activeCat === "all"}
@@ -267,7 +269,7 @@ function Chip({
       onClick={onClick}
       className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
         active
-          ? "bg-pos-button text-pos-button-fg shadow-md shadow-orange-900/15"
+          ? "bg-pos-button text-pos-button-fg shadow-md shadow-emerald-950/25"
           : "bg-white/80 text-stone-600 ring-1 ring-stone-200 backdrop-blur hover:bg-white dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-700 dark:hover:bg-stone-800"
       }`}
     >

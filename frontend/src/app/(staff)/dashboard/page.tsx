@@ -9,6 +9,12 @@ import { formatPrice } from "@/lib/pricing";
 import { OrderStatus, type Order, type Product } from "@/lib/types";
 
 import { GLASS } from "@/lib/ui";
+import {
+  CHART_TYPES,
+  RevenueChart,
+  type ChartType,
+} from "@/components/revenue-chart";
+import { StatusTabs } from "@/components/status-tabs";
 
 // The admin-customizable brand accent (globals.css / Settings → Theme colors).
 const ACCENT = "var(--pos-button)";
@@ -83,6 +89,7 @@ function startOfWeek(d: Date) {
 function Dashboard() {
   const { user } = useAuth();
   const [period, setPeriod] = useState<Period>("this_week");
+  const [chartType, setChartType] = useState<ChartType>("bar");
 
   const { data, loading, error } = useFetch(
     async () => {
@@ -228,7 +235,18 @@ function Dashboard() {
 
   const periodLabel =
     PERIODS.find((p) => p.value === period)?.label ?? "This Week";
-  const labelStep = Math.max(1, Math.ceil(chart.buckets.length / 12));
+
+  // The chart owns its geometry; the page owns bucketing and labels.
+  const chartPoints = useMemo(
+    () =>
+      chart.buckets.map((b, i) => ({
+        key: `${i}-${b.label}`,
+        label: b.label,
+        value: b.value,
+        current: b.current,
+      })),
+    [chart.buckets],
+  );
 
   // Categories sorted by popularity (quantity sold).
   const sortedCats = useMemo(
@@ -301,7 +319,8 @@ function Dashboard() {
           index={0}
           label="Revenue"
           value={formatPrice(stats.revenue)}
-          tone="#22C55E"
+          tone="#059669"
+          solid
           icon={
             <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -360,51 +379,30 @@ function Dashboard() {
               <p className="text-sm text-stone-400 dark:text-stone-500">{periodLabel}</p>
             </div>
             <div className="flex items-center gap-2">
+              <StatusTabs
+                options={CHART_TYPES}
+                value={chartType}
+                onChange={setChartType}
+                label="Chart type"
+              />
               <PeriodMenu value={period} onChange={setPeriod} />
               <span className="hidden rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 sm:inline dark:bg-stone-800 dark:text-stone-400">
                 {formatPrice(chart.total)} total
               </span>
             </div>
           </div>
-          <div
-            className={`flex h-48 items-end justify-between ${
-              chart.buckets.length > 12 ? "gap-1" : "gap-3"
-            }`}
-          >
-            {chart.buckets.length === 0 && (
-              <p className="m-auto text-sm text-stone-400 dark:text-stone-500">
-                No revenue in this period.
-              </p>
-            )}
-            {chart.buckets.map((d, i) => (
-              <div key={i} className="group flex h-full flex-1 flex-col items-center gap-2">
-                <div className="flex w-full flex-1 items-end">
-                  <div
-                    className="relative w-full rounded-t-lg transition-[height,background] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-90"
-                    style={{
-                      height: loading ? "2px" : `${(d.value / chart.max) * 100}%`,
-                      minHeight: d.value > 0 ? "6px" : "2px",
-                      transitionDelay: `${i * 70}ms`,
-                      background: d.current ? BAR_CURRENT : BAR,
-                    }}
-                  >
-                    {/* Hover tooltip — day + revenue */}
-                    <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg bg-stone-900 px-2.5 py-1.5 text-center text-xs font-semibold text-white opacity-0 shadow-lg transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 dark:bg-stone-100 dark:text-stone-900">
-                      {formatPrice(d.value)}
-                      <span className="block text-[10px] font-normal text-stone-300 dark:text-stone-500">
-                        {d.label}
-                      </span>
-                      {/* little arrow */}
-                      <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 bg-stone-900 dark:bg-stone-100" />
-                    </div>
-                  </div>
-                </div>
-                <span className="h-4 text-xs text-stone-400 dark:text-stone-500">
-                  {i % labelStep === 0 || d.current ? d.label : ""}
-                </span>
-              </div>
-            ))}
-          </div>
+          {chart.buckets.length === 0 ? (
+            <p className="flex h-48 items-center justify-center text-sm text-stone-400 dark:text-stone-500">
+              No revenue in this period.
+            </p>
+          ) : (
+            <RevenueChart
+              points={chartPoints}
+              type={chartType}
+              color={BAR}
+              currentColor={BAR_CURRENT}
+            />
+          )}
         </Card>
 
         {/* Status donut */}
@@ -677,6 +675,7 @@ function StatCard({
   icon,
   loading,
   index,
+  solid = false,
 }: {
   label: string;
   value: string;
@@ -684,27 +683,56 @@ function StatCard({
   icon: ReactNode;
   loading: boolean;
   index: number;
+  /** Fill the card with a deep, saturated gradient of `tone` (white text). */
+  solid?: boolean;
 }) {
   return (
     <div
       className={`ios-rise rounded-2xl p-5 transition-shadow duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] ${GLASS}`}
-      style={{ animationDelay: `${80 + index * 70}ms` }}
+      style={{
+        animationDelay: `${80 + index * 70}ms`,
+        // A background-*image*, not background-color: GLASS owns the colour and
+        // the blur, so the tint layers over the frosted surface instead of
+        // replacing it. The default wash is translucent so it reads correctly
+        // over the light and the dark shell; `solid` swaps it for an opaque
+        // deep gradient of the tone (with white text below).
+        backgroundImage: solid
+          ? `linear-gradient(135deg, ${tone}, color-mix(in srgb, ${tone} 45%, #052e16))`
+          : `linear-gradient(135deg, color-mix(in srgb, ${tone} 14%, transparent), ` +
+            `color-mix(in srgb, ${tone} 3%, transparent))`,
+        borderColor: `color-mix(in srgb, ${tone} 28%, transparent)`,
+      }}
     >
       <span
         className="grid h-10 w-10 place-items-center rounded-xl"
         // color-mix (instead of hex-alpha concat) so `tone` may also be a
-        // CSS variable like var(--pos-button).
-        style={{
-          color: tone,
-          background: `color-mix(in srgb, ${tone} 10%, transparent)`,
-        }}
+        // CSS variable like var(--pos-button). Kept stronger than the card
+        // wash behind it so the chip still reads as its own element.
+        style={
+          solid
+            ? { color: "#ffffff", background: "rgba(255,255,255,0.22)" }
+            : {
+                color: tone,
+                background: `color-mix(in srgb, ${tone} 22%, transparent)`,
+              }
+        }
       >
         {icon}
       </span>
-      <p className="mt-4 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+      <p
+        className={`mt-4 text-2xl font-bold tracking-tight ${
+          solid ? "text-white" : "text-stone-900 dark:text-stone-100"
+        }`}
+      >
         {loading ? "…" : value}
       </p>
-      <p className="mt-0.5 text-sm text-stone-400 dark:text-stone-500">{label}</p>
+      <p
+        className={`mt-0.5 text-sm ${
+          solid ? "text-white/75" : "text-stone-400 dark:text-stone-500"
+        }`}
+      >
+        {label}
+      </p>
     </div>
   );
 }
