@@ -2,11 +2,14 @@
 
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
+import { useBranding } from "@/lib/branding-context";
 import { GLASS } from "@/lib/ui";
 
 export function AdminMenuQr() {
+  const { appName } = useBranding();
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [menuUrl, setMenuUrl] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const url = `${window.location.origin}/menu`;
@@ -21,6 +24,27 @@ export function AdminMenuQr() {
       });
   }, []);
 
+  // Re-render the QR at high resolution (the on-screen preview is only 360px)
+  // and save it as a PNG named after the shop.
+  async function handleDownload() {
+    if (!menuUrl || downloading) return;
+    setDownloading(true);
+    try {
+      const dataUrl = await QRCode.toDataURL(menuUrl, {
+        width: 1024,
+        margin: 2,
+      });
+      const link = document.createElement("a");
+      const slug =
+        appName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") || "menu";
+      link.href = dataUrl;
+      link.download = `${slug}-menu-qr.png`;
+      link.click();
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-7xl">
       <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
@@ -32,12 +56,32 @@ export function AdminMenuQr() {
             Print or share the public customer menu link.
           </p>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110 print:hidden"
-        >
-          Print QR
-        </button>
+        <div className="flex gap-2 print:hidden">
+          <button
+            onClick={handleDownload}
+            disabled={!qrDataUrl || downloading}
+            className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            {downloading ? "Preparing…" : "Download QR"}
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
+          >
+            Print QR
+          </button>
+        </div>
       </header>
 
       <section className={`grid gap-6 rounded-2xl p-6 lg:grid-cols-[320px_1fr] ${GLASS}`}>

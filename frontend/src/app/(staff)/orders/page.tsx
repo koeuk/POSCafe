@@ -70,16 +70,15 @@ function OrdersQueue() {
         method: "PATCH",
         body: { status },
       });
-      setOrders((prev) =>
-        prev
-          .map((o) => (o.id === id ? updated : o))
-          // The list is server-filtered, so an order that no longer matches the
-          // active tab drops out of view — but only that one. Filtering the
-          // whole list on the *updated* order's status would clear every other
-          // order off the screen, and switching the tab to follow it would move
-          // the cashier away from the queue they were working.
-          .filter((o) => filter === "all" || o.status === filter),
-      );
+      setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
+      // Follow the order into its new queue so the tab bar reflects the step
+      // just taken and the pill slides across to it. Changing the filter also
+      // re-runs the loader, which replaces the list with the server-filtered
+      // set for that status.
+      //
+      // "All" is left alone on purpose: it exists to show every order at once,
+      // so jumping to a single status there would wipe the rest off screen.
+      if (filter !== "all" && status !== filter) setFilter(status);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
     } finally {
