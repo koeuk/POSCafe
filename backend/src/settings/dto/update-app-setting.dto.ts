@@ -44,4 +44,16 @@ export class UpdateAppSettingDto {
 
   @HexColorOrNull()
   sidebarActiveColor?: string | null;
+
+  @HexColorOrNull()
+  buttonColorDark?: string | null;
+
+  @HexColorOrNull()
+  pageBgDark?: string | null;
+
+  @HexColorOrNull()
+  sidebarBgDark?: string | null;
+
+  @HexColorOrNull()
+  sidebarActiveColorDark?: string | null;
 }

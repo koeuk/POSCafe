@@ -35,7 +35,7 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
           </div>
           <Link
             href="/products"
-            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
+            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
           >
             Manage products
           </Link>
@@ -98,7 +98,7 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                     <Link
                       key={product.id}
                       href={`/menu-preview/${product.id}`}
-                      className={`group grid grid-cols-[128px_1fr] overflow-hidden rounded-2xl ${GLASS} transition hover:border-[#2A1D15]/30 hover:shadow-md`}
+                      className={`group grid grid-cols-[128px_1fr] overflow-hidden rounded-2xl ${GLASS} transition hover:border-pos-button/30 hover:shadow-md`}
                     >
                       <div className="relative h-full min-h-24 bg-stone-100 dark:bg-stone-800">
                         {product.image ? (
@@ -117,7 +117,7 @@ export function AdminMenuBrowser({ menu }: { menu: MenuCategory[] }) {
                       <div className="min-w-0 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate font-semibold text-stone-900 group-hover:text-[#2A1D15] dark:text-stone-100">
+                            <p className="truncate font-semibold text-stone-900 group-hover:text-pos-button dark:text-stone-100">
                               {product.name}
                             </p>
                             <p className="mt-1 line-clamp-2 text-sm text-stone-500 dark:text-stone-400">
@@ -205,7 +205,7 @@ function FilterChip({
       onClick={onClick}
       className={`rounded-full px-4 py-2 text-sm font-medium transition ${
         active
-          ? "bg-pos-button text-white"
+          ? "bg-pos-button text-pos-button-fg"
           : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
       }`}
     >

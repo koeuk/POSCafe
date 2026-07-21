@@ -238,8 +238,8 @@ function NavLinks({
             collapsed ? "lg:justify-center" : ""
           } ${
             active
-              ? "text-amber-50 dark:text-stone-950"
-              : "text-stone-600 hover:bg-stone-900/5 dark:text-stone-400 dark:hover:bg-white/5"
+              ? "text-pos-active-fg"
+              : "text-pos-sidebar-fg/70 hover:bg-pos-sidebar-fg/5 hover:text-pos-sidebar-fg"
           }`}
         >
           <span className="shrink-0">{item.icon}</span>
@@ -284,12 +284,12 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
           className="h-9 w-9 flex-shrink-0 rounded-xl object-cover shadow-sm"
         />
       ) : (
-        <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-pos-button text-lg text-amber-50 shadow-sm">
+        <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-pos-button text-lg text-pos-button-fg shadow-sm">
           ☕
         </span>
       )}
       <span
-        className={`truncate text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100 ${
+        className={`truncate text-lg font-bold tracking-tight text-pos-sidebar-fg ${
           collapsed ? "lg:hidden" : ""
         }`}
       >
@@ -348,7 +348,7 @@ function ThemeSwitch() {
             title={o.label}
             className={`grid h-7 w-7 place-items-center rounded-full transition ${
               active
-                ? "bg-pos-button text-amber-50 dark:bg-pos-button dark:text-stone-950"
+                ? "bg-pos-button text-pos-button-fg"
                 : "text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
             }`}
           >
@@ -379,7 +379,7 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
         aria-haspopup="menu"
         aria-expanded={open}
         title={collapsed ? user?.name : undefined}
-        className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-stone-900/5 dark:hover:bg-white/5 ${
+        className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-pos-sidebar-fg/5 ${
           collapsed ? "lg:justify-center lg:px-0" : ""
         }`}
       >
@@ -396,16 +396,16 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
           </span>
         )}
         <div className={`min-w-0 flex-1 ${collapsed ? "lg:hidden" : ""}`}>
-          <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
+          <p className="truncate text-sm font-medium text-pos-sidebar-fg">
             {user?.name}
           </p>
-          <p className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
+          <p className="text-xs uppercase tracking-wide text-pos-sidebar-fg/50">
             {user?.role}
           </p>
         </div>
         <svg
           viewBox="0 0 24 24"
-          className={`h-4 w-4 shrink-0 text-stone-400 transition-transform dark:text-stone-500 ${
+          className={`h-4 w-4 shrink-0 text-pos-sidebar-fg/50 transition-transform ${
             open ? "rotate-180" : ""
           } ${collapsed ? "lg:hidden" : ""}`}
           {...sw}
@@ -473,7 +473,7 @@ export function Sidebar({
     <>
       {/* Desktop: fixed sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden flex-col justify-between border-r border-white/60 bg-pos-sidebar p-4 backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex dark:border-stone-800/60 ${
+        className={`fixed inset-y-0 left-0 z-30 hidden flex-col justify-between border-r border-pos-sidebar-fg/10 bg-pos-sidebar p-4 backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex  ${
           collapsed ? "lg:w-20" : "lg:w-64"
         }`}
       >
@@ -506,7 +506,7 @@ export function Sidebar({
       </aside>
 
       {/* Mobile: top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-pos-sidebar px-4 py-3 backdrop-blur-xl lg:hidden dark:border-stone-800/60">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-pos-sidebar-fg/10 bg-pos-sidebar px-4 py-3 backdrop-blur-xl lg:hidden ">
         <Brand />
         <div className="flex items-center gap-2">
           <ThemeSwitch />
@@ -527,7 +527,7 @@ export function Sidebar({
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-white/60 bg-pos-sidebar p-4 backdrop-blur-xl dark:border-stone-800/60">
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between border-r border-pos-sidebar-fg/10 bg-pos-sidebar p-4 backdrop-blur-xl ">
             <div className="space-y-6">
               <Brand />
               <NavLinks

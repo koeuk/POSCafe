@@ -126,7 +126,7 @@ export function ProductDetailDrawer({
                   onClick={() => setActiveImage(url)}
                   className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-2 transition ${
                     activeImage === url
-                      ? "ring-[#2A1D15] dark:ring-amber-400"
+                      ? "ring-pos-button"
                       : "ring-transparent hover:ring-stone-300 dark:hover:ring-stone-600"
                   }`}
                 >
@@ -181,7 +181,7 @@ export function ProductDetailDrawer({
                       type="button"
                       disabled={!onAdd || sizeOut}
                       onClick={() => onAdd?.(product, size)}
-                      className={["flex", sizes.length === 3 && index === 2 ? "col-span-2" : "", "w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:hover:border-amber-400"].join(" ")}
+                      className={["flex", sizes.length === 3 && index === 2 ? "col-span-2" : "", "w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-xl border border-stone-200 px-3 py-2.5 text-sm transition hover:border-pos-button disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700"].join(" ")}
                     >
                       <span className="min-w-0 break-words text-left font-medium leading-snug text-stone-700 dark:text-stone-300">
                         {size.size}
@@ -219,7 +219,7 @@ export function ProductDetailDrawer({
               type="button"
               disabled={soldOut}
               onClick={() => onAdd(product)}
-              className="w-full rounded-xl bg-pos-button py-3 text-sm font-semibold text-white transition hover:bg-[#3A2A20] disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-pos-button py-3 text-sm font-semibold text-pos-button-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {soldOut ? "Sold out" : "Add to order"}
             </button>

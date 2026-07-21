@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
+import { StatusTabs } from "@/components/status-tabs";
 import { api } from "@/lib/api";
 import { STATUS_FILTERS } from "@/lib/orders";
 import { OrderStatus, type OrderWithUser } from "@/lib/types";
@@ -109,20 +110,13 @@ function OrdersQueue() {
 
       <section className={`rounded-2xl p-5 ${GLASS}`}>
         {/* Status filter */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                filter === f.value
-                  ? "bg-pos-button text-white"
-                  : "border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="mb-6">
+          <StatusTabs
+            options={STATUS_FILTERS}
+            value={filter}
+            onChange={setFilter}
+            label="Filter orders by status"
+          />
         </div>
 
         {error && (
@@ -200,7 +194,7 @@ function OrdersQueue() {
                         <button
                           onClick={() => changeStatus(order.id, next.status)}
                           disabled={busy}
-                          className="rounded-lg bg-pos-button px-4 py-1.5 text-sm font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
+                          className="rounded-lg bg-pos-button px-4 py-1.5 text-sm font-medium text-pos-button-fg transition hover:brightness-110 disabled:opacity-50"
                         >
                           {busy ? "…" : next.label}
                         </button>

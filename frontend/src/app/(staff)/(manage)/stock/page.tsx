@@ -7,7 +7,7 @@ import { sizeStock, totalStock } from "@/lib/pricing";
 import { type Product, type Size, type SizeRow } from "@/lib/types";
 
 const INPUT =
-  "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
+  "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
 
 function Stock() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -73,10 +73,10 @@ function Stock() {
   return (
     <main className="mx-auto max-w-7xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+        <h1 className="text-2xl font-bold tracking-tight text-pos-page-fg">
           Stock
         </h1>
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-sm text-pos-page-fg/60">
           Manage cup sizes and how many cups are in stock.
         </p>
       </header>
@@ -111,7 +111,7 @@ function Stock() {
 
       {/* Per-product quantities */}
       <div className="mb-3 mt-8 flex flex-wrap items-center gap-3">
-        <h2 className="mr-auto text-lg font-semibold text-stone-900 dark:text-stone-100">
+        <h2 className="mr-auto text-lg font-semibold text-pos-page-fg">
           Cup stock
         </h2>
         <input
@@ -121,12 +121,12 @@ function Stock() {
           placeholder="Search product…"
           className={`${INPUT} w-48`}
         />
-        <label className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-300">
+        <label className="flex items-center gap-2 text-sm text-pos-page-fg/70">
           <input
             type="checkbox"
             checked={outOnly}
             onChange={(e) => setOutOnly(e.target.checked)}
-            className="h-4 w-4 accent-[#2A1D15] dark:accent-amber-500"
+            className="h-4 w-4 accent-pos-button"
           />
           Out of stock only
         </label>
@@ -292,7 +292,7 @@ function SizesManager({
           type="button"
           onClick={add}
           disabled={busy || !newName.trim()}
-          className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-pos-button dark:text-stone-950"
+          className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Add size
         </button>
@@ -658,7 +658,7 @@ function ProductStock({
                 type="button"
                 onClick={save}
                 disabled={!dirty || saving}
-                className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-pos-button dark:text-stone-950"
+                className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {saving ? "Saving…" : "Save"}
               </button>
@@ -863,7 +863,7 @@ function ProductStock({
           <button
             type="button"
             onClick={addRow}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] dark:border-stone-700 dark:text-stone-300 dark:hover:border-amber-400 dark:hover:text-amber-400"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-pos-button hover:text-pos-button dark:border-stone-700 dark:text-stone-300"
           >
             <span className="text-base leading-none">＋</span>
             Add size

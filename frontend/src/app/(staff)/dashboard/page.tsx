@@ -10,7 +10,8 @@ import { OrderStatus, type Order, type Product } from "@/lib/types";
 
 import { GLASS } from "@/lib/ui";
 
-const ACCENT = "#2A1D15";
+// The admin-customizable brand accent (globals.css / Settings → Theme colors).
+const ACCENT = "var(--pos-button)";
 // Revenue chart bars — green, matching the Revenue KPI card.
 // BAR is the default; BAR_CURRENT marks today/the current bucket.
 const BAR = "#22C55E";
@@ -26,7 +27,7 @@ interface CategorySales {
 
 // Palette for the category bars.
 const CAT_COLORS = [
-  "#2A1D15",
+  "var(--pos-button)",
   "#F59E0B",
   "#3B82F6",
   "#22C55E",
@@ -691,7 +692,12 @@ function StatCard({
     >
       <span
         className="grid h-10 w-10 place-items-center rounded-xl"
-        style={{ color: tone, background: `${tone}1A` }}
+        // color-mix (instead of hex-alpha concat) so `tone` may also be a
+        // CSS variable like var(--pos-button).
+        style={{
+          color: tone,
+          background: `color-mix(in srgb, ${tone} 10%, transparent)`,
+        }}
       >
         {icon}
       </span>

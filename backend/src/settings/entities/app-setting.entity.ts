@@ -20,6 +20,9 @@ export class AppSetting {
 
   // Theme colours (hex, e.g. "#2A1D15"). null on any field = use the built-in
   // default for that surface. Applied as CSS variables on the frontend.
+  // Each surface has a light-mode value and a separate dark-mode value so a
+  // custom palette never bleeds into the other theme (where its contrast
+  // pairing would be wrong).
   @Column({ type: 'varchar', length: 9, nullable: true })
   buttonColor: string | null;
 
@@ -31,4 +34,16 @@ export class AppSetting {
 
   @Column({ type: 'varchar', length: 9, nullable: true })
   sidebarActiveColor: string | null;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  buttonColorDark: string | null;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  pageBgDark: string | null;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  sidebarBgDark: string | null;
+
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  sidebarActiveColorDark: string | null;
 }

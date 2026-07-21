@@ -115,7 +115,7 @@ function ProductView({ id }: { id: string }) {
           </Link>
           <Link
             href={`${base}/products?edit=${product.id}`}
-            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-amber-50 transition hover:opacity-90 dark:bg-pos-button dark:text-stone-950"
+            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:opacity-90"
           >
             Edit product
           </Link>
@@ -149,7 +149,7 @@ function ProductView({ id }: { id: string }) {
                   aria-label={`Show image ${index + 1}`}
                   className={`shrink-0 overflow-hidden rounded-xl ring-2 transition ${
                     index === active
-                      ? "ring-[#2A1D15] dark:ring-amber-400"
+                      ? "ring-pos-button"
                       : "ring-stone-200 hover:ring-stone-300 dark:ring-stone-700"
                   }`}
                 >

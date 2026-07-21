@@ -115,7 +115,7 @@ export function StatusDropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Order status"
-        className={`flex items-center gap-2 rounded-full py-1.5 pl-3 pr-2.5 text-xs font-semibold ring-1 ring-inset ring-black/5 transition focus:ring-2 focus:ring-[#2A1D15]/30 disabled:cursor-not-allowed disabled:opacity-50 dark:ring-white/10 ${current.pill}`}
+        className={`flex items-center gap-2 rounded-full py-1.5 pl-3 pr-2.5 text-xs font-semibold ring-1 ring-inset ring-black/5 transition focus:ring-2 focus:ring-pos-button/30 disabled:cursor-not-allowed disabled:opacity-50 dark:ring-white/10 ${current.pill}`}
       >
         <span className={`h-1.5 w-1.5 rounded-full ${current.dot}`} />
         {busy ? "…" : current.label}

@@ -62,7 +62,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                   className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-orange-900/25"
                 />
               ) : (
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#3a2a16] text-amber-50 shadow-lg shadow-orange-900/25 dark:bg-pos-button dark:text-stone-950">
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pos-button text-pos-button-fg shadow-lg shadow-orange-900/25">
                   <CupIcon />
                 </span>
               )}

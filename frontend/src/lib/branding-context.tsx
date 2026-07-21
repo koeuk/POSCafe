@@ -11,15 +11,22 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/lib/api";
+import { applyThemeColors, type ThemeColorSet } from "@/lib/branding-colors";
 
 export interface AppSettings {
   appName: string;
   logoUrl: string | null;
   // Themeable colours (hex). null = use the built-in default for that surface.
+  // Light mode and dark mode each have their own set so a colour picked for
+  // one mode never clashes with the other mode's text/borders.
   buttonColor: string | null;
   pageBg: string | null;
   sidebarBg: string | null;
   sidebarActiveColor: string | null;
+  buttonColorDark: string | null;
+  pageBgDark: string | null;
+  sidebarBgDark: string | null;
+  sidebarActiveColorDark: string | null;
 }
 
 const DEFAULTS: AppSettings = {
@@ -29,66 +36,39 @@ const DEFAULTS: AppSettings = {
   pageBg: null,
   sidebarBg: null,
   sidebarActiveColor: null,
+  buttonColorDark: null,
+  pageBgDark: null,
+  sidebarBgDark: null,
+  sidebarActiveColorDark: null,
 };
 
 // Persisted so custom colours apply on first paint (before the fetch lands),
 // avoiding a flash of the default theme.
 const CACHE_KEY = "poscafe-branding";
 
-// Which settings field drives which CSS variable (see globals.css defaults).
-const COLOR_VARS: Record<string, keyof AppSettings> = {
-  "--pos-button": "buttonColor",
-  "--pos-page": "pageBg",
-  "--pos-sidebar": "sidebarBg",
-  "--pos-active": "sidebarActiveColor",
-};
-
-/**
- * Readable text colour (near-black or near-white) for a given hex background,
- * by perceived luminance. Keeps label text legible on whatever accent colour
- * an admin picks — otherwise a dark custom button colour leaves the built-in
- * dark button text unreadable.
- */
-function readableForeground(hex: string): string {
-  const raw = hex.replace("#", "").trim();
-  const full =
-    raw.length === 3
-      ? raw
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : raw;
-  if (!/^[0-9a-fA-F]{6}$/.test(full)) return "#fff7ed";
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#0c0a09" : "#fff7ed";
+/** The light-mode colour set stored in the settings. */
+export function lightColorSet(s: AppSettings): ThemeColorSet {
+  return {
+    buttonColor: s.buttonColor,
+    pageBg: s.pageBg,
+    sidebarBg: s.sidebarBg,
+    sidebarActiveColor: s.sidebarActiveColor,
+  };
 }
 
-/** Push (or clear) the colour overrides as inline CSS variables on <html>. */
-function applyColors(settings: AppSettings) {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  for (const [cssVar, field] of Object.entries(COLOR_VARS)) {
-    const value = settings[field];
-    if (typeof value === "string" && value) {
-      root.style.setProperty(cssVar, value);
-    } else {
-      root.style.removeProperty(cssVar); // fall back to the globals.css default
-    }
-  }
+/** The dark-mode colour set stored in the settings. */
+export function darkColorSet(s: AppSettings): ThemeColorSet {
+  return {
+    buttonColor: s.buttonColorDark,
+    pageBg: s.pageBgDark,
+    sidebarBg: s.sidebarBgDark,
+    sidebarActiveColor: s.sidebarActiveColorDark,
+  };
+}
 
-  // Pair a readable foreground with a custom accent colour so text on the
-  // accent stays legible; clear it to fall back to the per-mode default.
-  if (settings.buttonColor) {
-    root.style.setProperty(
-      "--pos-button-fg",
-      readableForeground(settings.buttonColor),
-    );
-  } else {
-    root.style.removeProperty("--pos-button-fg");
-  }
+/** Reflect both palettes on the page (per-mode, via a managed style tag). */
+function applyColors(settings: AppSettings) {
+  applyThemeColors(lightColorSet(settings), darkColorSet(settings));
 }
 
 // Best-guess MIME type for a favicon URL, so the browser accepts non-.ico

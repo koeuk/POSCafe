@@ -10,7 +10,17 @@ import {
 import { RequireAuth } from "@/components/require-auth";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useAuth } from "@/lib/auth-context";
-import { useBranding } from "@/lib/branding-context";
+import {
+  darkColorSet,
+  lightColorSet,
+  useBranding,
+  type AppSettings,
+} from "@/lib/branding-context";
+import {
+  applyThemeColors,
+  type ThemeColorSet,
+} from "@/lib/branding-colors";
+import { useTheme } from "@/lib/theme-context";
 import { api, uploadImage } from "@/lib/api";
 import { Role, type User } from "@/lib/types";
 import {
@@ -74,10 +84,10 @@ function Settings() {
   return (
     <main className="mx-auto max-w-7xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+        <h1 className="text-2xl font-bold tracking-tight text-pos-page-fg">
           Settings
         </h1>
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-sm text-pos-page-fg/60">
           Manage your app branding, staff accounts and access levels.
         </p>
       </header>
@@ -95,7 +105,7 @@ function Settings() {
                 aria-current={active ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
                   active
-                    ? "bg-pos-button text-amber-50 dark:bg-pos-button dark:text-stone-950"
+                    ? "bg-pos-button text-pos-button-fg"
                     : "text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
                 }`}
               >
@@ -107,7 +117,7 @@ function Settings() {
                   <span
                     className={`hidden text-xs lg:block ${
                       active
-                        ? "text-amber-50/70 dark:text-stone-950/70"
+                        ? "text-pos-button-fg/70"
                         : "text-stone-400 dark:text-stone-500"
                     }`}
                   >
@@ -130,75 +140,103 @@ function Settings() {
 
 // ── General: app name, logo & theme colours ──────────────────────────────
 
-// Quick-pick palettes. Accent colours suit buttons / active items; surface
-// colours (light + dark) suit page & sidebar backgrounds.
-const ACCENT_PRESETS = [
-  "#2a1d15",
-  "#111827",
-  "#1d4ed8",
-  "#0d9488",
-  "#059669",
-  "#dc2626",
-  "#ea580c",
-  "#7c3aed",
-];
-const SURFACE_PRESETS = [
-  "#ffffff",
-  "#f5f5f6",
-  "#f1f5f9",
-  "#fef3c7",
-  "#1c1917",
-  "#0f172a",
-  "#1e293b",
-  "#0c0a09",
-];
+// Light and dark mode each keep their own palette, edited on separate tabs —
+// a colour tuned for one mode is never applied in the other, where its
+// contrast pairing (text, borders) would be wrong.
+type ColorMode = "light" | "dark";
 
-// Each themeable colour: which settings field, its <input type=color> fallback
-// swatch, the CSS variable it drives for the live preview, and quick presets.
+// Quick-pick palettes per mode. Accent colours suit buttons / active items;
+// surface colours suit page & sidebar backgrounds.
+const ACCENT_PRESETS: Record<ColorMode, string[]> = {
+  light: [
+    "#2a1d15",
+    "#111827",
+    "#1d4ed8",
+    "#0d9488",
+    "#059669",
+    "#dc2626",
+    "#ea580c",
+    "#7c3aed",
+  ],
+  dark: [
+    "#f59e0b",
+    "#fbbf24",
+    "#60a5fa",
+    "#2dd4bf",
+    "#34d399",
+    "#f87171",
+    "#fb923c",
+    "#a78bfa",
+  ],
+};
+const SURFACE_PRESETS: Record<ColorMode, string[]> = {
+  light: [
+    "#ffffff",
+    "#f5f5f6",
+    "#f1f5f9",
+    "#fef3c7",
+    "#ede9e3",
+    "#e0f2fe",
+    "#ecfdf5",
+    "#fdf2f8",
+  ],
+  dark: [
+    "#0c0a09",
+    "#1c1917",
+    "#0f172a",
+    "#1e293b",
+    "#18181b",
+    "#111827",
+    "#1e1b4b",
+    "#292524",
+  ],
+};
+
+// Each themeable colour: which colour-set key, its per-mode fallback swatch
+// (the built-in default from globals.css) and per-mode quick presets.
 const COLOR_FIELDS = [
   {
     key: "buttonColor",
-    cssVar: "--pos-button",
     label: "Button color",
     hint: "Primary buttons & accents",
-    fallback: "#2a1d15",
+    fallback: { light: "#2a1d15", dark: "#f59e0b" },
     presets: ACCENT_PRESETS,
   },
   {
     key: "pageBg",
-    cssVar: "--pos-page",
     label: "Background color",
     hint: "Main content area",
-    fallback: "#f5f5f6",
+    fallback: { light: "#f5f5f6", dark: "#0c0a09" },
     presets: SURFACE_PRESETS,
   },
   {
     key: "sidebarBg",
-    cssVar: "--pos-sidebar",
     label: "Sidebar background",
     hint: "Left navigation panel",
-    fallback: "#ffffff",
+    fallback: { light: "#ffffff", dark: "#1c1917" },
     presets: SURFACE_PRESETS,
   },
   {
     key: "sidebarActiveColor",
-    cssVar: "--pos-active",
     label: "Sidebar active item",
     hint: "Selected menu highlight",
-    fallback: "#2a1d15",
+    fallback: { light: "#2a1d15", dark: "#f59e0b" },
     presets: ACCENT_PRESETS,
   },
 ] as const;
 
 type ColorKey = (typeof COLOR_FIELDS)[number]["key"];
-type Colors = Record<ColorKey, string | null>;
+type ModeColors = Record<ColorMode, ThemeColorSet>;
 
 function AppSettingsPanel() {
   const branding = useBranding();
+  const { resolved } = useTheme();
   const { appName, logoUrl, refresh } = branding;
   const [name, setName] = useState(appName);
   const [logo, setLogo] = useState<string | null>(logoUrl);
-  const [colors, setColors] = useState<Colors>(() => pickColors(branding));
+  const [colors, setColors] = useState<ModeColors>(() => pickColors(branding));
+  // Which mode's palette is on screen in the editor; start on the active theme.
+  const [colorMode, setColorMode] = useState<ColorMode>(resolved);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -208,7 +246,7 @@ function AppSettingsPanel() {
   const saved = pickColors(branding);
   // Mirrored into a ref (updated in an effect) so the unmount cleanup can read
   // the latest saved colours without depending on them.
-  const savedRef = useRef<Colors>(saved);
+  const savedRef = useRef<ModeColors>(saved);
   useEffect(() => {
     savedRef.current = saved;
   });
@@ -229,26 +267,37 @@ function AppSettingsPanel() {
     branding.pageBg,
     branding.sidebarBg,
     branding.sidebarActiveColor,
+    branding.buttonColorDark,
+    branding.pageBgDark,
+    branding.sidebarBgDark,
+    branding.sidebarActiveColorDark,
   ]);
 
-  // Live preview: reflect the in-progress colours on the page immediately.
+  // Live preview: reflect the in-progress palettes on the page immediately.
+  // (Only the set matching the app's current theme mode is visible.)
   useEffect(() => {
-    applyColorVars(colors);
+    applyThemeColors(colors.light, colors.dark);
   }, [colors]);
 
   // On leaving the panel, drop any unsaved preview back to the saved colours.
   useEffect(() => {
-    return () => applyColorVars(savedRef.current);
+    return () =>
+      applyThemeColors(savedRef.current.light, savedRef.current.dark);
   }, []);
 
-  const colorsDirty = COLOR_FIELDS.some(
-    (f) => (colors[f.key] ?? null) !== (saved[f.key] ?? null),
+  const colorsDirty = (["light", "dark"] as const).some((mode) =>
+    COLOR_FIELDS.some(
+      (f) => (colors[mode][f.key] ?? null) !== (saved[mode][f.key] ?? null),
+    ),
   );
   const dirty = name.trim() !== appName || logo !== logoUrl || colorsDirty;
   const canSave = name.trim().length > 0 && dirty && !saving;
 
-  function setColor(key: ColorKey, value: string | null) {
-    setColors((prev) => ({ ...prev, [key]: value }));
+  function setColor(mode: ColorMode, key: ColorKey, value: string | null) {
+    setColors((prev) => ({
+      ...prev,
+      [mode]: { ...prev[mode], [key]: value },
+    }));
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -259,7 +308,15 @@ function AppSettingsPanel() {
     try {
       await api("/settings", {
         method: "PATCH",
-        body: { appName: name.trim(), logoUrl: logo, ...colors },
+        body: {
+          appName: name.trim(),
+          logoUrl: logo,
+          ...colors.light,
+          buttonColorDark: colors.dark.buttonColor,
+          pageBgDark: colors.dark.pageBg,
+          sidebarBgDark: colors.dark.sidebarBg,
+          sidebarActiveColorDark: colors.dark.sidebarActiveColor,
+        },
       });
       await refresh();
       setSuccess("App settings saved.");
@@ -305,20 +362,60 @@ function AppSettingsPanel() {
           Theme colors
         </h3>
         <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-          Personalize the interface. Changes preview instantly — save to keep
-          them.
+          Personalize the interface — light and dark mode each have their own
+          palette. Changes preview instantly — save to keep them.
         </p>
+
+        {/* Light / dark palette switch */}
+        <div className="mt-4 inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-800">
+          {(["light", "dark"] as const).map((mode) => {
+            const active = colorMode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setColorMode(mode)}
+                aria-pressed={active}
+                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100"
+                    : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
+                }`}
+              >
+                {mode === "light" ? (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+                  </svg>
+                )}
+                {mode === "light" ? "Light mode" : "Dark mode"}
+              </button>
+            );
+          })}
+        </div>
+
+        {colorMode !== resolved && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+            The app is currently in {resolved} mode — these {colorMode}-mode
+            colors are saved but only visible after switching the theme.
+          </p>
+        )}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {COLOR_FIELDS.map((f) => (
             <ColorField
-              key={f.key}
+              // Remount per mode so the native colour input resets its swatch.
+              key={`${colorMode}-${f.key}`}
               label={f.label}
               hint={f.hint}
-              value={colors[f.key]}
-              fallback={f.fallback}
-              presets={f.presets}
-              onChange={(v) => setColor(f.key, v)}
+              value={colors[colorMode][f.key]}
+              fallback={f.fallback[colorMode]}
+              presets={f.presets[colorMode]}
+              onChange={(v) => setColor(colorMode, f.key, v)}
             />
           ))}
         </div>
@@ -338,7 +435,7 @@ function AppSettingsPanel() {
       <button
         type="submit"
         disabled={!canSave}
-        className="mt-5 rounded-xl bg-pos-button px-5 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
+        className="mt-5 rounded-xl bg-pos-button px-5 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save changes"}
       </button>
@@ -346,25 +443,9 @@ function AppSettingsPanel() {
   );
 }
 
-// Pull just the colour fields out of the branding settings.
-function pickColors(s: Colors): Colors {
-  return {
-    buttonColor: s.buttonColor,
-    pageBg: s.pageBg,
-    sidebarBg: s.sidebarBg,
-    sidebarActiveColor: s.sidebarActiveColor,
-  };
-}
-
-// Reflect a colour set onto <html> as CSS variables (null → clear override).
-function applyColorVars(colors: Colors) {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  for (const f of COLOR_FIELDS) {
-    const value = colors[f.key];
-    if (value) root.style.setProperty(f.cssVar, value);
-    else root.style.removeProperty(f.cssVar);
-  }
+// Pull both per-mode colour sets out of the branding settings.
+function pickColors(s: AppSettings): ModeColors {
+  return { light: lightColorSet(s), dark: darkColorSet(s) };
 }
 
 // A single colour control: preset swatches + native picker + hex input + reset.
@@ -431,7 +512,7 @@ function ColorField({
           }}
           placeholder={`${fallback} (default)`}
           spellCheck={false}
-          className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 font-mono text-xs text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:focus:border-amber-500 dark:focus:ring-amber-500/20"
+          className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 font-mono text-xs text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100"
         />
       </div>
 
@@ -500,7 +581,7 @@ function LogoPicker({
           className="h-14 w-14 rounded-2xl object-cover shadow-sm"
         />
       ) : (
-        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-pos-button text-2xl text-amber-50 shadow-sm dark:bg-pos-button dark:text-stone-950">
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-pos-button text-2xl text-pos-button-fg shadow-sm">
           ☕
         </span>
       )}
@@ -600,7 +681,7 @@ function StaffPanel() {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-pos-button px-3.5 py-2 text-sm font-semibold text-amber-50 transition hover:opacity-90 dark:bg-pos-button dark:text-stone-950"
+            className="flex items-center gap-1.5 rounded-xl bg-pos-button px-3.5 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
               <path d="M12 5v14M5 12h14" />
@@ -840,7 +921,7 @@ function CreateUserModal({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
+            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Creating…" : "Create user"}
           </button>
@@ -1168,7 +1249,7 @@ function EditUserModal({
           <button
             type="submit"
             disabled={!canSave}
-            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
+            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
@@ -1270,7 +1351,7 @@ function PermissionsModal({
           <button
             type="submit"
             disabled={saving || pages.length === 0}
-            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pos-button dark:text-stone-950"
+            className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save access"}
           </button>
@@ -1308,7 +1389,7 @@ function PagePermissions({
             aria-pressed={active}
             className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition ${
               active
-                ? "border-[#2A1D15] bg-pos-button text-amber-50 dark:border-amber-500 dark:bg-pos-button dark:text-stone-950"
+                ? "border-pos-button bg-pos-button text-pos-button-fg"
                 : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
             }`}
           >
@@ -1336,7 +1417,7 @@ function PagePermissions({
 // ── Shared bits ──────────────────────────────────────────────────────────
 
 const inputClass =
-  "w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-[#2A1D15] focus:ring-2 focus:ring-[#2A1D15]/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-amber-500 dark:focus:ring-amber-500/20";
+  "w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500";
 
 function Avatar({ src, name }: { src?: string | null; name: string }) {
   if (src) {
@@ -1437,7 +1518,7 @@ function RolePicker({
             onClick={() => onChange(role)}
             className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
               active
-                ? "border-[#2A1D15] bg-pos-button text-amber-50 dark:border-amber-500 dark:bg-pos-button dark:text-stone-950"
+                ? "border-pos-button bg-pos-button text-pos-button-fg"
                 : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
             }`}
           >

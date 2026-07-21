@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusDropdown } from "@/components/status-dropdown";
+import { StatusTabs } from "@/components/status-tabs";
 import { api } from "@/lib/api";
 import { STATUS_FILTERS } from "@/lib/orders";
 import { OrderStatus, PaymentStatus, type OrderWithUser } from "@/lib/types";
@@ -105,20 +106,13 @@ export function OrderHistoryView() {
 
       <div>
         {/* Status filter */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                filter === f.value
-                  ? "bg-pos-button text-white"
-                  : "bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="mb-6">
+          <StatusTabs
+            options={STATUS_FILTERS}
+            value={filter}
+            onChange={setFilter}
+            label="Filter orders by status"
+          />
         </div>
 
         {error && (

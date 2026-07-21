@@ -48,7 +48,7 @@ type DeleteTarget =
   | null;
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-[#2A1D15] dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-amber-400";
+  "w-full rounded-lg border border-stone-300 px-3 py-2 text-stone-900 outline-none focus:border-pos-button dark:bg-stone-800 dark:border-stone-700 dark:text-stone-100 dark:placeholder:text-stone-500";
 
 const EMPTY_CATEGORY_FORM: CategoryForm = {
   id: null,
@@ -1072,7 +1072,7 @@ export function AdminProductManagement({
                   No cup sizes defined yet. Add sizes on the{" "}
                   <Link
                     href={`${base}/stock`}
-                    className="font-medium text-[#2A1D15] underline dark:text-amber-400"
+                    className="font-medium text-pos-button underline"
                   >
                     Stock
                   </Link>{" "}
@@ -1164,7 +1164,7 @@ export function AdminProductManagement({
                     type="button"
                     onClick={addSizeRow}
                     disabled={productForm.sizes.length >= sizeCatalog.length}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-[#2A1D15] hover:text-[#2A1D15] disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-400 dark:hover:border-amber-400 dark:hover:text-amber-400"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-pos-button hover:text-pos-button disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-400"
                   >
                     <span className="text-base leading-none">＋</span>
                     Add size
@@ -1247,7 +1247,7 @@ function ManagementSection({
         </div>
         <button
           onClick={onCreate}
-          className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
+          className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
         >
           {actionLabel}
         </button>
@@ -1350,7 +1350,7 @@ function PanelActions({
       <button
         type="submit"
         disabled={busy}
-        className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20] disabled:opacity-50"
+        className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110 disabled:opacity-50"
       >
         {busy ? "Saving..." : submitLabel}
       </button>
@@ -1469,7 +1469,7 @@ function CategoryCombobox({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search category…"
-              className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-sm text-stone-900 outline-none focus:border-[#2A1D15] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-amber-400"
+              className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-sm text-stone-900 outline-none focus:border-pos-button dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
           </div>
           <ul role="listbox" className="max-h-52 overflow-y-auto py-1">
@@ -1487,12 +1487,12 @@ function CategoryCombobox({
                       onClick={() => pick(String(category.id))}
                       className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition hover:bg-stone-50 dark:hover:bg-stone-800 ${
                         isSelected
-                          ? "font-medium text-[#2A1D15] dark:text-amber-400"
+                          ? "font-medium text-pos-button"
                           : "text-stone-700 dark:text-stone-300"
                       }`}
                     >
                       {category.name}
-                      {isSelected && <span className="text-[#2A1D15] dark:text-amber-400">✓</span>}
+                      {isSelected && <span className="text-pos-button">✓</span>}
                     </button>
                   </li>
                 );

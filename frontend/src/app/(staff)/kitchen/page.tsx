@@ -130,7 +130,7 @@ function KitchenScreen() {
   }, [orders]);
 
   return (
-    <div className="flex h-screen flex-col bg-[#F5F5F6] text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+    <div className="flex h-screen flex-col bg-pos-page text-pos-page-fg">
       <header className="flex items-center justify-between border-b border-stone-200 px-6 py-3 dark:border-stone-800">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">👨‍🍳 Kitchen</h1>
@@ -205,7 +205,7 @@ function KitchenScreen() {
                       </ul>
                       <button
                         onClick={() => advance(order)}
-                        className="mt-4 w-full rounded-lg bg-pos-button py-2 text-sm font-semibold text-white transition hover:bg-[#3a2a1f]"
+                        className="mt-4 w-full rounded-lg bg-pos-button py-2 text-sm font-semibold text-pos-button-fg transition hover:brightness-110"
                       >
                         {NEXT_LABEL[order.status] ?? "Next"}
                       </button>

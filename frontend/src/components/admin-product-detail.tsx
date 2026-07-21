@@ -27,7 +27,7 @@ export function AdminProductDetail({ product }: { product: Product }) {
           </Link>
           <Link
             href="/products"
-            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3A2A20]"
+            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
           >
             Manage products
           </Link>
