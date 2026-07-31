@@ -667,7 +667,7 @@ function ProductStock({
                     : "text-red-600 dark:text-red-400"
                 }
               >
-                in stock {inCups}
+                {inCups} in stock
               </span>
             </span>
           );
