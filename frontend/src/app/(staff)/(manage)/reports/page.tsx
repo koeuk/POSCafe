@@ -109,6 +109,8 @@ interface BestProduct {
 
 interface StockReport {
   bySize: { size: string; inStock: number; variants: number; outOfStock: number }[];
+  // Optional: an older backend build may not send it yet.
+  byProduct?: { productId: number; productName: string; inStock: number }[];
   totals: { inStock: number; outOfStock: number };
   outOfStockItems: { productId: number; productName: string; size: string }[];
 }
@@ -204,13 +206,22 @@ export default function ReportsPage() {
       ...(stock
         ? [
             {
-              title: "Cup Stock by Size",
+              title: "Stock by Size",
               columns: ["Size", "In stock", "Variants", "Out of stock"],
               rows: stock.bySize.map((s) => [
                 s.size,
                 s.inStock,
                 s.variants,
                 s.outOfStock,
+              ]),
+            },
+            {
+              title: "Stock by Product",
+              columns: ["Product", "In stock", "Status"],
+              rows: (stock.byProduct ?? []).map((p) => [
+                p.productName,
+                p.inStock,
+                p.inStock <= 0 ? "Sold out" : "In stock",
               ]),
             },
           ]
@@ -371,7 +382,7 @@ export default function ReportsPage() {
       <section className={`mt-6 rounded-2xl p-5 ${GLASS}`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-            Cup Stock by Size
+            Stock by Size
           </h2>
           {stock && (
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
@@ -380,9 +391,10 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {!stock || stock.bySize.length === 0 ? (
+        {!stock ||
+        (stock.bySize.length === 0 && (stock.byProduct ?? []).length === 0) ? (
           <p className="text-sm text-stone-400 dark:text-stone-500">
-            No sized products yet.
+            No products yet.
           </p>
         ) : (
           <>
@@ -398,7 +410,7 @@ export default function ReportsPage() {
                   <p className="mt-1 text-2xl font-bold text-stone-900 dark:text-stone-100">
                     {s.inStock}
                     <span className="ml-1 text-sm font-normal text-stone-400">
-                      cups
+                      items
                     </span>
                   </p>
                   <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-500">
@@ -410,10 +422,58 @@ export default function ReportsPage() {
               ))}
             </div>
 
+            {/* Per-product availability: sold-out products first so problems
+                surface without scrolling. */}
+            {(stock.byProduct ?? []).length > 0 && (
+              <div className="mt-5">
+                <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
+                  Stock by product
+                </p>
+                <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {[...(stock.byProduct ?? [])]
+                    .sort(
+                      (a, b) =>
+                        Number(b.inStock <= 0) - Number(a.inStock <= 0) ||
+                        a.productName.localeCompare(b.productName),
+                    )
+                    .map((p) => {
+                      const out = p.inStock <= 0;
+                      return (
+                        <div
+                          key={p.productId}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-stone-200/70 px-3 py-2 dark:border-stone-800"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span
+                              aria-hidden
+                              className={`h-2 w-2 shrink-0 rounded-full ${
+                                out ? "bg-red-500" : "bg-green-500"
+                              }`}
+                            />
+                            <span className="truncate text-sm text-stone-700 dark:text-stone-300">
+                              {p.productName}
+                            </span>
+                          </span>
+                          <span
+                            className={`shrink-0 text-xs font-semibold ${
+                              out
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-green-600 dark:text-green-400"
+                            }`}
+                          >
+                            {out ? "Sold out" : `${p.inStock} in stock`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
             {stock.outOfStockItems.length > 0 && (
               <div className="mt-5">
                 <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Out of stock
+                  Out of stock sizes
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {stock.outOfStockItems.map((it) => (

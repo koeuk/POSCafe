@@ -77,7 +77,7 @@ function Stock() {
           Stock
         </h1>
         <p className="text-sm text-pos-page-fg/60">
-          Manage cup sizes and how many cups are in stock.
+          Manage sizes and how many items are in stock.
         </p>
       </header>
 
@@ -90,7 +90,7 @@ function Stock() {
       {/* At-a-glance totals */}
       <div className="mb-6 grid grid-cols-3 gap-3">
         <SummaryCard
-          label="Cups in stock"
+          label="Items in stock"
           value={summary.cups}
           tone="neutral"
         />
@@ -112,7 +112,7 @@ function Stock() {
       {/* Per-product quantities */}
       <div className="mb-3 mt-8 flex flex-wrap items-center gap-3">
         <h2 className="mr-auto text-lg font-semibold text-pos-page-fg">
-          Cup stock
+          Product stock
         </h2>
         <input
           type="text"
@@ -275,7 +275,7 @@ function SizesManager({
   return (
     <section className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-stone-800 dark:bg-stone-900 dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
       <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-        Cup sizes
+        Sizes
       </h2>
       <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
         The size options products can choose from (e.g. Small, Medium, Large).
@@ -761,7 +761,7 @@ function ProductStock({
                     value={currentStock}
                     onChange={(e) => set(size.size, e.target.value)}
                     inputMode="numeric"
-                    aria-label="Cups in stock"
+                    aria-label="Items in stock"
                     className={`${INPUT} w-20 text-right`}
                   />
                   <button
@@ -875,7 +875,7 @@ function ProductStock({
                     })
                   }
                   inputMode="numeric"
-                  aria-label="Cups in stock"
+                  aria-label="Items in stock"
                   className={`${INPUT} w-20 text-right`}
                 />
                 <button

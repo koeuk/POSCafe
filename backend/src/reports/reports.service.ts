@@ -24,6 +24,11 @@ interface OutOfStockRow {
   productName: string;
   size: string;
 }
+interface ProductStockRow {
+  productId: number;
+  productName: string;
+  inStock: string;
+}
 interface TotalsRow {
   orders: string;
   revenue: string;
@@ -139,8 +144,36 @@ export class ReportsService {
       .orderBy('p.name', 'ASC')
       .getRawMany<Omit<OutOfStockRow, 'size'>>();
 
+    // Per-product totals: sized products sum their variants (the source of
+    // truth for cup stock); unsized products use their own stock column. Lets
+    // the report answer "is Blueberry Muffin in stock?" at product level.
+    const sizedByProduct = await this.variantRepo
+      .createQueryBuilder('v')
+      .innerJoin('v.product', 'p')
+      .select('v.productId', 'productId')
+      .addSelect('p.name', 'productName')
+      .addSelect('SUM(v.stock)', 'inStock')
+      .groupBy('v.productId')
+      .addGroupBy('p.name')
+      .getRawMany<ProductStockRow>();
+
+    const unsizedByProduct = await unsizedQb()
+      .select('p.id', 'productId')
+      .addSelect('p.name', 'productName')
+      .addSelect('p.stock', 'inStock')
+      .getRawMany<ProductStockRow>();
+
+    const byProduct = [...sizedByProduct, ...unsizedByProduct]
+      .map((r) => ({
+        productId: r.productId,
+        productName: r.productName,
+        inStock: toNumber(r.inStock),
+      }))
+      .sort((a, b) => a.productName.localeCompare(b.productName));
+
     return {
       bySize: groups,
+      byProduct,
       totals: {
         inStock: groups.reduce((s, b) => s + b.inStock, 0),
         outOfStock: groups.reduce((s, b) => s + b.outOfStock, 0),
