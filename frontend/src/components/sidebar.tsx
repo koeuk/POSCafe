@@ -15,8 +15,6 @@ interface NavItem {
   href: string | { staff: string; admin: string };
   label: string;
   icon: ReactNode;
-  newTab?: boolean;
-  adminOnly?: boolean;
   /** Match this exact path only (e.g. /admin shouldn't stay active on /admin/orders). */
   exact?: boolean;
 }
@@ -34,7 +32,6 @@ const NAV: NavItem[] = [
     key: "dashboard",
     href: "/dashboard",
     label: "Dashboard",
-    adminOnly: true,
     exact: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
@@ -96,7 +93,6 @@ const NAV: NavItem[] = [
     key: "categories",
     href: { staff: "/cashier/categories", admin: "/categories" },
     label: "Categories",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M4 5h16M4 12h16M4 19h16" />
@@ -108,7 +104,6 @@ const NAV: NavItem[] = [
     key: "products",
     href: { staff: "/cashier/products", admin: "/products" },
     label: "Products",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" />
@@ -120,7 +115,6 @@ const NAV: NavItem[] = [
     key: "stock",
     href: { staff: "/cashier/stock", admin: "/stock" },
     label: "Stock",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M3 7h18M3 12h18M3 17h18" />
@@ -143,7 +137,6 @@ const NAV: NavItem[] = [
     key: "reports",
     href: { staff: "/cashier/reports", admin: "/reports" },
     label: "Reports",
-    adminOnly: true,
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
         <path d="M4 19V5" />
@@ -231,7 +224,6 @@ function NavLinks({
           key={item.label}
           href={href}
           data-active={active}
-          target={item.newTab ? "_blank" : undefined}
           onClick={onNavigate}
           aria-label={item.label}
           className={`group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300 ${
@@ -244,15 +236,6 @@ function NavLinks({
         >
           <span className="shrink-0">{item.icon}</span>
           <span className={collapsed ? "lg:hidden" : ""}>{item.label}</span>
-          {item.newTab && (
-            <span
-              className={`ml-auto text-xs opacity-50 ${
-                collapsed ? "lg:hidden" : ""
-              }`}
-            >
-              ↗
-            </span>
-          )}
           {/* Hover tooltip — only when the sidebar is collapsed (desktop). */}
           {collapsed && (
             <span

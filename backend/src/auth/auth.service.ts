@@ -14,11 +14,10 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    // The very first registered user becomes the admin; self-signup can never
-    // request a role — everyone else is a cashier. The admin/username checks
-    // run atomically inside createSelfSignup so concurrent registrations can't
-    // both become admin or both claim a username. Elevating a user afterwards
-    // is an admin-only action via UsersController.
+    // Bootstrap-only: the first registered user becomes the admin, and
+    // registration is closed once any user exists (staff accounts are created
+    // by an admin via UsersController). The check runs atomically inside
+    // createSelfSignup so concurrent registrations can't both become admin.
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.createSelfSignup({
       name: dto.name,

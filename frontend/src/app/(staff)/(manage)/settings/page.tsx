@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { RequireAuth } from "@/components/require-auth";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -931,70 +932,6 @@ function CreateUserModal({
   );
 }
 
-function ConfirmDialog({
-  title,
-  message,
-  confirmLabel,
-  busy,
-  onCancel,
-  onConfirm,
-}: {
-  title: string;
-  message: string;
-  confirmLabel: string;
-  busy: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="pos-drop w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-5 shadow-xl dark:border-stone-800 dark:bg-stone-900"
-      >
-        <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
-              <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6M10 11v6M14 11v6" />
-            </svg>
-          </span>
-          <div className="min-w-0">
-            <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-              {title}
-            </h2>
-            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-              {message}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {busy ? "Deleting…" : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Staff row + ⋮ dropdown ───────────────────────────────────────────────
 

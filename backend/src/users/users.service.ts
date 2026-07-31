@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -62,10 +63,12 @@ export class UsersService {
   }
 
   /**
-   * Self-signup creation: the very first account becomes ADMIN, everyone else
-   * a CASHIER. Runs the count→insert in one transaction with a row-range lock
-   * so two simultaneous first registrations can't both read an empty table and
-   * both become admin. `password` must already be hashed.
+   * Bootstrap-only self-signup: creates the very first account as ADMIN, and
+   * is closed once any user exists — staff accounts are created by an admin
+   * via UsersController after that. Runs the count→insert in one transaction
+   * with a row-range lock so two simultaneous first registrations can't both
+   * read an empty table and both become admin. `password` must already be
+   * hashed.
    */
   async createSelfSignup(data: {
     name: string;
@@ -74,20 +77,18 @@ export class UsersService {
   }): Promise<User> {
     return this.repo.manager.transaction(async (manager) => {
       const repo = manager.getRepository(User);
-      const existing = await repo.findOne({
-        where: { username: data.username },
-      });
-      if (existing) {
-        throw new ConflictException('Username already taken');
-      }
       // FOR UPDATE over the users range serializes concurrent registrations
       // (InnoDB gap-locks the empty range), so the bootstrap admin is unique.
       const count = await repo
         .createQueryBuilder('u')
         .setLock('pessimistic_write')
         .getCount();
-      const role = count === 0 ? Role.ADMIN : Role.CASHIER;
-      const user = repo.create({ ...data, role });
+      if (count > 0) {
+        throw new ForbiddenException(
+          'Registration is closed — ask an admin to create your account',
+        );
+      }
+      const user = repo.create({ ...data, role: Role.ADMIN });
       return repo.save(user);
     });
   }
