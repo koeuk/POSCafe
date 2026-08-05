@@ -11,65 +11,20 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/lib/api";
-import { applyThemeColors, type ThemeColorSet } from "@/lib/branding-colors";
 
 export interface AppSettings {
   appName: string;
   logoUrl: string | null;
-  // Themeable colours (hex). null = use the built-in default for that surface.
-  // Light mode and dark mode each have their own set so a colour picked for
-  // one mode never clashes with the other mode's text/borders.
-  buttonColor: string | null;
-  pageBg: string | null;
-  sidebarBg: string | null;
-  sidebarActiveColor: string | null;
-  buttonColorDark: string | null;
-  pageBgDark: string | null;
-  sidebarBgDark: string | null;
-  sidebarActiveColorDark: string | null;
 }
 
 const DEFAULTS: AppSettings = {
   appName: "POSCAFE",
   logoUrl: null,
-  buttonColor: null,
-  pageBg: null,
-  sidebarBg: null,
-  sidebarActiveColor: null,
-  buttonColorDark: null,
-  pageBgDark: null,
-  sidebarBgDark: null,
-  sidebarActiveColorDark: null,
 };
 
-// Persisted so custom colours apply on first paint (before the fetch lands),
-// avoiding a flash of the default theme.
+// Persisted so the branding applies on first paint (before the fetch lands),
+// avoiding a flash of the default name/logo.
 const CACHE_KEY = "poscafe-branding";
-
-/** The light-mode colour set stored in the settings. */
-export function lightColorSet(s: AppSettings): ThemeColorSet {
-  return {
-    buttonColor: s.buttonColor,
-    pageBg: s.pageBg,
-    sidebarBg: s.sidebarBg,
-    sidebarActiveColor: s.sidebarActiveColor,
-  };
-}
-
-/** The dark-mode colour set stored in the settings. */
-export function darkColorSet(s: AppSettings): ThemeColorSet {
-  return {
-    buttonColor: s.buttonColorDark,
-    pageBg: s.pageBgDark,
-    sidebarBg: s.sidebarBgDark,
-    sidebarActiveColor: s.sidebarActiveColorDark,
-  };
-}
-
-/** Reflect both palettes on the page (per-mode, via a managed style tag). */
-function applyColors(settings: AppSettings) {
-  applyThemeColors(lightColorSet(settings), darkColorSet(settings));
-}
 
 // Best-guess MIME type for a favicon URL, so the browser accepts non-.ico
 // images (uploaded logos are usually PNG/JPEG/WebP/SVG).
@@ -151,9 +106,11 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     try {
       // GET /settings is public — works before login too.
       const data = await api<AppSettings>("/settings");
-      const next: AppSettings = { ...DEFAULTS, ...data };
+      const next: AppSettings = {
+        appName: data.appName ?? DEFAULTS.appName,
+        logoUrl: data.logoUrl ?? null,
+      };
       setSettings(next);
-      applyColors(next);
       applyDocumentBranding(next);
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(next));
@@ -166,10 +123,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Apply the cached branding immediately (avoids a theme flash), then
-    // refresh from the backend. Intentional post-mount state sync.
+    // Apply the cached branding immediately (avoids a flash of defaults),
+    // then refresh from the backend. Intentional post-mount state sync.
     const cached = readCache();
-    applyColors(cached);
     applyDocumentBranding(cached);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSettings(cached);

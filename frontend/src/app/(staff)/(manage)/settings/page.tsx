@@ -11,17 +11,7 @@ import { RequireAuth } from "@/components/require-auth";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useAuth } from "@/lib/auth-context";
-import {
-  darkColorSet,
-  lightColorSet,
-  useBranding,
-  type AppSettings,
-} from "@/lib/branding-context";
-import {
-  applyThemeColors,
-  type ThemeColorSet,
-} from "@/lib/branding-colors";
-import { useTheme } from "@/lib/theme-context";
+import { useBranding } from "@/lib/branding-context";
 import { api, uploadImage } from "@/lib/api";
 import { Role, type User } from "@/lib/types";
 import {
@@ -139,167 +129,26 @@ function Settings() {
   );
 }
 
-// ── General: app name, logo & theme colours ──────────────────────────────
-
-// Light and dark mode each keep their own palette, edited on separate tabs —
-// a colour tuned for one mode is never applied in the other, where its
-// contrast pairing (text, borders) would be wrong.
-type ColorMode = "light" | "dark";
-
-// Quick-pick palettes per mode. Accent colours suit buttons / active items;
-// surface colours suit page & sidebar backgrounds.
-const ACCENT_PRESETS: Record<ColorMode, string[]> = {
-  light: [
-    "#2a1d15",
-    "#111827",
-    "#1d4ed8",
-    "#0d9488",
-    "#059669",
-    "#dc2626",
-    "#ea580c",
-    "#7c3aed",
-  ],
-  dark: [
-    "#f59e0b",
-    "#fbbf24",
-    "#60a5fa",
-    "#2dd4bf",
-    "#34d399",
-    "#f87171",
-    "#fb923c",
-    "#a78bfa",
-  ],
-};
-const SURFACE_PRESETS: Record<ColorMode, string[]> = {
-  light: [
-    "#ffffff",
-    "#f5f5f6",
-    "#f1f5f9",
-    "#fef3c7",
-    "#ede9e3",
-    "#e0f2fe",
-    "#ecfdf5",
-    "#fdf2f8",
-  ],
-  dark: [
-    "#0c0a09",
-    "#1c1917",
-    "#0f172a",
-    "#1e293b",
-    "#18181b",
-    "#111827",
-    "#1e1b4b",
-    "#292524",
-  ],
-};
-
-// Each themeable colour: which colour-set key, its per-mode fallback swatch
-// (the built-in default from globals.css) and per-mode quick presets.
-const COLOR_FIELDS = [
-  {
-    key: "buttonColor",
-    label: "Button color",
-    hint: "Primary buttons & accents",
-    fallback: { light: "#2a1d15", dark: "#f59e0b" },
-    presets: ACCENT_PRESETS,
-  },
-  {
-    key: "pageBg",
-    label: "Background color",
-    hint: "Main content area",
-    fallback: { light: "#f5f5f6", dark: "#0c0a09" },
-    presets: SURFACE_PRESETS,
-  },
-  {
-    key: "sidebarBg",
-    label: "Sidebar background",
-    hint: "Left navigation panel",
-    fallback: { light: "#ffffff", dark: "#1c1917" },
-    presets: SURFACE_PRESETS,
-  },
-  {
-    key: "sidebarActiveColor",
-    label: "Sidebar active item",
-    hint: "Selected menu highlight",
-    fallback: { light: "#2a1d15", dark: "#f59e0b" },
-    presets: ACCENT_PRESETS,
-  },
-] as const;
-
-type ColorKey = (typeof COLOR_FIELDS)[number]["key"];
-type ModeColors = Record<ColorMode, ThemeColorSet>;
+// ── General: app name & logo ─────────────────────────────────────────────
 
 function AppSettingsPanel() {
-  const branding = useBranding();
-  const { resolved } = useTheme();
-  const { appName, logoUrl, refresh } = branding;
+  const { appName, logoUrl, refresh } = useBranding();
   const [name, setName] = useState(appName);
   const [logo, setLogo] = useState<string | null>(logoUrl);
-  const [colors, setColors] = useState<ModeColors>(() => pickColors(branding));
-  // Which mode's palette is on screen in the editor; start on the active theme.
-  const [colorMode, setColorMode] = useState<ColorMode>(resolved);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // The saved colours are just the branding context values (they only change
-  // when we refresh after a save).
-  const saved = pickColors(branding);
-  // Mirrored into a ref (updated in an effect) so the unmount cleanup can read
-  // the latest saved colours without depending on them.
-  const savedRef = useRef<ModeColors>(saved);
-  useEffect(() => {
-    savedRef.current = saved;
-  });
 
   // Sync local fields once branding has loaded / changed from the backend.
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     setName(appName);
     setLogo(logoUrl);
-    setColors(pickColors(branding));
     /* eslint-enable react-hooks/set-state-in-effect */
-    // Depend on the primitive colour values, not the branding object identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    appName,
-    logoUrl,
-    branding.buttonColor,
-    branding.pageBg,
-    branding.sidebarBg,
-    branding.sidebarActiveColor,
-    branding.buttonColorDark,
-    branding.pageBgDark,
-    branding.sidebarBgDark,
-    branding.sidebarActiveColorDark,
-  ]);
+  }, [appName, logoUrl]);
 
-  // Live preview: reflect the in-progress palettes on the page immediately.
-  // (Only the set matching the app's current theme mode is visible.)
-  useEffect(() => {
-    applyThemeColors(colors.light, colors.dark);
-  }, [colors]);
-
-  // On leaving the panel, drop any unsaved preview back to the saved colours.
-  useEffect(() => {
-    return () =>
-      applyThemeColors(savedRef.current.light, savedRef.current.dark);
-  }, []);
-
-  const colorsDirty = (["light", "dark"] as const).some((mode) =>
-    COLOR_FIELDS.some(
-      (f) => (colors[mode][f.key] ?? null) !== (saved[mode][f.key] ?? null),
-    ),
-  );
-  const dirty = name.trim() !== appName || logo !== logoUrl || colorsDirty;
+  const dirty = name.trim() !== appName || logo !== logoUrl;
   const canSave = name.trim().length > 0 && dirty && !saving;
-
-  function setColor(mode: ColorMode, key: ColorKey, value: string | null) {
-    setColors((prev) => ({
-      ...prev,
-      [mode]: { ...prev[mode], [key]: value },
-    }));
-  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -309,15 +158,7 @@ function AppSettingsPanel() {
     try {
       await api("/settings", {
         method: "PATCH",
-        body: {
-          appName: name.trim(),
-          logoUrl: logo,
-          ...colors.light,
-          buttonColorDark: colors.dark.buttonColor,
-          pageBgDark: colors.dark.pageBg,
-          sidebarBgDark: colors.dark.sidebarBg,
-          sidebarActiveColorDark: colors.dark.sidebarActiveColor,
-        },
+        body: { appName: name.trim(), logoUrl: logo },
       });
       await refresh();
       setSuccess("App settings saved.");
@@ -358,70 +199,6 @@ function AppSettingsPanel() {
         </Field>
       </div>
 
-      <div className="mt-7 border-t border-stone-100 pt-5 dark:border-stone-800">
-        <h3 className="font-semibold text-stone-900 dark:text-stone-100">
-          Theme colors
-        </h3>
-        <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-          Personalize the interface — light and dark mode each have their own
-          palette. Changes preview instantly — save to keep them.
-        </p>
-
-        {/* Light / dark palette switch */}
-        <div className="mt-4 inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-800">
-          {(["light", "dark"] as const).map((mode) => {
-            const active = colorMode === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setColorMode(mode)}
-                aria-pressed={active}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-                  active
-                    ? "bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100"
-                    : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-                }`}
-              >
-                {mode === "light" ? (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-                  </svg>
-                )}
-                {mode === "light" ? "Light mode" : "Dark mode"}
-              </button>
-            );
-          })}
-        </div>
-
-        {colorMode !== resolved && (
-          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-            The app is currently in {resolved} mode — these {colorMode}-mode
-            colors are saved but only visible after switching the theme.
-          </p>
-        )}
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {COLOR_FIELDS.map((f) => (
-            <ColorField
-              // Remount per mode so the native colour input resets its swatch.
-              key={`${colorMode}-${f.key}`}
-              label={f.label}
-              hint={f.hint}
-              value={colors[colorMode][f.key]}
-              fallback={f.fallback[colorMode]}
-              presets={f.presets[colorMode]}
-              onChange={(v) => setColor(colorMode, f.key, v)}
-            />
-          ))}
-        </div>
-      </div>
-
       {error && (
         <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
@@ -441,105 +218,6 @@ function AppSettingsPanel() {
         {saving ? "Saving…" : "Save changes"}
       </button>
     </form>
-  );
-}
-
-// Pull both per-mode colour sets out of the branding settings.
-function pickColors(s: AppSettings): ModeColors {
-  return { light: lightColorSet(s), dark: darkColorSet(s) };
-}
-
-// A single colour control: preset swatches + native picker + hex input + reset.
-function ColorField({
-  label,
-  hint,
-  value,
-  fallback,
-  presets,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: string | null;
-  fallback: string;
-  presets: readonly string[];
-  onChange: (value: string | null) => void;
-}) {
-  const custom = value !== null;
-  const swatch = value ?? fallback;
-  const selected = (value ?? "").toLowerCase();
-
-  return (
-    <div className="rounded-xl border border-stone-200 p-3 dark:border-stone-700">
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-stone-700 dark:text-stone-300">
-            {label}
-          </p>
-          <p className="truncate text-xs text-stone-400 dark:text-stone-500">
-            {hint}
-          </p>
-        </div>
-        {custom && (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800"
-          >
-            Reset
-          </button>
-        )}
-      </div>
-
-      <div className="mt-2.5 flex items-center gap-2">
-        <label
-          className="relative h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-stone-200 shadow-sm dark:border-stone-600"
-          style={{ backgroundColor: swatch }}
-          title="Pick a colour"
-        >
-          <input
-            type="color"
-            value={swatch}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          />
-        </label>
-        <input
-          type="text"
-          value={custom ? value : ""}
-          onChange={(e) => {
-            const v = e.target.value.trim();
-            onChange(v === "" ? null : v);
-          }}
-          placeholder={`${fallback} (default)`}
-          spellCheck={false}
-          className="w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 font-mono text-xs text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100"
-        />
-      </div>
-
-      {/* Quick-pick presets */}
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {presets.map((c) => {
-          const active = selected === c.toLowerCase();
-          return (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange(c)}
-              title={c}
-              aria-label={`Use ${c}`}
-              aria-pressed={active}
-              className={`h-6 w-6 rounded-md border shadow-sm transition hover:scale-110 ${
-                active
-                  ? "border-stone-900 ring-2 ring-stone-900/20 dark:border-white dark:ring-white/30"
-                  : "border-stone-200 dark:border-stone-600"
-              }`}
-              style={{ backgroundColor: c }}
-            />
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

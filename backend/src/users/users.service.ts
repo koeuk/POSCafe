@@ -110,7 +110,8 @@ export class UsersService {
       role: input.role,
       avatar: input.avatar,
       // Page restrictions only apply to cashiers.
-      allowedPages: input.role === Role.CASHIER ? input.allowedPages : undefined,
+      allowedPages:
+        input.role === Role.CASHIER ? input.allowedPages : undefined,
     });
     // Never leak the (hashed) password back to the client.
     return this.repo.create({ ...user, password: undefined });

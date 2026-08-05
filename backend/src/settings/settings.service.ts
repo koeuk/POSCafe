@@ -31,27 +31,10 @@ export class SettingsService implements OnModuleInit {
     );
   }
 
-  // The themeable colour fields (light + dark variants), copied verbatim from
-  // the DTO when present.
-  private static readonly COLOR_FIELDS = [
-    'buttonColor',
-    'pageBg',
-    'sidebarBg',
-    'sidebarActiveColor',
-    'buttonColorDark',
-    'pageBgDark',
-    'sidebarBgDark',
-    'sidebarActiveColorDark',
-  ] as const;
-
   async update(dto: UpdateAppSettingDto): Promise<AppSetting> {
     const settings = await this.find();
     if (dto.appName !== undefined) settings.appName = dto.appName.trim();
     if (dto.logoUrl !== undefined) settings.logoUrl = dto.logoUrl;
-    for (const field of SettingsService.COLOR_FIELDS) {
-      const value = dto[field];
-      if (value !== undefined) settings[field] = value;
-    }
     return this.repo.save(settings);
   }
 }
