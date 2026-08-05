@@ -17,6 +17,8 @@ interface NavItem {
   icon: ReactNode;
   /** Match this exact path only (e.g. /admin shouldn't stay active on /admin/orders). */
   exact?: boolean;
+  /** Open in a new tab (external-ish pages like the public menu). */
+  newTab?: boolean;
 }
 
 const sw = {
@@ -148,6 +150,18 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    key: "menu",
+    href: "/menu",
+    label: "View Menu",
+    newTab: true,
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
+        <path d="M12 6c-2-1.5-4.5-2-8-2v14c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2V4c-3.5 0-6 .5-8 2Z" />
+        <path d="M12 6v14" />
+      </svg>
+    ),
+  },
+  {
     key: "qr",
     href: "/qr",
     label: "QR Code",
@@ -226,6 +240,8 @@ function NavLinks({
           data-active={active}
           onClick={onNavigate}
           aria-label={item.label}
+          target={item.newTab ? "_blank" : undefined}
+          rel={item.newTab ? "noopener" : undefined}
           className={`group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300 ${
             collapsed ? "lg:justify-center" : ""
           } ${

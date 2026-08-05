@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import type { MenuCategory } from "./types";
 
 /**
- * Category-tab + search filtering shared by the public `MenuBrowser` and the
- * admin `AdminMenuBrowser`. Typing a category name shows all its products;
- * otherwise matches product name or description. Empty categories drop out.
+ * Category-tab + search filtering for the public `MenuBrowser`. Typing a
+ * category name shows all its products; otherwise matches product name or
+ * description. Empty categories drop out.
  */
 export function useMenuFilter(menu: MenuCategory[]) {
   const [query, setQuery] = useState("");
