@@ -109,6 +109,7 @@ export enum OrderStatus {
 export enum PaymentStatus {
   UNPAID = "unpaid",
   PAID = "paid",
+  REFUNDED = "refunded",
 }
 
 export enum PaymentMethod {
@@ -152,6 +153,9 @@ export interface Payment {
   amount: string;
   tendered: string;
   change: string;
+  // Set when an admin refunded this payment.
+  refundedAt: string | null;
+  refundedById: number | null;
   createdAt: string;
 }
 

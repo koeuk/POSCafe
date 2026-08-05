@@ -175,8 +175,11 @@ function ReceiptScreen() {
               )}
             </div>
           )}
-          {order.paymentStatus !== PaymentStatus.PAID && (
+          {order.paymentStatus === PaymentStatus.UNPAID && (
             <p className="mt-1 text-center font-bold uppercase">— Unpaid —</p>
+          )}
+          {order.paymentStatus === PaymentStatus.REFUNDED && (
+            <p className="mt-1 text-center font-bold uppercase">— Refunded —</p>
           )}
 
           <Divider />

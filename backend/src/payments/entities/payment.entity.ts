@@ -37,6 +37,14 @@ export class Payment {
   @Column('decimal', { precision: 10, scale: 2 })
   change: number;
 
+  // Set when an admin refunds this payment (order goes to CANCELLED/REFUNDED).
+  @Column({ type: 'datetime', nullable: true })
+  refundedAt: Date | null;
+
+  // The admin who issued the refund.
+  @Column({ type: 'int', nullable: true })
+  refundedById: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

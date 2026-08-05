@@ -8,6 +8,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { roundCents, toNumber } from '../common/money';
+import { Payment } from '../payments/entities/payment.entity';
 import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -251,13 +252,13 @@ export class OrdersService {
       }
 
       // A paid order has money against it; cancelling would strand that
-      // payment and still count it as revenue. Refunds are out of scope.
+      // payment and still count it as revenue — an admin must refund instead.
       if (
         status === OrderStatus.CANCELLED &&
         order.paymentStatus === PaymentStatus.PAID
       ) {
         throw new BadRequestException(
-          'Cannot cancel an order that has already been paid',
+          'This order has been paid — refund it instead of cancelling',
         );
       }
 
@@ -275,6 +276,58 @@ export class OrdersService {
     });
 
     // Broadcast the status change so every screen stays in sync.
+    const updated = await this.findOne(id);
+    this.gateway.emitOrderUpdated(updated);
+    return updated;
+  }
+
+  /**
+   * Refunds a paid order (admin only): marks the payment refunded, cancels
+   * the order and returns its items to stock — atomically. Refunded orders
+   * drop out of revenue because reports only count paymentStatus = PAID.
+   */
+  async refund(id: number, adminUserId: number): Promise<Order> {
+    await this.dataSource.transaction(async (manager) => {
+      const order = await manager.findOne(Order, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) {
+        throw new NotFoundException(`Order #${id} not found`);
+      }
+      if (order.paymentStatus !== PaymentStatus.PAID) {
+        throw new BadRequestException(
+          order.paymentStatus === PaymentStatus.REFUNDED
+            ? 'This order has already been refunded'
+            : 'Only paid orders can be refunded',
+        );
+      }
+
+      const payment = await manager.findOne(Payment, {
+        where: { orderId: order.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (payment) {
+        payment.refundedAt = new Date();
+        payment.refundedById = adminUserId;
+        await manager.save(payment);
+      }
+
+      // Return the units to inventory unless the order was already cancelled
+      // (not reachable today — cancel blocks paid orders — but kept as a
+      // guard against double restock).
+      if (order.status !== OrderStatus.CANCELLED) {
+        const items = await manager.find(OrderItem, {
+          where: { orderId: order.id },
+        });
+        await this.restockItems(manager, items);
+      }
+
+      order.paymentStatus = PaymentStatus.REFUNDED;
+      order.status = OrderStatus.CANCELLED;
+      await manager.save(order);
+    });
+
     const updated = await this.findOne(id);
     this.gateway.emitOrderUpdated(updated);
     return updated;

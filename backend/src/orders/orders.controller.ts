@@ -9,8 +9,11 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { RequiresPage } from '../common/decorators/requires-page.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { OrderStatus } from '../common/enums/order-status.enum';
+import { Role } from '../common/enums/role.enum';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrdersService } from './orders.service';
@@ -59,5 +62,12 @@ export class OrdersController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, dto.status);
+  }
+
+  // Refunding reverses money already taken, so it stays admin-only.
+  @Roles(Role.ADMIN)
+  @Post(':id/refund')
+  refund(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    return this.ordersService.refund(id, user.id);
   }
 }
