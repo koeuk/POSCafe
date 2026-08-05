@@ -122,6 +122,7 @@ export class OrdersService {
             productId: product.id,
             quantity: line.quantity,
             size,
+            note: line.note?.trim() || null,
             unitPrice,
             subtotal,
           }),

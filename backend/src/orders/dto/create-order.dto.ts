@@ -5,6 +5,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -21,6 +22,12 @@ export class CreateOrderItemDto {
   @IsOptional()
   @IsString()
   size?: string;
+
+  // Free-text preparation note, e.g. "less sugar, no ice".
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  note?: string;
 }
 
 export class CreateOrderDto {

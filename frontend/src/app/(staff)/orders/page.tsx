@@ -161,14 +161,21 @@ function OrdersQueue() {
 
                   <ul className="mt-4 space-y-1 border-t border-stone-100 dark:border-stone-800 pt-3 text-sm">
                     {order.items.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex justify-between text-stone-600 dark:text-stone-400"
-                      >
-                        <span>
-                          {item.quantity}× {item.product?.name ?? `#${item.productId}`}
+                      <li key={item.id} className="text-stone-600 dark:text-stone-400">
+                        <span className="flex justify-between">
+                          <span>
+                            {item.quantity}× {item.product?.name ?? `#${item.productId}`}
+                            {item.size && (
+                              <span className="text-stone-400 dark:text-stone-500"> ({item.size})</span>
+                            )}
+                          </span>
+                          <span>${Number(item.subtotal).toFixed(2)}</span>
                         </span>
-                        <span>${Number(item.subtotal).toFixed(2)}</span>
+                        {item.note && (
+                          <span className="block text-xs font-medium text-amber-700 dark:text-amber-300">
+                            ✎ {item.note}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>

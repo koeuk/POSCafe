@@ -27,6 +27,8 @@ interface CartLine {
   product: Product;
   quantity: number;
   size: ProductVariant | null;
+  // Preparation note ("less sugar, no ice"), sent with the order line.
+  note: string;
 }
 
 function cartKey(productId: number, sizeName: string | null | undefined) {
@@ -140,7 +142,7 @@ function POSScreen() {
             : l,
         );
       }
-      return [...prev, { product, quantity: 1, size }];
+      return [...prev, { product, quantity: 1, size, note: "" }];
     });
   }, []);
 
@@ -173,6 +175,19 @@ function POSScreen() {
     [],
   );
 
+  const setNote = useCallback(
+    (productId: number, sizeName: string | null, note: string) => {
+      setCart((prev) =>
+        prev.map((l) =>
+          l.product.id === productId && (l.size?.size ?? null) === sizeName
+            ? { ...l, note }
+            : l,
+        ),
+      );
+    },
+    [],
+  );
+
   const clearCart = useCallback(() => setCart([]), []);
 
   async function handleCheckout() {
@@ -188,6 +203,7 @@ function POSScreen() {
             productId: l.product.id,
             quantity: l.quantity,
             ...(l.size ? { size: l.size.size } : {}),
+            ...(l.note.trim() ? { note: l.note.trim() } : {}),
           })),
         },
       });
@@ -415,6 +431,20 @@ function POSScreen() {
                           )}
                         </span>
                       </p>
+                      <input
+                        type="text"
+                        value={line.note}
+                        onChange={(e) =>
+                          setNote(
+                            line.product.id,
+                            line.size?.size ?? null,
+                            e.target.value,
+                          )
+                        }
+                        maxLength={255}
+                        placeholder="Note — e.g. less sugar"
+                        className="mt-1 w-full rounded-md border border-transparent bg-stone-50 px-2 py-1 text-xs text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-stone-300 focus:bg-white dark:bg-stone-800 dark:text-stone-300 dark:placeholder:text-stone-500 dark:focus:border-stone-600 dark:focus:bg-stone-900"
+                      />
                     </div>
                     <div className="flex items-center gap-1.5">
                       <QtyButton

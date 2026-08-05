@@ -200,6 +200,17 @@ function KitchenScreen() {
                               {it.quantity}×
                             </span>{" "}
                             {it.product?.name ?? `#${it.productId}`}
+                            {it.size && (
+                              <span className="text-stone-400 dark:text-stone-500">
+                                {" "}
+                                ({it.size})
+                              </span>
+                            )}
+                            {it.note && (
+                              <p className="ml-6 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                ✎ {it.note}
+                              </p>
+                            )}
                           </li>
                         ))}
                       </ul>

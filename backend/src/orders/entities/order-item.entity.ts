@@ -34,6 +34,10 @@ export class OrderItem {
   @Column({ type: 'varchar', length: 255, nullable: true })
   size: string | null;
 
+  // Free-text preparation note from the cashier ("less sugar, no ice").
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  note: string | null;
+
   // Price snapshot at order time (product price may change later).
   @Column('decimal', { precision: 10, scale: 2 })
   unitPrice: number;

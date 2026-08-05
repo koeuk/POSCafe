@@ -140,6 +140,7 @@ function ReceiptScreen() {
                   {item.product?.name ?? `#${item.productId}`}
                   {item.size ? ` (${item.size})` : ""}
                 </p>
+                {item.note && <p className="break-words">  * {item.note}</p>}
                 <p className="flex justify-between tabular-nums">
                   <span>
                     {item.quantity} × {formatPrice(item.unitPrice)}

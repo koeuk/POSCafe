@@ -124,6 +124,8 @@ export interface OrderItem {
   product?: Product;
   quantity: number;
   size: string | null;
+  // Preparation note from the cashier ("less sugar, no ice").
+  note: string | null;
   unitPrice: string;
   subtotal: string;
 }
