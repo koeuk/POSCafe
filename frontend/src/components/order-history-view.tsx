@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusDropdown } from "@/components/status-dropdown";
 import { StatusTabs } from "@/components/status-tabs";
@@ -164,9 +165,18 @@ export function OrderHistoryView() {
                   ))}
                 </ul>
 
-                <div className="mt-3 flex justify-between border-t border-stone-100 dark:border-stone-800 pt-3 font-semibold text-stone-900 dark:text-stone-100">
+                <div className="mt-3 flex items-center justify-between border-t border-stone-100 dark:border-stone-800 pt-3 font-semibold text-stone-900 dark:text-stone-100">
                   <span>Total</span>
-                  <span>${Number(order.total).toFixed(2)}</span>
+                  <span className="flex items-center gap-3">
+                    ${Number(order.total).toFixed(2)}
+                    <Link
+                      href={`/receipt?orderId=${order.id}`}
+                      title="Print receipt"
+                      className="rounded-lg border border-stone-200 px-2.5 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                    >
+                      🖨 Receipt
+                    </Link>
+                  </span>
                 </div>
               </li>
             ))}

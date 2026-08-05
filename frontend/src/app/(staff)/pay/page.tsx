@@ -197,7 +197,13 @@ function PayScreen() {
             </p>
           )}
         </div>
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex justify-center gap-3">
+          <Link
+            href={`/receipt?orderId=${paid.orderId}`}
+            className="rounded-lg border border-stone-300 px-5 py-2.5 font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            🖨 Print receipt
+          </Link>
           <Link
             href="/pay"
             className="rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white transition hover:bg-stone-800"
