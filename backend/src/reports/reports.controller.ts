@@ -18,6 +18,13 @@ export class ReportsController {
     return this.reportsService.summary();
   }
 
+  // End-of-day close: payments by method and cashier for one date.
+  @RequiresPage('reports')
+  @Get('day-close')
+  dayClose(@Query('date') date?: string) {
+    return this.reportsService.dayClose(date);
+  }
+
   @RequiresPage('reports')
   @Get('daily-sales')
   dailySales(

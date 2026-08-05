@@ -107,6 +107,15 @@ interface BestProduct {
   revenue: number;
 }
 
+interface DayClose {
+  date: string;
+  totals: { payments: number; revenue: number };
+  byMethod: { method: string; count: number; amount: number }[];
+  byCashier: { userId: number; name: string; orders: number; amount: number }[];
+  refunds: { count: number; amount: number };
+  cashExpected: number;
+}
+
 interface StockReport {
   bySize: { size: string; inStock: number; variants: number; outOfStock: number }[];
   // Optional: an older backend build may not send it yet.
@@ -118,6 +127,14 @@ interface StockReport {
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>("week");
   const [chartType, setChartType] = useState<ChartType>("bar");
+  const [closeDate, setCloseDate] = useState(() => toLocalDateKey(new Date()));
+
+  const dayCloseFetch = useFetch(
+    () => api<DayClose>(`/reports/day-close?date=${closeDate}`),
+    [closeDate],
+    { fallback: "Failed to load day close" },
+  );
+  const dayClose = dayCloseFetch.data;
 
   const periodMeta = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
   const windowDays = useMemo(() => periodDays(period), [period]);
@@ -490,7 +507,161 @@ export default function ReportsPage() {
           </>
         )}
       </section>
+
+      {/* End-of-day close (Z report) */}
+      <section className={`mt-6 rounded-2xl p-5 ${GLASS}`}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-stone-900 dark:text-stone-100">
+              Day close
+            </h2>
+            <p className="text-sm text-stone-500 dark:text-stone-400">
+              Money taken on one day, by method and by cashier — count the
+              drawer against these numbers at closing.
+            </p>
+          </div>
+          <input
+            type="date"
+            value={closeDate}
+            max={toLocalDateKey(new Date())}
+            onChange={(e) => e.target.value && setCloseDate(e.target.value)}
+            className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-pos-button dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:[color-scheme:dark]"
+          />
+        </div>
+
+        {dayCloseFetch.loading ? (
+          <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+        ) : dayCloseFetch.error || !dayClose ? (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            {dayCloseFetch.error ?? "Failed to load day close"}
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <DayCloseStat
+                label="Revenue"
+                value={formatPrice(dayClose.totals.revenue)}
+              />
+              <DayCloseStat
+                label="Payments"
+                value={String(dayClose.totals.payments)}
+              />
+              <DayCloseStat
+                label="Cash expected in drawer"
+                value={formatPrice(dayClose.cashExpected)}
+                highlight
+              />
+              <DayCloseStat
+                label="Refunds issued"
+                value={
+                  dayClose.refunds.count > 0
+                    ? `${dayClose.refunds.count} · ${formatPrice(dayClose.refunds.amount)}`
+                    : "None"
+                }
+                danger={dayClose.refunds.count > 0}
+              />
+            </div>
+
+            <div className="mt-5 grid gap-6 lg:grid-cols-2">
+              <div>
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                  By payment method
+                </h3>
+                {dayClose.byMethod.length === 0 ? (
+                  <p className="text-sm text-stone-400 dark:text-stone-500">
+                    No payments this day.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-stone-100 rounded-xl border border-stone-200/70 dark:divide-stone-800 dark:border-stone-800">
+                    {dayClose.byMethod.map((m) => (
+                      <li
+                        key={m.method}
+                        className="flex items-center justify-between px-4 py-2.5 text-sm"
+                      >
+                        <span className="font-medium capitalize text-stone-700 dark:text-stone-300">
+                          {m.method}
+                          <span className="ml-2 text-xs font-normal text-stone-400 dark:text-stone-500">
+                            {m.count} payment{m.count === 1 ? "" : "s"}
+                          </span>
+                        </span>
+                        <span className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">
+                          {formatPrice(m.amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                  By cashier
+                </h3>
+                {dayClose.byCashier.length === 0 ? (
+                  <p className="text-sm text-stone-400 dark:text-stone-500">
+                    No payments this day.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-stone-100 rounded-xl border border-stone-200/70 dark:divide-stone-800 dark:border-stone-800">
+                    {dayClose.byCashier.map((c) => (
+                      <li
+                        key={c.userId}
+                        className="flex items-center justify-between px-4 py-2.5 text-sm"
+                      >
+                        <span className="font-medium text-stone-700 dark:text-stone-300">
+                          {c.name}
+                          <span className="ml-2 text-xs font-normal text-stone-400 dark:text-stone-500">
+                            {c.orders} order{c.orders === 1 ? "" : "s"}
+                          </span>
+                        </span>
+                        <span className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">
+                          {formatPrice(c.amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
     </main>
+  );
+}
+
+function DayCloseStat({
+  label,
+  value,
+  highlight,
+  danger,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-3.5 ${
+        highlight
+          ? "border-green-200 bg-green-50/60 dark:border-green-500/30 dark:bg-green-500/10"
+          : "border-stone-200/70 dark:border-stone-800"
+      }`}
+    >
+      <p className="text-xs font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-lg font-bold tabular-nums ${
+          danger
+            ? "text-red-600 dark:text-red-400"
+            : "text-stone-900 dark:text-stone-100"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 

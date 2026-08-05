@@ -5,12 +5,15 @@ import {
   type ObjectLiteral,
   type SelectQueryBuilder,
 } from 'typeorm';
+import { BadRequestException } from '@nestjs/common';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { toNumber } from '../common/money';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
+import { Payment } from '../payments/entities/payment.entity';
 import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
+import { User } from '../users/entities/user.entity';
 
 // Raw aggregate rows (MySQL returns COUNT/SUM as strings; toNumber coerces).
 interface StockBySizeRow {
@@ -59,6 +62,8 @@ export class ReportsService {
     private readonly orderRepo: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly itemRepo: Repository<OrderItem>,
+    @InjectRepository(Payment)
+    private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(ProductVariant)
     private readonly variantRepo: Repository<ProductVariant>,
     @InjectRepository(Product)
@@ -191,6 +196,95 @@ export class ReportsService {
         })),
       ].sort((a, b) => a.productName.localeCompare(b.productName)),
     };
+  }
+
+  /**
+   * End-of-day close ("Z report") for one date (server timezone, default
+   * today): payments taken that day by method and by cashier, plus refunds
+   * issued that day. Same-day-refunded payments are excluded from the method
+   * totals so "cash expected in drawer" matches what is actually in the till.
+   */
+  async dayClose(date?: string) {
+    const target = date ?? ReportsService.todayString();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(target)) {
+      throw new BadRequestException('date must be YYYY-MM-DD');
+    }
+
+    // Payments taken on the target day and not (yet) refunded.
+    const takenQb = () =>
+      this.paymentRepo
+        .createQueryBuilder('p')
+        .where("DATE_FORMAT(p.createdAt, '%Y-%m-%d') = :d", { d: target })
+        .andWhere('p.refundedAt IS NULL');
+
+    const byMethodRaw = await takenQb()
+      .select('p.method', 'method')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('COALESCE(SUM(p.amount), 0)', 'amount')
+      .groupBy('p.method')
+      .getRawMany<{ method: string; count: string; amount: string }>();
+    const byMethod = byMethodRaw.map((r) => ({
+      method: r.method,
+      count: toNumber(r.count),
+      amount: toNumber(r.amount),
+    }));
+
+    const byCashierRaw = await takenQb()
+      .innerJoin(Order, 'o', 'o.id = p.orderId')
+      .innerJoin(User, 'u', 'u.id = o.userId')
+      .select('o.userId', 'userId')
+      .addSelect('u.name', 'name')
+      .addSelect('COUNT(*)', 'orders')
+      .addSelect('COALESCE(SUM(p.amount), 0)', 'amount')
+      .groupBy('o.userId')
+      .addGroupBy('u.name')
+      .orderBy('amount', 'DESC')
+      .getRawMany<{
+        userId: number;
+        name: string;
+        orders: string;
+        amount: string;
+      }>();
+    const byCashier = byCashierRaw.map((r) => ({
+      userId: Number(r.userId),
+      name: r.name,
+      orders: toNumber(r.orders),
+      amount: toNumber(r.amount),
+    }));
+
+    // Refunds issued on the target day (whenever the payment was taken).
+    const refundsRaw = await this.paymentRepo
+      .createQueryBuilder('p')
+      .where("DATE_FORMAT(p.refundedAt, '%Y-%m-%d') = :d", { d: target })
+      .select('COUNT(*)', 'count')
+      .addSelect('COALESCE(SUM(p.amount), 0)', 'amount')
+      .getRawOne<{ count: string; amount: string }>();
+
+    const totalRevenue = byMethod.reduce((s, m) => s + m.amount, 0);
+    const cashExpected = byMethod.find((m) => m.method === 'cash')?.amount ?? 0;
+
+    return {
+      date: target,
+      totals: {
+        payments: byMethod.reduce((s, m) => s + m.count, 0),
+        revenue: totalRevenue,
+      },
+      byMethod,
+      byCashier,
+      refunds: {
+        count: toNumber(refundsRaw?.count ?? 0),
+        amount: toNumber(refundsRaw?.amount ?? 0),
+      },
+      cashExpected,
+    };
+  }
+
+  /** Today's date as YYYY-MM-DD in the server's timezone. */
+  private static todayString(): string {
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${mm}-${dd}`;
   }
 
   /** Today's and all-time paid-order totals (revenue = money received). */

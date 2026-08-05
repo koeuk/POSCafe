@@ -10,7 +10,12 @@ import { ProductsService } from './products.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, ProductVariant, StockMovement, OrderItem]),
+    TypeOrmModule.forFeature([
+      Product,
+      ProductVariant,
+      StockMovement,
+      OrderItem,
+    ]),
     CategoriesModule,
   ],
   controllers: [ProductsController],
