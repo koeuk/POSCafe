@@ -29,8 +29,10 @@ export class ReportsController {
   @Get('daily-sales')
   dailySales(
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.reportsService.dailySales(days);
+    return this.reportsService.dailySales(days, from, to);
   }
 
   @RequiresPage('reports')

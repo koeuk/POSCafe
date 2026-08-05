@@ -44,13 +44,14 @@ function OrdersIcon() {
   );
 }
 
-type Period = "day" | "week" | "month" | "year";
+type Period = "day" | "week" | "month" | "year" | "custom";
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: "day", label: "Today" },
   { value: "week", label: "This Week" },
   { value: "month", label: "This Month" },
   { value: "year", label: "This Year" },
+  { value: "custom", label: "Custom range" },
 ];
 
 // Parse a "YYYY-MM-DD" string as a LOCAL date. `new Date("YYYY-MM-DD")` parses
@@ -86,6 +87,9 @@ function periodDays(period: Period): number {
       const start = new Date(today.getFullYear(), 0, 1);
       return Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1;
     }
+    case "custom":
+      // Not used — custom ranges query the API by from/to instead.
+      return 7;
   }
 }
 
@@ -128,6 +132,14 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>("week");
   const [chartType, setChartType] = useState<ChartType>("bar");
   const [closeDate, setCloseDate] = useState(() => toLocalDateKey(new Date()));
+  // Custom range bounds (used when period === "custom"), defaulting to the
+  // last 7 days.
+  const [rangeFrom, setRangeFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    return toLocalDateKey(d);
+  });
+  const [rangeTo, setRangeTo] = useState(() => toLocalDateKey(new Date()));
 
   const dayCloseFetch = useFetch(
     () => api<DayClose>(`/reports/day-close?date=${closeDate}`),
@@ -139,17 +151,22 @@ export default function ReportsPage() {
   const periodMeta = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
   const windowDays = useMemo(() => periodDays(period), [period]);
 
+  const customRange = period === "custom" && rangeFrom <= rangeTo;
+  const dailyQuery = customRange
+    ? `/reports/daily-sales?from=${rangeFrom}&to=${rangeTo}`
+    : `/reports/daily-sales?days=${windowDays}`;
+
   const { data, loading, error } = useFetch(
     async () => {
       const [summary, daily, bestProducts, stock] = await Promise.all([
         api<ReportSummary>("/reports/summary"),
-        api<DailySale[]>(`/reports/daily-sales?days=${windowDays}`),
+        api<DailySale[]>(dailyQuery),
         api<BestProduct[]>("/reports/best-products?limit=8"),
         api<StockReport>("/reports/stock"),
       ]);
       return { summary, daily, bestProducts, stock };
     },
-    [windowDays],
+    [dailyQuery],
     { fallback: "Failed to load reports" },
   );
   const { summary, daily, bestProducts, stock } = data ?? {
@@ -164,9 +181,20 @@ export default function ReportsPage() {
   // of collapsing empty days into adjacent bars.
   const sortedDaily = useMemo(() => {
     const byDate = new Map(daily.map((d) => [d.date, d]));
+    const out: DailySale[] = [];
+    if (customRange) {
+      for (
+        const d = parseLocalDate(rangeFrom);
+        toLocalDateKey(d) <= rangeTo;
+        d.setDate(d.getDate() + 1)
+      ) {
+        const key = toLocalDateKey(d);
+        out.push(byDate.get(key) ?? { date: key, orders: 0, revenue: 0 });
+      }
+      return out;
+    }
     const now = new Date();
     const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const out: DailySale[] = [];
     for (let i = windowDays - 1; i >= 0; i--) {
       const d = new Date(base);
       d.setDate(base.getDate() - i);
@@ -174,7 +202,7 @@ export default function ReportsPage() {
       out.push(byDate.get(key) ?? { date: key, orders: 0, revenue: 0 });
     }
     return out;
-  }, [daily, windowDays]);
+  }, [daily, windowDays, customRange, rangeFrom, rangeTo]);
   // The chart owns its geometry; the page owns date formatting.
   const chartPoints = useMemo(
     () =>
@@ -260,8 +288,30 @@ export default function ReportsPage() {
             Paid order revenue and product performance.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <PeriodDropdown value={period} onChange={setPeriod} />
+          {period === "custom" && (
+            <span className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={rangeFrom}
+                max={rangeTo}
+                onChange={(e) => e.target.value && setRangeFrom(e.target.value)}
+                aria-label="Range start"
+                className="rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-sm text-stone-900 outline-none transition focus:border-pos-button dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:[color-scheme:dark]"
+              />
+              <span className="text-sm text-stone-400">–</span>
+              <input
+                type="date"
+                value={rangeTo}
+                min={rangeFrom}
+                max={toLocalDateKey(new Date())}
+                onChange={(e) => e.target.value && setRangeTo(e.target.value)}
+                aria-label="Range end"
+                className="rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-sm text-stone-900 outline-none transition focus:border-pos-button dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:[color-scheme:dark]"
+              />
+            </span>
+          )}
           <button
             type="button"
             onClick={handleExport}

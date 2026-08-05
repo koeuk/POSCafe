@@ -316,21 +316,42 @@ export class ReportsService {
     };
   }
 
-  /** Revenue + order count per day for the last `days` days (paid orders). */
-  async dailySales(days = 7) {
-    days = Math.min(Math.max(Math.trunc(days), 1), 365);
-    const since = new Date();
-    since.setHours(0, 0, 0, 0);
-    since.setDate(since.getDate() - (days - 1));
-
-    const rows = await this.paidOnly(
+  /**
+   * Revenue + order count per day (paid orders). Either the last `days` days,
+   * or an explicit `from`–`to` date range (YYYY-MM-DD, inclusive, server tz).
+   */
+  async dailySales(days = 7, from?: string, to?: string) {
+    const qb = this.paidOnly(
       this.orderRepo
         .createQueryBuilder('o')
         .select("DATE_FORMAT(o.createdAt, '%Y-%m-%d')", 'date')
         .addSelect('COUNT(*)', 'orders')
         .addSelect('SUM(o.total)', 'revenue'),
-    )
-      .andWhere('o.createdAt >= :since', { since })
+    );
+
+    if (from || to) {
+      const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+      if (!from || !to || !dateRe.test(from) || !dateRe.test(to)) {
+        throw new BadRequestException(
+          'from and to must both be YYYY-MM-DD dates',
+        );
+      }
+      if (from > to) {
+        throw new BadRequestException('from must not be after to');
+      }
+      qb.andWhere("DATE_FORMAT(o.createdAt, '%Y-%m-%d') BETWEEN :from AND :to", {
+        from,
+        to,
+      });
+    } else {
+      days = Math.min(Math.max(Math.trunc(days), 1), 365);
+      const since = new Date();
+      since.setHours(0, 0, 0, 0);
+      since.setDate(since.getDate() - (days - 1));
+      qb.andWhere('o.createdAt >= :since', { since });
+    }
+
+    const rows = await qb
       .groupBy("DATE_FORMAT(o.createdAt, '%Y-%m-%d')")
       .orderBy('date', 'DESC')
       .getRawMany<DailyRow>();
