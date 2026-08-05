@@ -6,7 +6,12 @@ import { api } from "@/lib/api";
 import { useFetch } from "@/lib/use-api";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { formatPrice } from "@/lib/pricing";
-import { OrderStatus, type Order, type Product } from "@/lib/types";
+import {
+  OrderStatus,
+  PaymentStatus,
+  type Order,
+  type Product,
+} from "@/lib/types";
 
 import { GLASS } from "@/lib/ui";
 import {
@@ -110,8 +115,9 @@ function Dashboard() {
   };
 
   const stats = useMemo(() => {
-    const completed = orders.filter((o) => o.status === OrderStatus.COMPLETED);
-    const revenue = completed.reduce((s, o) => s + Number(o.total), 0);
+    // Revenue = money received: paid orders, matching the Reports page.
+    const paid = orders.filter((o) => o.paymentStatus === PaymentStatus.PAID);
+    const revenue = paid.reduce((s, o) => s + Number(o.total), 0);
     const active = orders.filter(
       (o) =>
         o.status !== OrderStatus.COMPLETED &&
@@ -125,11 +131,12 @@ function Dashboard() {
     };
   }, [orders, products]);
 
-  // Revenue per bucket for the selected period — completed orders only.
-  // Weeks/months bucket by day; years and "all" bucket by month.
+  // Revenue per bucket for the selected period — paid orders only, the same
+  // definition as the Reports page. Weeks/months bucket by day; years and
+  // "all" bucket by month.
   const chart = useMemo(() => {
     const now = new Date();
-    const completed = orders.filter((o) => o.status === OrderStatus.COMPLETED);
+    const paid = orders.filter((o) => o.paymentStatus === PaymentStatus.PAID);
 
     let start: Date;
     let end: Date;
@@ -172,8 +179,8 @@ function Dashboard() {
         grain = "month";
         break;
       default: {
-        // all — from the earliest completed order to now, by month.
-        const times = completed.map((o) => new Date(o.createdAt).getTime());
+        // all — from the earliest paid order to now, by month.
+        const times = paid.map((o) => new Date(o.createdAt).getTime());
         const earliest = times.length
           ? new Date(Math.min(...times))
           : new Date(now.getFullYear(), 0, 1);
@@ -184,7 +191,7 @@ function Dashboard() {
     }
 
     const map = new Map<string, number>();
-    for (const o of completed) {
+    for (const o of paid) {
       const t = new Date(o.createdAt);
       if (t < start || t > end) continue;
       const key =
@@ -455,7 +462,7 @@ function Dashboard() {
               Popular Categories
             </h2>
             <p className="text-sm text-stone-400 dark:text-stone-500">
-              Cups sold by category (completed orders)
+              Items sold by category (paid orders)
             </p>
           </div>
           {sortedCats.length > 0 && (
@@ -467,7 +474,7 @@ function Dashboard() {
 
         {sortedCats.length === 0 ? (
           <p className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
-            No completed sales yet.
+            No paid sales yet.
           </p>
         ) : (
           <ul className="space-y-3">

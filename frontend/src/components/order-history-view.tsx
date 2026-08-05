@@ -85,7 +85,7 @@ export function OrderHistoryView() {
   const revenue = useMemo(
     () =>
       orders
-        .filter((o) => o.status === OrderStatus.COMPLETED)
+        .filter((o) => o.paymentStatus === PaymentStatus.PAID)
         .reduce((sum, o) => sum + Number(o.total), 0),
     [orders],
   );
@@ -98,7 +98,7 @@ export function OrderHistoryView() {
           <p className="text-sm text-stone-500 dark:text-stone-400">
             {orders.length} order{orders.length === 1 ? "" : "s"}
             {filter === "all" && revenue > 0 && (
-              <> · ${revenue.toFixed(2)} completed revenue</>
+              <> · ${revenue.toFixed(2)} paid revenue</>
             )}
           </p>
         </div>

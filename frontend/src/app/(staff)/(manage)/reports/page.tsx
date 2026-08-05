@@ -240,7 +240,7 @@ export default function ReportsPage() {
             Reports
           </h1>
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-            Completed order revenue and product performance.
+            Paid order revenue and product performance.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -331,7 +331,7 @@ export default function ReportsPage() {
           <div className="h-56 animate-pulse rounded-xl bg-stone-100 dark:bg-stone-800" />
         ) : sortedDaily.length === 0 ? (
           <p className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
-            No completed sales yet.
+            No paid sales yet.
           </p>
         ) : (
           <RevenueChart points={chartPoints} type={chartType} />
@@ -361,7 +361,7 @@ export default function ReportsPage() {
               ) : bestProducts.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-8 text-center text-stone-400 dark:text-stone-500">
-                    No completed product sales yet.
+                    No paid product sales yet.
                   </td>
                 </tr>
               ) : (
