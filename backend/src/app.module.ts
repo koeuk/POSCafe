@@ -30,13 +30,13 @@ import { UsersModule } from './users/users.module';
         password: config.get<string>('DB_PASSWORD', ''),
         database: config.get<string>('DB_NAME', 'poscafe'),
         autoLoadEntities: true,
-        // Auto-create/alter tables only outside production. In prod this can
-        // silently drop columns and lose data — use migrations there. Set
-        // DB_SYNCHRONIZE=true to force it on, or NODE_ENV=production to force
-        // it off.
-        synchronize:
-          config.get<string>('DB_SYNCHRONIZE') === 'true' ||
-          config.get<string>('NODE_ENV') !== 'production',
+        // Schema changes go through migrations (src/migrations), applied
+        // automatically on boot. DB_SYNCHRONIZE=true remains as an escape
+        // hatch for throwaway databases — it can silently drop columns, so
+        // never enable it against real data.
+        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
+        migrations: [`${__dirname}/migrations/*{.ts,.js}`],
+        migrationsRun: config.get<string>('DB_MIGRATIONS_RUN') !== 'false',
       }),
     }),
     UsersModule,
