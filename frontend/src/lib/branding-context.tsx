@@ -15,11 +15,14 @@ import { api } from "@/lib/api";
 export interface AppSettings {
   appName: string;
   logoUrl: string | null;
+  // KHR per 1 USD, for showing riel amounts alongside dollar prices.
+  khrPerUsd: number;
 }
 
 const DEFAULTS: AppSettings = {
   appName: "POSCAFE",
   logoUrl: null,
+  khrPerUsd: 4100,
 };
 
 // Persisted so the branding applies on first paint (before the fetch lands),
@@ -109,6 +112,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       const next: AppSettings = {
         appName: data.appName ?? DEFAULTS.appName,
         logoUrl: data.logoUrl ?? null,
+        khrPerUsd: data.khrPerUsd || DEFAULTS.khrPerUsd,
       };
       setSettings(next);
       applyDocumentBranding(next);

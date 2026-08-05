@@ -8,8 +8,10 @@ import { StaffShell } from "@/components/staff-shell";
 import { ProductDetailDrawer } from "@/components/product-detail-drawer";
 import { rolePathBase } from "@/lib/permissions";
 import { api } from "@/lib/api";
+import { useBranding } from "@/lib/branding-context";
 import {
   effectivePrice,
+  formatKhr,
   formatPrice,
   hasDiscount,
   sizeStock,
@@ -33,6 +35,7 @@ function cartKey(productId: number, sizeName: string | null | undefined) {
 
 function POSScreen() {
   const pathname = usePathname();
+  const { khrPerUsd } = useBranding();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
@@ -453,11 +456,16 @@ function POSScreen() {
             )}
             <div className="mb-4 flex items-baseline justify-between">
               <span className="text-stone-500 dark:text-stone-400">Total</span>
-              <span
-                key={total}
-                className={`${display.className} pos-pop text-3xl font-bold text-stone-900 dark:text-stone-100`}
-              >
-                {formatPrice(total)}
+              <span className="text-right">
+                <span
+                  key={total}
+                  className={`${display.className} pos-pop block text-3xl font-bold text-stone-900 dark:text-stone-100`}
+                >
+                  {formatPrice(total)}
+                </span>
+                <span className="text-sm font-medium text-stone-400 dark:text-stone-500">
+                  ≈ {formatKhr(total, khrPerUsd)}
+                </span>
               </span>
             </div>
             <button

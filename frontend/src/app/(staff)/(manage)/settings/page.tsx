@@ -132,9 +132,10 @@ function Settings() {
 // ── General: app name & logo ─────────────────────────────────────────────
 
 function AppSettingsPanel() {
-  const { appName, logoUrl, refresh } = useBranding();
+  const { appName, logoUrl, khrPerUsd, refresh } = useBranding();
   const [name, setName] = useState(appName);
   const [logo, setLogo] = useState<string | null>(logoUrl);
+  const [rate, setRate] = useState(String(khrPerUsd));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -144,11 +145,16 @@ function AppSettingsPanel() {
     /* eslint-disable react-hooks/set-state-in-effect */
     setName(appName);
     setLogo(logoUrl);
+    setRate(String(khrPerUsd));
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [appName, logoUrl]);
+  }, [appName, logoUrl, khrPerUsd]);
 
-  const dirty = name.trim() !== appName || logo !== logoUrl;
-  const canSave = name.trim().length > 0 && dirty && !saving;
+  const rateNum = Number(rate);
+  const rateValid =
+    Number.isInteger(rateNum) && rateNum >= 100 && rateNum <= 100000;
+  const dirty =
+    name.trim() !== appName || logo !== logoUrl || rateNum !== khrPerUsd;
+  const canSave = name.trim().length > 0 && rateValid && dirty && !saving;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -158,7 +164,7 @@ function AppSettingsPanel() {
     try {
       await api("/settings", {
         method: "PATCH",
-        body: { appName: name.trim(), logoUrl: logo },
+        body: { appName: name.trim(), logoUrl: logo, khrPerUsd: rateNum },
       });
       await refresh();
       setSuccess("App settings saved.");
@@ -196,6 +202,30 @@ function AppSettingsPanel() {
             autoComplete="off"
             className={inputClass}
           />
+        </Field>
+
+        <Field
+          label="Exchange rate"
+          hint="Riel per 1 US dollar — shown next to prices at checkout"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-stone-500 dark:text-stone-400">
+              $1 =
+            </span>
+            <input
+              type="number"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              min={100}
+              max={100000}
+              step={50}
+              inputMode="numeric"
+              className={`${inputClass} max-w-36`}
+            />
+            <span className="text-sm text-stone-500 dark:text-stone-400">
+              ៛ (KHR)
+            </span>
+          </div>
         </Field>
       </div>
 

@@ -10,7 +10,8 @@ import {
   useState,
 } from "react";
 import { api } from "@/lib/api";
-import { formatPrice } from "@/lib/pricing";
+import { useBranding } from "@/lib/branding-context";
+import { formatKhr, formatPrice } from "@/lib/pricing";
 import { PaymentMethod, type Order, type Payment } from "@/lib/types";
 
 const QUICK_CASH = [5, 10, 20, 50];
@@ -24,6 +25,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
 function PayScreen() {
   const params = useSearchParams();
   const orderIdParam = params.get("orderId");
+  const { khrPerUsd } = useBranding();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [pending, setPending] = useState<Order[]>([]);
@@ -194,6 +196,9 @@ function PayScreen() {
           {Number(paid.change) > 0 && (
             <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900 dark:bg-stone-900 dark:text-stone-100">
               Change {formatPrice(paid.change)}
+              <span className="block text-base font-medium text-stone-400 dark:text-stone-500">
+                ≈ {formatKhr(paid.change, khrPerUsd)}
+              </span>
             </p>
           )}
         </div>
@@ -246,7 +251,12 @@ function PayScreen() {
           </ul>
           <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900 dark:border-stone-800 dark:text-stone-100">
             <span>Total due</span>
-            <span>{formatPrice(due)}</span>
+            <span className="text-right">
+              {formatPrice(due)}
+              <span className="block text-sm font-medium text-stone-400 dark:text-stone-500">
+                ≈ {formatKhr(due, khrPerUsd)}
+              </span>
+            </span>
           </div>
           <BackLink />
         </div>
@@ -285,6 +295,11 @@ function PayScreen() {
                   }`}
                 >
                   Change {formatPrice(change >= 0 ? change : 0)}
+                  {change > 0 && (
+                    <span className="ml-1 text-stone-400 dark:text-stone-500">
+                      (≈ {formatKhr(change, khrPerUsd)})
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -316,6 +331,9 @@ function PayScreen() {
               </p>
               <p className="mt-2 text-3xl font-bold text-stone-900 dark:text-stone-100">
                 {formatPrice(due)}
+                <span className="block text-base font-medium text-stone-400 dark:text-stone-500">
+                  ≈ {formatKhr(due, khrPerUsd)}
+                </span>
               </p>
               <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
                 Confirm after the terminal or QR transfer succeeds.

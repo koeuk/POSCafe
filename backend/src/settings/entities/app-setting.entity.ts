@@ -17,4 +17,8 @@ export class AppSetting {
   // Absolute URL to the uploaded logo, or null to fall back to the ☕ mark.
   @Column({ type: 'text', nullable: true })
   logoUrl: string | null;
+
+  // KHR per 1 USD, used to show riel amounts alongside dollar prices.
+  @Column({ default: 4100 })
+  khrPerUsd: number;
 }

@@ -1,8 +1,11 @@
 import { Transform } from 'class-transformer';
 import {
+  IsInt,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -22,4 +25,11 @@ export class UpdateAppSettingDto {
   @IsOptional()
   @IsString()
   logoUrl?: string | null;
+
+  // KHR per 1 USD (e.g. 4100).
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Max(100000)
+  khrPerUsd?: number;
 }

@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
-import { formatPrice } from "@/lib/pricing";
+import { formatKhr, formatPrice } from "@/lib/pricing";
 import { PaymentStatus, type Order, type Payment } from "@/lib/types";
 
 const METHOD_LABELS: Record<string, string> = {
@@ -23,7 +23,7 @@ const METHOD_LABELS: Record<string, string> = {
 function ReceiptScreen() {
   const params = useSearchParams();
   const orderId = params.get("orderId");
-  const { appName, logoUrl } = useBranding();
+  const { appName, logoUrl, khrPerUsd } = useBranding();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
@@ -156,6 +156,10 @@ function ReceiptScreen() {
           <p className="flex justify-between text-base font-bold tabular-nums">
             <span>TOTAL</span>
             <span>{formatPrice(order.total)}</span>
+          </p>
+          <p className="flex justify-between tabular-nums">
+            <span>KHR (@{khrPerUsd.toLocaleString("en-US")})</span>
+            <span>{formatKhr(order.total, khrPerUsd)}</span>
           </p>
           {payment && (
             <div className="mt-1 space-y-0.5 tabular-nums">

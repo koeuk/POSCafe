@@ -67,3 +67,14 @@ export function formatPrice(value: number | string): string {
   const n = Number(value);
   return Number.isFinite(n) ? `$${n.toFixed(2)}` : String(value);
 }
+
+/**
+ * A USD amount converted to riel at the given rate, rounded to the nearest
+ * 100 riel (the smallest note in day-to-day use), e.g. 3.5 @ 4100 -> "៛14,400".
+ */
+export function formatKhr(usd: number | string, khrPerUsd: number): string {
+  const n = Number(usd);
+  if (!Number.isFinite(n) || khrPerUsd <= 0) return "";
+  const riel = Math.round((n * khrPerUsd) / 100) * 100;
+  return `៛${riel.toLocaleString("en-US")}`;
+}

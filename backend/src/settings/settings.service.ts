@@ -35,6 +35,7 @@ export class SettingsService implements OnModuleInit {
     const settings = await this.find();
     if (dto.appName !== undefined) settings.appName = dto.appName.trim();
     if (dto.logoUrl !== undefined) settings.logoUrl = dto.logoUrl;
+    if (dto.khrPerUsd !== undefined) settings.khrPerUsd = dto.khrPerUsd;
     return this.repo.save(settings);
   }
 }
