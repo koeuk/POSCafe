@@ -55,24 +55,35 @@ export class OrdersService {
           throw new BadRequestException(`"${product.name}" is not available`);
         }
 
-        // Resolve the base price: from the chosen size if the product has
-        // size options, otherwise the product's own price.
+        // A product is "sized" when it has variant rows — each carries its
+        // own price and stock. Sizeless products price and stock from the
+        // product row itself.
+        const hasSizes =
+          (await manager.count(ProductVariant, {
+            where: { productId: product.id },
+          })) > 0;
+
         let basePrice = toNumber(product.price);
         let size: string | null = null;
-        if (product.sizes && product.sizes.length > 0) {
+        let variant: ProductVariant | null = null;
+        if (hasSizes) {
           if (!line.size) {
             throw new BadRequestException(
               `Size is required for "${product.name}"`,
             );
           }
-          const match = product.sizes.find((s) => s.size === line.size);
-          if (!match) {
+          // Lock the chosen variant row so concurrent orders can't oversell.
+          variant = await manager.findOne(ProductVariant, {
+            where: { productId: product.id, size: line.size },
+            lock: { mode: 'pessimistic_write' },
+          });
+          if (!variant) {
             throw new BadRequestException(
               `Invalid size "${line.size}" for "${product.name}"`,
             );
           }
-          basePrice = toNumber(match.price);
-          size = match.size;
+          basePrice = toNumber(variant.price);
+          size = variant.size;
         }
 
         // Apply the product's discount and snapshot the charged price,
@@ -85,15 +96,8 @@ export class OrdersService {
         const subtotal = roundCents(unitPrice * line.quantity);
         total += subtotal;
 
-        // Decrement stock. Sized items draw from their per-size variant (the
-        // source of truth); products without a variant row fall back to the
-        // whole-product stock (covers sizeless products and legacy data).
-        const variant = size
-          ? await manager.findOne(ProductVariant, {
-              where: { productId: product.id, size },
-              lock: { mode: 'pessimistic_write' },
-            })
-          : null;
+        // Decrement stock: sized items draw from their variant, sizeless
+        // products from the whole-product stock.
         if (variant) {
           if (variant.stock < line.quantity) {
             throw new BadRequestException(

@@ -25,7 +25,7 @@ export class ProductsService {
     return this.repo.find({
       where: categoryId ? { categoryId } : {},
       relations: { category: true, variants: true },
-      order: { name: 'ASC' },
+      order: { name: 'ASC', variants: { sortOrder: 'ASC' } },
     });
   }
 
@@ -33,6 +33,7 @@ export class ProductsService {
     const product = await this.repo.findOne({
       where: { id },
       relations: { category: true, variants: true },
+      order: { variants: { sortOrder: 'ASC' } },
     });
     if (!product) {
       throw new NotFoundException(`Product #${id} not found`);
@@ -43,14 +44,12 @@ export class ProductsService {
   async create(dto: CreateProductDto): Promise<Product> {
     // Ensure the category exists (throws NotFound otherwise).
     await this.categoriesService.findOne(dto.categoryId);
-    const product = this.repo.create({
-      ...dto,
-      sizes: ProductsService.toSizeOptions(dto.sizes),
-    });
+    const { sizes, ...productFields } = dto;
+    const product = this.repo.create(productFields);
     // Seed the capacity high-water mark from the initial stock.
     product.totalStock = dto.stock ?? 0;
     const saved = await this.repo.save(product);
-    await this.syncVariants(saved.id, dto.sizes ?? null);
+    await this.syncVariants(saved.id, sizes ?? null);
     return this.findOne(saved.id);
   }
 
@@ -59,10 +58,8 @@ export class ProductsService {
     if (dto.categoryId !== undefined) {
       await this.categoriesService.findOne(dto.categoryId);
     }
-    Object.assign(product, dto);
-    if (dto.sizes !== undefined) {
-      product.sizes = ProductsService.toSizeOptions(dto.sizes);
-    }
+    const { sizes, ...productFields } = dto;
+    Object.assign(product, productFields);
     // Raise the capacity high-water mark when stock is (re)set.
     if (dto.stock !== undefined) {
       product.totalStock = Math.max(product.totalStock ?? 0, dto.stock);
@@ -74,9 +71,9 @@ export class ProductsService {
       Reflect.deleteProperty(product, 'category');
     }
     await this.repo.save(product);
-    // Only reconcile stock variants when sizes were part of the update.
-    if (dto.sizes !== undefined) {
-      await this.syncVariants(id, dto.sizes);
+    // Only reconcile size variants when sizes were part of the update.
+    if (sizes !== undefined) {
+      await this.syncVariants(id, sizes);
     }
     return this.findOne(id);
   }
@@ -105,25 +102,10 @@ export class ProductsService {
   }
 
   /**
-   * Narrows the incoming size DTOs to what the `sizes` JSON column actually
-   * models: the menu options `{size, price}`. The DTO also carries `stock`,
-   * which belongs to product_variants — persisting it here would create a
-   * second copy that never decrements as orders are placed and is then served
-   * stale on the public /menu endpoint.
-   */
-  private static toSizeOptions(
-    sizes: ProductSizeDto[] | null | undefined,
-  ): Product['sizes'] {
-    if (!sizes) {
-      return sizes ?? null;
-    }
-    return sizes.map(({ size, price }) => ({ size, price }));
-  }
-
-  /**
-   * Reconciles the per-size stock rows to match the product's size options:
-   * upserts each size (preserving existing stock when the DTO omits it) and
-   * removes variants for sizes that no longer exist.
+   * Reconciles the variant rows (the single source of size name, price and
+   * stock) to match the submitted size options: upserts each size in order
+   * (preserving existing stock when the DTO omits it) and removes variants
+   * for sizes that no longer exist.
    */
   private async syncVariants(
     productId: number,
@@ -139,20 +121,24 @@ export class ProductsService {
       await this.variantRepo.remove(toRemove);
     }
 
-    // Upsert each wanted size.
-    for (const s of wanted) {
+    // Upsert each wanted size; the array position drives display order.
+    for (const [index, s] of wanted.entries()) {
       const current = existing.find((v) => v.size === s.size);
       if (current) {
+        current.price = s.price;
+        current.sortOrder = index;
         if (s.stock !== undefined) {
           current.stock = s.stock;
           current.totalStock = Math.max(current.totalStock ?? 0, s.stock);
-          await this.variantRepo.save(current);
         }
+        await this.variantRepo.save(current);
       } else {
         await this.variantRepo.save(
           this.variantRepo.create({
             productId,
             size: s.size,
+            price: s.price,
+            sortOrder: index,
             stock: s.stock ?? 0,
             totalStock: s.stock ?? 0,
           }),

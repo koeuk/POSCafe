@@ -26,9 +26,11 @@ export class MenuService {
       .innerJoinAndSelect('c.products', 'p', 'p.isAvailable = :available', {
         available: true,
       })
+      .leftJoinAndSelect('p.variants', 'v')
       .where('c.isActive = :active', { active: true })
       .orderBy('c.name', 'ASC')
       .addOrderBy('p.name', 'ASC')
+      .addOrderBy('v.sortOrder', 'ASC')
       .getMany();
 
     return categories.map((category) => ({
@@ -44,7 +46,8 @@ export class MenuService {
   async getProduct(id: number): Promise<Product> {
     const product = await this.productRepo.findOne({
       where: { id, isAvailable: true },
-      relations: { category: true },
+      relations: { category: true, variants: true },
+      order: { variants: { sortOrder: 'ASC' } },
     });
     if (!product) {
       throw new NotFoundException(`Product #${id} not found`);

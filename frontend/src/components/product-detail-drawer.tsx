@@ -9,7 +9,7 @@ import {
   sizeStock,
   totalStock,
 } from "@/lib/pricing";
-import type { Product, ProductSize } from "@/lib/types";
+import type { Product, ProductVariant } from "@/lib/types";
 
 /**
  * Right slide-over showing a product's full details (image, gallery, sizes,
@@ -23,7 +23,7 @@ export function ProductDetailDrawer({
 }: {
   product: Product | null;
   onClose: () => void;
-  onAdd?: (product: Product, size?: ProductSize | null) => void;
+  onAdd?: (product: Product, size?: ProductVariant | null) => void;
 }) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
@@ -59,7 +59,7 @@ export function ProductDetailDrawer({
 
   if (!product) return null;
 
-  const sizes = product.sizes ?? [];
+  const sizes = product.variants ?? [];
   const stock = totalStock(product);
   const soldOut = !product.isAvailable || stock <= 0;
   const gallery = [

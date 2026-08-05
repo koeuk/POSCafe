@@ -153,8 +153,8 @@ function Info({
 }
 
 function productPriceLabel(product: Product): string {
-  if (product.sizes && product.sizes.length > 0) {
-    const min = Math.min(...product.sizes.map((size) => Number(size.price)));
+  if (product.variants && product.variants.length > 0) {
+    const min = Math.min(...product.variants.map((size) => Number(size.price)));
     return `from ${formatPrice(min)}`;
   }
   return formatPrice(product.price);

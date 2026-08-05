@@ -35,9 +35,8 @@ export interface Product {
   id: number;
   name: string;
   description: string | null;
+  // Base price; sized products price per-variant and use this as fallback.
   price: string;
-  // Optional size options (S/M/L) with their own prices. null = no sizes.
-  sizes: ProductSize[] | null;
   // Percentage off the price (0–100). 0 = no discount.
   discountPercent: number;
   image: string | null;
@@ -47,23 +46,20 @@ export interface Product {
   stock: number;
   // Capacity high-water mark (largest stock ever set). sold = totalStock - stock.
   totalStock: number;
-  // Per-size stock rows (source of truth for sized products' stock).
+  // Size options (S/M/L): the single source of size name, price and stock.
+  // Empty/absent = the product has no sizes.
   variants?: ProductVariant[];
   categoryId: number;
   category?: Category;
-}
-
-export interface ProductSize {
-  size: string;
-  price: number;
-  // Cups of this size in stock (optional; mirrored to a ProductVariant row).
-  stock?: number;
 }
 
 export interface ProductVariant {
   id: number;
   productId: number;
   size: string;
+  // DECIMAL-as-string, like Product.price.
+  price: string;
+  sortOrder: number;
   stock: number;
   // Capacity high-water mark for this size (see Product.totalStock).
   totalStock: number;

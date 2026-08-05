@@ -77,7 +77,7 @@ function ProductView({ id }: { id: string }) {
   const sized = hasSizes(product);
   const discounted = hasDiscount(product);
   const totalStock = sized
-    ? (product.sizes ?? []).reduce((sum, s) => sum + (s.stock ?? 0), 0)
+    ? (product.variants ?? []).reduce((sum, v) => sum + v.stock, 0)
     : product.stock;
 
   return (
@@ -207,10 +207,10 @@ function ProductView({ id }: { id: string }) {
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Info label="Base price" value={formatPrice(product.price)} />
             <Info label="Total stock" value={String(totalStock)} />
-            <Info label="Sizes" value={sized ? String(product.sizes?.length ?? 0) : "—"} />
+            <Info label="Sizes" value={sized ? String(product.variants?.length ?? 0) : "—"} />
           </div>
 
-          {sized && product.sizes && product.sizes.length > 0 && (
+          {sized && product.variants && product.variants.length > 0 && (
             <div className="mt-6">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
                 Sizes &amp; stock
@@ -225,7 +225,7 @@ function ProductView({ id }: { id: string }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                    {product.sizes.map((s) => (
+                    {product.variants.map((s) => (
                       <tr
                         key={s.size}
                         className="text-stone-700 dark:text-stone-300"

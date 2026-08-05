@@ -46,8 +46,8 @@ function Stock() {
     for (const p of products) {
       cups += totalStock(p);
       if (totalStock(p) <= 0) outProducts += 1;
-      if (p.sizes && p.sizes.length > 0) {
-        for (const s of p.sizes) {
+      if (p.variants && p.variants.length > 0) {
+        for (const s of p.variants) {
           if (sizeStock(p, s.size) <= 0) outSizes += 1;
         }
       }
@@ -60,9 +60,9 @@ function Stock() {
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
       if (outOnly) {
-        const hasSizes = !!p.sizes && p.sizes.length > 0;
+        const hasSizes = !!p.variants && p.variants.length > 0;
         const anyOut = hasSizes
-          ? p.sizes!.some((s) => sizeStock(p, s.size) <= 0)
+          ? p.variants!.some((s) => sizeStock(p, s.size) <= 0)
           : p.stock <= 0;
         if (!anyOut) return false;
       }
@@ -355,8 +355,8 @@ interface StockLine {
 }
 
 function linesFor(product: Product): StockLine[] {
-  if (product.sizes && product.sizes.length > 0) {
-    return product.sizes.map((s) => {
+  if (product.variants && product.variants.length > 0) {
+    return product.variants.map((s) => {
       const variant = product.variants?.find((v) => v.size === s.size);
       const current = variant?.stock ?? 0;
       return {
@@ -390,10 +390,10 @@ function ProductStock({
   const initialStockValues = () =>
     Object.fromEntries(lines.map((l) => [l.key, String(l.current)]));
   const initialSizeValues = () =>
-    Object.fromEntries((product.sizes ?? []).map((s) => [s.size, s.size]));
+    Object.fromEntries((product.variants ?? []).map((s) => [s.size, s.size]));
   const initialPriceValues = () =>
     Object.fromEntries(
-      (product.sizes ?? []).map((s) => [s.size, String(s.price)]),
+      (product.variants ?? []).map((s) => [s.size, String(s.price)]),
     );
   const [values, setValues] = useState<Record<string, string>>(initialStockValues);
   const [sizeValues, setSizeValues] =
@@ -440,17 +440,17 @@ function ProductStock({
   const usedSizes = useMemo(
     () =>
       new Set([
-        ...(product.sizes ?? [])
+        ...(product.variants ?? [])
           .filter((s) => !removedSizes.has(s.size))
           .map((s) => sizeValues[s.size] ?? s.size),
         ...newRows.map((r) => r.size),
       ]),
-    [product.sizes, newRows, removedSizes, sizeValues],
+    [product.variants, newRows, removedSizes, sizeValues],
   );
 
   const dirty =
     activeLines.some((l) => Number(values[l.key]) !== l.current) ||
-    (product.sizes ?? []).some(
+    (product.variants ?? []).some(
       (s) =>
         !removedSizes.has(s.size) &&
         ((sizeValues[s.size] ?? s.size) !== s.size ||
@@ -530,7 +530,7 @@ function ProductStock({
         stock: Math.max(0, Number(r.stock || "0")),
       }))
       .filter((r) => r.size);
-    const keptSizes = (product.sizes ?? [])
+    const keptSizes = (product.variants ?? [])
       .filter((s) => !removedSizes.has(s.size))
       .map((s) => ({
         size: (sizeValues[s.size] ?? s.size).trim(),
@@ -569,7 +569,7 @@ function ProductStock({
         ),
       );
 
-      const sized = product.sizes && product.sizes.length > 0;
+      const sized = product.variants && product.variants.length > 0;
       // Adding a size to an unsized product converts it to a sized product.
       const body =
         sized || added.length > 0
@@ -714,9 +714,9 @@ function ProductStock({
         </div>
       </div>
 
-      {editing && product.sizes && product.sizes.length > 0 ? (
+      {editing && product.variants && product.variants.length > 0 ? (
         <div className="mt-3 space-y-2 border-t border-stone-100 pt-3 dark:border-stone-800">
-          {product.sizes
+          {product.variants
             .filter((size) => !removedSizes.has(size.size))
             .map((size) => {
               const stockLine = lines.find((line) => line.size === size.size);

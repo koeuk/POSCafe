@@ -61,13 +61,13 @@ export default async function ProductDetailPage({
               )}
             </div>
 
-            {hasSizes(product) && product.sizes && (
+            {hasSizes(product) && product.variants && (
               <div className="mt-6">
                 <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-500">
                   Sizes
                 </h2>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {product.sizes.map((size) => (
+                  {product.variants.map((size) => (
                     <div
                       key={size.size}
                       className="flex items-center justify-between rounded-xl border border-stone-200 px-3 py-2 text-sm"

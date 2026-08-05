@@ -17,7 +17,7 @@ import {
   stockCapacity,
   totalStock,
 } from "@/lib/pricing";
-import type { Category, Order, Product, ProductSize } from "@/lib/types";
+import type { Category, Order, Product, ProductVariant } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 // Distinctive warm display serif for the brand & headings.
@@ -26,7 +26,7 @@ const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
 interface CartLine {
   product: Product;
   quantity: number;
-  size: ProductSize | null;
+  size: ProductVariant | null;
 }
 
 function cartKey(productId: number, sizeName: string | null | undefined) {
@@ -114,7 +114,7 @@ function POSScreen() {
     [cart],
   );
 
-  const addToCart = useCallback((product: Product, size: ProductSize | null = null) => {
+  const addToCart = useCallback((product: Product, size: ProductVariant | null = null) => {
     setLastOrder(null);
     setCheckoutError(null);
     setCart((prev) => {
@@ -501,10 +501,10 @@ function ProductCard({
   product: Product;
   soldOut: boolean;
   animationDelay: string;
-  onAdd: (product: Product, size?: ProductSize | null) => void;
+  onAdd: (product: Product, size?: ProductVariant | null) => void;
   onView: (product: Product) => void;
 }) {
-  const sizes = product.sizes ?? [];
+  const sizes = product.variants ?? [];
   const stock = totalStock(product);
   const sold = soldCount(product);
   const capacity = stockCapacity(product);

@@ -275,7 +275,7 @@ export function AdminProductManagement({
         return (
           p.name.toLowerCase().includes(q) ||
           categoryName(p.categoryId).toLowerCase().includes(q) ||
-          (p.sizes ?? []).some((s) => s.size.toLowerCase().includes(q))
+          (p.variants ?? []).some((s) => s.size.toLowerCase().includes(q))
         );
       })
       // Newest first — the highest id is the most recently created product.
@@ -324,12 +324,10 @@ export function AdminProductManagement({
       image: product.image ?? "",
       gallery: product.gallery ?? [],
       description: product.description ?? "",
-      sizes: (product.sizes ?? []).map((s) => ({
-        size: s.size,
-        price: String(s.price),
-        stock: String(
-          product.variants?.find((v) => v.size === s.size)?.stock ?? 0,
-        ),
+      sizes: (product.variants ?? []).map((v) => ({
+        size: v.size,
+        price: String(v.price),
+        stock: String(v.stock),
       })),
       isAvailable: product.isAvailable,
     });
@@ -656,9 +654,9 @@ export function AdminProductManagement({
                               <p className="truncate font-medium text-stone-900 dark:text-stone-100">
                                 {product.name}
                               </p>
-                              {product.sizes && product.sizes.length > 0 && (
+                              {product.variants && product.variants.length > 0 && (
                                 <p className="truncate text-xs text-stone-400 dark:text-stone-500">
-                                  {product.sizes
+                                  {product.variants
                                     .map((size) => `${size.size} ${formatPrice(size.price)}`)
                                     .join(" / ")}
                                 </p>
@@ -1600,14 +1598,11 @@ function StockCell({ product }: { product: Product }) {
     };
   }, [open, close, reposition]);
 
-  const sized = !!product.sizes && product.sizes.length > 0;
+  const sized = !!product.variants && product.variants.length > 0;
   const lines = sized
-    ? product.sizes!.map((s) => ({
-        label: s.size,
-        qty: Math.max(
-          0,
-          product.variants?.find((v) => v.size === s.size)?.stock ?? 0,
-        ),
+    ? product.variants!.map((v) => ({
+        label: v.size,
+        qty: Math.max(0, v.stock),
       }))
     : [{ label: "Stock", qty: Math.max(0, product.stock) }];
 
@@ -1725,8 +1720,8 @@ function StockCell({ product }: { product: Product }) {
 }
 
 function productPriceLabel(product: Product): string {
-  if (product.sizes && product.sizes.length > 0) {
-    const min = Math.min(...product.sizes.map((size) => Number(size.price)));
+  if (product.variants && product.variants.length > 0) {
+    const min = Math.min(...product.variants.map((size) => Number(size.price)));
     return `from ${formatPrice(min)}`;
   }
   return formatPrice(product.price);
