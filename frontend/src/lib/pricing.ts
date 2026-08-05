@@ -62,25 +62,6 @@ export function totalStock(product: Product): number {
   return product.stock;
 }
 
-/**
- * Capacity (high-water mark) across all sizes, or the product's for unsized
- * items. Paired with totalStock() to derive how many units have sold.
- */
-export function stockCapacity(product: Product): number {
-  if (product.variants && product.variants.length > 0) {
-    return product.variants.reduce(
-      (sum, v) => sum + (v.totalStock ?? v.stock ?? 0),
-      0,
-    );
-  }
-  return product.totalStock ?? product.stock;
-}
-
-/** Units sold so far = capacity − units still in stock (never negative). */
-export function soldCount(product: Product): number {
-  return Math.max(0, stockCapacity(product) - totalStock(product));
-}
-
 /** Format a numeric/string amount as USD (e.g. 3.5 -> "$3.50"). */
 export function formatPrice(value: number | string): string {
   const n = Number(value);

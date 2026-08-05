@@ -6,10 +6,20 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CategoriesService } from '../categories/categories.service';
+import { OrderStatus } from '../common/enums/order-status.enum';
+import { toNumber } from '../common/money';
+import { OrderItem } from '../orders/entities/order-item.entity';
 import { CreateProductDto, ProductSizeDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductVariant } from './entities/product-variant.entity';
 import { Product } from './entities/product.entity';
+import { StockMovement } from './entities/stock-movement.entity';
+
+// Units sold per product (across all non-cancelled orders).
+export interface SoldCount {
+  productId: number;
+  sold: number;
+}
 
 @Injectable()
 export class ProductsService {
@@ -18,8 +28,56 @@ export class ProductsService {
     private readonly repo: Repository<Product>,
     @InjectRepository(ProductVariant)
     private readonly variantRepo: Repository<ProductVariant>,
+    @InjectRepository(StockMovement)
+    private readonly movementRepo: Repository<StockMovement>,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepo: Repository<OrderItem>,
     private readonly categoriesService: CategoriesService,
   ) {}
+
+  /**
+   * Units sold per product, straight from order_items (excluding cancelled
+   * orders) — the orders table is the source of truth for sales, so this is
+   * accurate over the product's whole history.
+   */
+  async findSoldCounts(): Promise<SoldCount[]> {
+    const rows = await this.orderItemRepo
+      .createQueryBuilder('item')
+      .innerJoin('item.order', 'o', 'o.status != :cancelled', {
+        cancelled: OrderStatus.CANCELLED,
+      })
+      .select('item.productId', 'productId')
+      .addSelect('SUM(item.quantity)', 'sold')
+      .groupBy('item.productId')
+      .getRawMany<{ productId: number; sold: string }>();
+    return rows.map((r) => ({
+      productId: Number(r.productId),
+      sold: toNumber(r.sold),
+    }));
+  }
+
+  /** Recent manual stock changes (restocks/corrections), newest first. */
+  findMovements(limit = 50): Promise<StockMovement[]> {
+    return this.movementRepo.find({
+      relations: { product: true, user: true },
+      order: { createdAt: 'DESC', id: 'DESC' },
+      take: Math.min(Math.max(limit, 1), 200),
+    });
+  }
+
+  /** Log a manual stock change (no row for a no-op delta). */
+  private async recordMovement(
+    productId: number,
+    size: string | null,
+    delta: number,
+    stockAfter: number,
+    userId: number | null,
+  ): Promise<void> {
+    if (delta === 0) return;
+    await this.movementRepo.save(
+      this.movementRepo.create({ productId, size, delta, stockAfter, userId }),
+    );
+  }
 
   findAll(categoryId?: number): Promise<Product[]> {
     return this.repo.find({
@@ -41,29 +99,37 @@ export class ProductsService {
     return product;
   }
 
-  async create(dto: CreateProductDto): Promise<Product> {
+  async create(dto: CreateProductDto, userId?: number): Promise<Product> {
     // Ensure the category exists (throws NotFound otherwise).
     await this.categoriesService.findOne(dto.categoryId);
     const { sizes, ...productFields } = dto;
     const product = this.repo.create(productFields);
-    // Seed the capacity high-water mark from the initial stock.
-    product.totalStock = dto.stock ?? 0;
     const saved = await this.repo.save(product);
-    await this.syncVariants(saved.id, sizes ?? null);
+    if ((dto.stock ?? 0) > 0 && !(sizes && sizes.length > 0)) {
+      await this.recordMovement(
+        saved.id,
+        null,
+        dto.stock ?? 0,
+        dto.stock ?? 0,
+        userId ?? null,
+      );
+    }
+    await this.syncVariants(saved.id, sizes ?? null, userId ?? null);
     return this.findOne(saved.id);
   }
 
-  async update(id: number, dto: UpdateProductDto): Promise<Product> {
+  async update(
+    id: number,
+    dto: UpdateProductDto,
+    userId?: number,
+  ): Promise<Product> {
     const product = await this.findOne(id);
     if (dto.categoryId !== undefined) {
       await this.categoriesService.findOne(dto.categoryId);
     }
+    const previousStock = product.stock;
     const { sizes, ...productFields } = dto;
     Object.assign(product, productFields);
-    // Raise the capacity high-water mark when stock is (re)set.
-    if (dto.stock !== undefined) {
-      product.totalStock = Math.max(product.totalStock ?? 0, dto.stock);
-    }
     // `findOne` eager-loads `category`, and TypeORM resolves the join column
     // from that relation object in preference to the raw `categoryId` — so
     // leaving a stale relation attached would silently undo a category move.
@@ -71,9 +137,19 @@ export class ProductsService {
       Reflect.deleteProperty(product, 'category');
     }
     await this.repo.save(product);
+    // Log a manual base-stock change (sized products track stock per-size).
+    if (dto.stock !== undefined && dto.stock !== previousStock) {
+      await this.recordMovement(
+        id,
+        null,
+        dto.stock - previousStock,
+        dto.stock,
+        userId ?? null,
+      );
+    }
     // Only reconcile size variants when sizes were part of the update.
     if (sizes !== undefined) {
-      await this.syncVariants(id, sizes);
+      await this.syncVariants(id, sizes, userId ?? null);
     }
     return this.findOne(id);
   }
@@ -110,6 +186,7 @@ export class ProductsService {
   private async syncVariants(
     productId: number,
     sizes: ProductSizeDto[] | null,
+    userId: number | null,
   ): Promise<void> {
     const existing = await this.variantRepo.find({ where: { productId } });
     const wanted = sizes ?? [];
@@ -127,9 +204,15 @@ export class ProductsService {
       if (current) {
         current.price = s.price;
         current.sortOrder = index;
-        if (s.stock !== undefined) {
+        if (s.stock !== undefined && s.stock !== current.stock) {
+          await this.recordMovement(
+            productId,
+            s.size,
+            s.stock - current.stock,
+            s.stock,
+            userId,
+          );
           current.stock = s.stock;
-          current.totalStock = Math.max(current.totalStock ?? 0, s.stock);
         }
         await this.variantRepo.save(current);
       } else {
@@ -140,9 +223,17 @@ export class ProductsService {
             price: s.price,
             sortOrder: index,
             stock: s.stock ?? 0,
-            totalStock: s.stock ?? 0,
           }),
         );
+        if ((s.stock ?? 0) > 0) {
+          await this.recordMovement(
+            productId,
+            s.size,
+            s.stock ?? 0,
+            s.stock ?? 0,
+            userId,
+          );
+        }
       }
     }
   }

@@ -35,6 +35,22 @@ export class ProductsController {
     );
   }
 
+  // Units sold per product (all non-cancelled orders). Static routes must be
+  // declared before ':id' or Nest would try to parse them as an id.
+  @Get('sold')
+  findSoldCounts() {
+    return this.productsService.findSoldCounts();
+  }
+
+  // Recent manual stock changes for the Stock page's activity feed.
+  @RequiresPage('products', 'stock')
+  @Get('movements')
+  findMovements(@Query('limit') limit?: string) {
+    return this.productsService.findMovements(
+      limit ? Number(limit) : undefined,
+    );
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.productsService.findOne(id);
@@ -42,8 +58,8 @@ export class ProductsController {
 
   @RequiresPage('products')
   @Post()
-  create(@Body() dto: CreateProductDto) {
-    return this.productsService.create(dto);
+  create(@Body() dto: CreateProductDto, @CurrentUser() user: AuthUser) {
+    return this.productsService.create(dto, user?.id);
   }
 
   // Fields the Stock page actually sends. A user holding 'stock' but not
@@ -72,7 +88,7 @@ export class ProductsController {
         );
       }
     }
-    return this.productsService.update(id, dto);
+    return this.productsService.update(id, dto, user?.id);
   }
 
   /** Admins and holders of the 'products' page may edit every field. */

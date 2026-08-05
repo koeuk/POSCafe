@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api } from "@/lib/api";
 import { sizeStock, totalStock } from "@/lib/pricing";
-import { type Product, type Size, type SizeRow } from "@/lib/types";
+import {
+  type Product,
+  type Size,
+  type SizeRow,
+  type SoldCount,
+  type StockMovement,
+} from "@/lib/types";
 
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
@@ -12,6 +18,8 @@ const INPUT =
 function Stock() {
   const [products, setProducts] = useState<Product[]>([]);
   const [sizes, setSizes] = useState<Size[]>([]);
+  const [soldByProduct, setSoldByProduct] = useState<Record<number, number>>({});
+  const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -27,17 +35,33 @@ function Stock() {
     setSizes(data);
   }, []);
 
+  const loadSold = useCallback(async () => {
+    const rows = await api<SoldCount[]>("/products/sold");
+    setSoldByProduct(
+      Object.fromEntries(rows.map((r) => [r.productId, r.sold])),
+    );
+  }, []);
+
+  const loadMovements = useCallback(async () => {
+    setMovements(await api<StockMovement[]>("/products/movements?limit=30"));
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
-        await Promise.all([loadProducts(), loadSizes()]);
+        await Promise.all([
+          loadProducts(),
+          loadSizes(),
+          loadSold(),
+          loadMovements(),
+        ]);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
         setLoading(false);
       }
     })();
-  }, [loadProducts, loadSizes]);
+  }, [loadProducts, loadSizes, loadSold, loadMovements]);
 
   const summary = useMemo(() => {
     let cups = 0;
@@ -144,15 +168,71 @@ function Stock() {
             <ProductStock
               key={p.id}
               product={p}
+              sold={soldByProduct[p.id] ?? 0}
               catalog={sizes}
               onSaved={async () => {
-                await Promise.all([loadProducts(), loadSizes()]);
+                await Promise.all([loadProducts(), loadSizes(), loadMovements()]);
               }}
             />
           ))}
         </ul>
       )}
+
+      <MovementsFeed movements={movements} />
     </main>
+  );
+}
+
+// ── Recent manual stock changes (restocks & corrections) ─────────────────
+
+function MovementsFeed({ movements }: { movements: StockMovement[] }) {
+  if (movements.length === 0) return null;
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-lg font-semibold text-pos-page-fg">
+        Recent stock changes
+      </h2>
+      <ul className="overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-stone-800 dark:bg-stone-900">
+        {movements.map((m) => {
+          const restock = m.delta > 0;
+          return (
+            <li
+              key={m.id}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-stone-100 px-4 py-2.5 text-sm last:border-b-0 dark:border-stone-800"
+            >
+              <span
+                className={`inline-flex w-16 justify-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  restock
+                    ? "bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-400"
+                    : "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                }`}
+              >
+                {restock ? `+${m.delta}` : m.delta}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-stone-700 dark:text-stone-300">
+                <span className="font-medium text-stone-900 dark:text-stone-100">
+                  {m.product?.name ?? `Product #${m.productId}`}
+                </span>
+                {m.size ? ` · ${m.size}` : ""}
+                <span className="text-stone-400 dark:text-stone-500">
+                  {" "}
+                  → {m.stockAfter} in stock
+                </span>
+              </span>
+              <span className="text-xs text-stone-400 dark:text-stone-500">
+                {m.user?.name ?? "—"} ·{" "}
+                {new Date(m.createdAt).toLocaleString([], {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -350,39 +430,27 @@ interface StockLine {
   key: string;
   size: string | null;
   current: number;
-  // Capacity high-water mark ("count all that we have"); sold = capacity − current.
-  capacity: number;
 }
 
 function linesFor(product: Product): StockLine[] {
   if (product.variants && product.variants.length > 0) {
-    return product.variants.map((s) => {
-      const variant = product.variants?.find((v) => v.size === s.size);
-      const current = variant?.stock ?? 0;
-      return {
-        key: s.size,
-        size: s.size,
-        current,
-        capacity: variant?.totalStock ?? current,
-      };
-    });
+    return product.variants.map((v) => ({
+      key: v.size,
+      size: v.size,
+      current: v.stock,
+    }));
   }
-  return [
-    {
-      key: "__base__",
-      size: null,
-      current: product.stock,
-      capacity: product.totalStock ?? product.stock,
-    },
-  ];
+  return [{ key: "__base__", size: null, current: product.stock }];
 }
 
 function ProductStock({
   product,
+  sold,
   catalog,
   onSaved,
 }: {
   product: Product;
+  sold: number;
   catalog: Size[];
   onSaved: () => Promise<void>;
 }) {
@@ -639,24 +707,16 @@ function ProductStock({
           </p>
         </div>
         {(() => {
-          // Totals across every size: sold / capacity, plus cups still in stock.
+          // Units still in stock across every size, plus all-time units sold
+          // (from order history, provided by the parent).
           const inCups = activeLines.reduce(
             (sum, l) => sum + Math.max(0, Number(values[l.key] || "0")),
             0,
           );
-          const capacity = activeLines.reduce(
-            (sum, l) => sum + Math.max(l.capacity, Number(values[l.key] || "0")),
-            0,
-          );
-          const sold = Math.max(0, capacity - inCups);
           return (
             <span className="hidden items-center gap-1.5 text-xs font-medium sm:inline-flex">
               <span className="tabular-nums">
                 <span className="text-amber-600 dark:text-amber-400">{sold}</span>
-                <span className="text-stone-300 dark:text-stone-600"> / </span>
-                <span className="text-stone-500 dark:text-stone-400">
-                  {capacity}
-                </span>
                 <span className="text-stone-400 dark:text-stone-500"> sold</span>
               </span>
               <span className="text-stone-300 dark:text-stone-600">·</span>
@@ -782,9 +842,6 @@ function ProductStock({
           {activeLines.map((l) => {
             const inCups = Math.max(0, Number(values[l.key] || "0"));
             const out = inCups <= 0;
-            // sold / capacity - how many have sold out of everything we ever had.
-            const capacity = Math.max(l.capacity, inCups);
-            const sold = Math.max(0, capacity - inCups);
             return (
               <div
                 key={l.key}
@@ -796,15 +853,6 @@ function ProductStock({
                   />
                   <span className="font-medium text-stone-700 dark:text-stone-300">
                     {l.size ?? "Stock"}
-                  </span>
-                  <span className="text-xs font-medium tabular-nums">
-                    <span className="text-amber-600 dark:text-amber-400">
-                      {sold}
-                    </span>
-                    <span className="text-stone-300 dark:text-stone-600"> / </span>
-                    <span className="text-stone-500 dark:text-stone-400">
-                      {capacity}
-                    </span>
                   </span>
                 </span>
                 <input

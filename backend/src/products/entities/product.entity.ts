@@ -46,11 +46,6 @@ export class Product {
   @Column({ default: 0 })
   stock: number;
 
-  // Capacity high-water mark: the largest stock level ever set by an admin.
-  // Orders decrement `stock` but never this, so sold = totalStock - stock.
-  @Column({ default: 0 })
-  totalStock: number;
-
   @OneToMany(() => ProductVariant, (variant) => variant.product, {
     cascade: true,
   })

@@ -44,8 +44,6 @@ export interface Product {
   gallery: string[] | null;
   isAvailable: boolean;
   stock: number;
-  // Capacity high-water mark (largest stock ever set). sold = totalStock - stock.
-  totalStock: number;
   // Size options (S/M/L): the single source of size name, price and stock.
   // Empty/absent = the product has no sizes.
   variants?: ProductVariant[];
@@ -61,8 +59,26 @@ export interface ProductVariant {
   price: string;
   sortOrder: number;
   stock: number;
-  // Capacity high-water mark for this size (see Product.totalStock).
-  totalStock: number;
+}
+
+// Units sold per product (GET /products/sold, non-cancelled orders).
+export interface SoldCount {
+  productId: number;
+  sold: number;
+}
+
+// A manual stock change (GET /products/movements, newest first).
+export interface StockMovement {
+  id: number;
+  productId: number;
+  product?: Product;
+  size: string | null;
+  // Signed change (+ = restock, − = correction).
+  delta: number;
+  stockAfter: number;
+  userId: number | null;
+  user?: { id: number; name: string } | null;
+  createdAt: string;
 }
 
 // Master cup-size catalog (Small / Medium / Large), managed on the Stock page.
