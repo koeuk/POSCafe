@@ -301,7 +301,7 @@ function POSScreen() {
                 No products here yet.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {visibleProducts.map((product, i) => {
                   const soldOut =
                     !product.isAvailable || totalStock(product) <= 0;
@@ -718,7 +718,7 @@ function QtyButton({
 
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
