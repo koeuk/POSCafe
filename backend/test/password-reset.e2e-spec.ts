@@ -172,6 +172,19 @@ describe('Password reset (e2e)', () => {
       expect(outbox[0].text).toContain(latestCode());
     });
 
+    it('never returns the code in the response when mail works', async () => {
+      // The dev fallback in AuthService.forgotResponse is gated on mail being
+      // unconfigured; with a working sender the code must exist only in the
+      // mailbox, or the endpoint hands an account over to anyone who asks.
+      const res = await http()
+        .post('/auth/forgot-password')
+        .send({ identifier: ADMIN.username })
+        .expect(200);
+
+      expect(res.body.devCode).toBeUndefined();
+      expect(JSON.stringify(res.body)).not.toContain(latestCode());
+    });
+
     it('ignores a repeat request while the last code is still fresh', async () => {
       await http()
         .post('/auth/forgot-password')

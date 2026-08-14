@@ -61,8 +61,23 @@ export class MailService {
     html?: string;
   }): Promise<void> {
     if (!this.transporter) {
-      this.logger.log(
-        `[console mail] to=${options.to} subject="${options.subject}"\n${options.text}`,
+      // Boxed and padded so it stands out in a busy dev log — this is the only
+      // place the message exists when SMTP is unset, and a one-line entry gets
+      // lost between request logs the moment anything else happens.
+      this.logger.warn(
+        [
+          '',
+          '┌─────────────────────────────────────────────────────────────',
+          '│ EMAIL NOT SENT — SMTP_HOST is not configured',
+          `│ To:      ${options.to}`,
+          `│ Subject: ${options.subject}`,
+          '├─────────────────────────────────────────────────────────────',
+          ...options.text
+            .trimEnd()
+            .split('\n')
+            .map((line) => `│ ${line}`),
+          '└─────────────────────────────────────────────────────────────',
+        ].join('\n'),
       );
       return;
     }
