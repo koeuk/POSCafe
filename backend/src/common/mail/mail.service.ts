@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
@@ -13,7 +13,7 @@ import type { Transporter } from 'nodemailer';
  * only needs SMTP set up before an admin actually locks themselves out.
  */
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
   private readonly transporter: Transporter | null;
   private readonly from: string;
@@ -52,6 +52,26 @@ export class MailService {
   /** True when real mail can be sent (used to tell dev from production). */
   get isConfigured(): boolean {
     return this.transporter !== null;
+  }
+
+  /**
+   * Hand the SMTP settings to the server once at boot. A wrong app password
+   * otherwise stays invisible until an admin is locked out and the code never
+   * arrives — the worst possible moment to discover it. Never throws: a mail
+   * server that is briefly down must not stop the shop from taking orders.
+   */
+  async onModuleInit(): Promise<void> {
+    if (!this.transporter) return;
+    try {
+      await this.transporter.verify();
+      this.logger.log(`SMTP ready — sending as ${this.from}`);
+    } catch (err) {
+      this.logger.error(
+        `SMTP check FAILED — password reset emails will not arrive. ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   async send(options: {

@@ -4,7 +4,6 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
@@ -49,7 +48,6 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
-    private readonly config: ConfigService,
     @InjectRepository(PasswordReset)
     private readonly resets: Repository<PasswordReset>,
   ) {}
@@ -163,30 +161,10 @@ export class AuthService {
       );
     }
 
-    return this.forgotResponse(code);
-  }
-
-  /**
-   * The step-1 response, plus the code itself when there is nowhere for it to
-   * go: no SMTP configured *and* not running in production. Without this the
-   * code exists only in the server console, which is unreadable on a machine
-   * where the backend runs as a service.
-   *
-   * Both guards matter. In production the field never appears even with SMTP
-   * broken, so it can't turn the endpoint into "type a username, get an
-   * account" — the whole point of the generic message above.
-   */
-  private forgotResponse(code: string) {
-    const isProduction =
-      this.config.get<string>('NODE_ENV', 'development') === 'production';
-    if (this.mailService.isConfigured || isProduction) {
-      return GENERIC_FORGOT_RESPONSE;
-    }
-    this.logger.warn(
-      `SMTP is not configured — returning the reset code (${code}) in the API response. ` +
-        'Set SMTP_HOST before deploying.',
-    );
-    return { ...GENERIC_FORGOT_RESPONSE, devCode: code };
+    // The code is never echoed back to the caller: the mailbox is the whole
+    // security boundary here, so anything that reveals the code without it
+    // would let a stranger take over the admin account from the login screen.
+    return GENERIC_FORGOT_RESPONSE;
   }
 
   /**

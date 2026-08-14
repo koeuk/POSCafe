@@ -63,9 +63,6 @@ function ForgotPasswordFlow() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
-  // Set when the backend has no mail server to send through, so the code has
-  // nowhere to go but the screen.
-  const [devCode, setDevCode] = useState<string | null>(null);
 
   // Ticks the resend timer down. The button is the only thing that reads it,
   // so a per-second re-render of this small tree is fine.
@@ -76,16 +73,13 @@ function ForgotPasswordFlow() {
   }, [cooldown]);
 
   const sendCode = useCallback(async (target: string) => {
-    // devCode only comes back when the backend has no SMTP configured and
-    // isn't running in production — see AuthService.forgotResponse.
-    const res = await api<{ devCode?: string }>("/auth/forgot-password", {
+    await api("/auth/forgot-password", {
       method: "POST",
       body: { identifier: target.trim() },
     });
     setCooldown(RESEND_COOLDOWN_SECONDS);
-    setDevCode(res?.devCode ?? null);
-    // Any digits from the previous code are stale now; prefill when we know it.
-    setCode(res?.devCode ?? "");
+    // Any digits from the previous code are stale once a new one is issued.
+    setCode("");
   }, []);
 
   async function handleIdentify(e: FormEvent) {
@@ -129,9 +123,8 @@ function ForgotPasswordFlow() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not verify the code");
       // Clear the boxes so the next attempt starts from an empty field rather
-      // than making them backspace six times — except in the no-SMTP case,
-      // where re-filling the known code saves retyping it off the banner.
-      setCode(devCode ?? "");
+      // than making them backspace six times.
+      setCode("");
     } finally {
       setBusy(false);
     }
@@ -235,20 +228,6 @@ function ForgotPasswordFlow() {
         subtitle="Check the inbox for your admin account — the code expires in 10 minutes"
       >
         <form onSubmit={handleVerify} className="space-y-5">
-          {devCode && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-              <p className="font-semibold">No email server configured</p>
-              <p className="mt-1 text-xs leading-relaxed">
-                Nothing was sent. Your code is{" "}
-                <span className="font-mono text-sm font-bold tracking-widest">
-                  {devCode}
-                </span>{" "}
-                — filled in below. Set <code>SMTP_HOST</code> in{" "}
-                <code>backend/.env</code> to email it instead.
-              </p>
-            </div>
-          )}
-
           <CodeInput value={code} onChange={setCode} />
 
           {error && <AuthError message={error} />}
@@ -270,7 +249,6 @@ function ForgotPasswordFlow() {
                 setStep("identify");
                 setError(null);
                 setCode("");
-                setDevCode(null);
               }}
               className="font-medium text-stone-500 underline-offset-2 hover:underline dark:text-stone-400"
             >
