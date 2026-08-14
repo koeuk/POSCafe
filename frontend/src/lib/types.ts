@@ -169,6 +169,9 @@ export interface PaymentConfig {
   bakongAccountId: string | null;
   bakongMerchantName: string | null;
   bakongMerchantCity: string | null;
+  // true = pay screen embeds the amount and the code expires; false = one
+  // reusable code and the customer types the amount.
+  khqrDynamic: boolean;
 }
 
 // A generated KHQR for one order (GET /payments/khqr/:orderId).
@@ -176,11 +179,14 @@ export interface Khqr {
   // The EMVCo/KHQR string to render as a QR code.
   qr: string;
   md5: string;
+  // The order total. Embedded in the code only when `dynamic` is true.
   amount: number;
   currency: "USD";
   merchantName: string;
-  // Epoch ms after which the code stops being accepted.
-  expiresAt: number;
+  // Whether the amount is baked in (else the customer types it).
+  dynamic: boolean;
+  // Epoch ms after which the code stops being accepted; null when static.
+  expiresAt: number | null;
 }
 
 // The shop's reusable KHQR (GET /payments/khqr/static): no amount, no expiry.

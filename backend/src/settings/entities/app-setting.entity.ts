@@ -35,4 +35,10 @@ export class AppSetting {
   // Merchant city shown in the banking app. KHQR limits it to 15 characters.
   @Column({ type: 'varchar', length: 15, nullable: true })
   bakongMerchantCity: string | null;
+
+  // How the pay screen builds its KHQR. true = dynamic (the order amount is
+  // embedded and the code expires); false = static (one reusable code, the
+  // customer types the amount). The printable poster is always static.
+  @Column({ default: true })
+  khqrDynamic: boolean;
 }

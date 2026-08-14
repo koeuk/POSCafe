@@ -376,6 +376,9 @@ function PayScreen() {
 function KhqrPanel({ orderId }: { orderId: number }) {
   const { khqrEnabled } = useBranding();
   const [image, setImage] = useState<string | null>(null);
+  // Static codes carry no amount and never expire, so the countdown and the
+  // regenerate button only apply to dynamic ones.
+  const [dynamic, setDynamic] = useState(true);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -398,7 +401,16 @@ function KhqrPanel({ orderId }: { orderId: number }) {
         const url = await toDataURL(data.qr, { margin: 1, width: 320 });
         if (!cancelled) {
           setImage(url);
+          setDynamic(data.dynamic);
           setExpiresAt(data.expiresAt);
+          // Seed the countdown here rather than letting the ticker do it: it
+          // starts at 0, so the render before the first tick would otherwise
+          // flash "QR expired" on a code that was just issued.
+          setSecondsLeft(
+            data.expiresAt
+              ? Math.max(0, Math.round((data.expiresAt - Date.now()) / 1000))
+              : 0,
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -467,9 +479,11 @@ function KhqrPanel({ orderId }: { orderId: number }) {
             )}
           </div>
           <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-            {expired
-              ? "Generate a new code to try again."
-              : `Scan with any Cambodian banking app · expires in ${formatCountdown(secondsLeft)}`}
+            {!dynamic
+              ? "Scan with any Cambodian banking app, then ask the customer to enter the amount above."
+              : expired
+                ? "Generate a new code to try again."
+                : `Scan with any Cambodian banking app · expires in ${formatCountdown(secondsLeft)}`}
           </p>
           {expired && (
             <button

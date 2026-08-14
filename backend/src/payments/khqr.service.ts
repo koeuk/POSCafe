@@ -14,11 +14,14 @@ export interface KhqrPayload {
   qr: string;
   /** MD5 of `qr` — Bakong's identifier for looking the transaction up later. */
   md5: string;
+  /** The order total. Embedded in the code only when `dynamic` is true. */
   amount: number;
   currency: 'USD';
   merchantName: string;
-  /** Epoch ms after which the QR is rejected by the banking app. */
-  expiresAt: number;
+  /** Whether the amount is baked into the code (else the customer types it). */
+  dynamic: boolean;
+  /** Epoch ms after which the QR is rejected — null for a static code. */
+  expiresAt: number | null;
 }
 
 /** A reusable shop-wide KHQR: no amount, no expiry, safe to print. */
@@ -113,14 +116,22 @@ export class KhqrService {
     const merchantCity = (settings.bakongMerchantCity || 'Phnom Penh')
       .trim()
       .slice(0, 15);
-    const expiresAt = Date.now() + EXPIRY_MS;
+
+    // Admins choose the style in Settings. A static code omits the amount and
+    // the expiry, so the same code works for every order and never lapses.
+    const dynamic = settings.khqrDynamic;
+    const expiresAt = dynamic ? Date.now() + EXPIRY_MS : null;
 
     const info = new IndividualInfo(accountId, merchantName, merchantCity, {
       currency: khqrData.currency.usd,
-      amount,
-      // Ties the transfer to the order in the customer's bank statement.
-      billNumber: order.orderNumber,
-      expirationTimestamp: expiresAt,
+      ...(dynamic
+        ? {
+            amount,
+            // Ties the transfer to the order in the customer's bank statement.
+            billNumber: order.orderNumber,
+            expirationTimestamp: expiresAt,
+          }
+        : {}),
     });
 
     const result = new BakongKHQR().generateIndividual(info);
@@ -136,6 +147,7 @@ export class KhqrService {
       amount,
       currency: 'USD',
       merchantName,
+      dynamic,
       expiresAt,
     };
   }

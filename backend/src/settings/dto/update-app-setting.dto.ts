@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -55,4 +56,9 @@ export class UpdateAppSettingDto {
   @IsString()
   @MaxLength(15)
   bakongMerchantCity?: string | null;
+
+  // true = dynamic KHQR on the pay screen, false = static.
+  @IsOptional()
+  @IsBoolean()
+  khqrDynamic?: boolean;
 }

@@ -54,6 +54,7 @@ export class SettingsService implements OnModuleInit {
       bakongAccountId: s.bakongAccountId,
       bakongMerchantName: s.bakongMerchantName,
       bakongMerchantCity: s.bakongMerchantCity,
+      khqrDynamic: s.khqrDynamic,
     };
   }
 
@@ -72,6 +73,9 @@ export class SettingsService implements OnModuleInit {
     }
     if (dto.bakongMerchantCity !== undefined) {
       settings.bakongMerchantCity = dto.bakongMerchantCity?.trim() || null;
+    }
+    if (dto.khqrDynamic !== undefined) {
+      settings.khqrDynamic = dto.khqrDynamic;
     }
     return this.repo.save(settings);
   }

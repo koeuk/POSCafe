@@ -147,6 +147,7 @@ function AppSettingsPanel() {
   const [bakongId, setBakongId] = useState("");
   const [bakongName, setBakongName] = useState("");
   const [bakongCity, setBakongCity] = useState("");
+  const [khqrDynamic, setKhqrDynamic] = useState(true);
   const [savedPayment, setSavedPayment] = useState<PaymentConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +162,7 @@ function AppSettingsPanel() {
         setBakongId(cfg.bakongAccountId ?? "");
         setBakongName(cfg.bakongMerchantName ?? "");
         setBakongCity(cfg.bakongMerchantCity ?? "");
+        setKhqrDynamic(cfg.khqrDynamic);
       })
       .catch(() => {
         // Non-fatal: the rest of the form still works without it.
@@ -189,7 +191,8 @@ function AppSettingsPanel() {
     savedPayment !== null &&
     (bakongId.trim() !== (savedPayment.bakongAccountId ?? "") ||
       bakongName.trim() !== (savedPayment.bakongMerchantName ?? "") ||
-      bakongCity.trim() !== (savedPayment.bakongMerchantCity ?? ""));
+      bakongCity.trim() !== (savedPayment.bakongMerchantCity ?? "") ||
+      khqrDynamic !== savedPayment.khqrDynamic);
   const dirty =
     name.trim() !== appName ||
     logo !== logoUrl ||
@@ -213,6 +216,7 @@ function AppSettingsPanel() {
           bakongAccountId: bakongId.trim() || null,
           bakongMerchantName: bakongName.trim() || null,
           bakongMerchantCity: bakongCity.trim() || null,
+          khqrDynamic,
         },
       });
       await refresh();
@@ -220,6 +224,7 @@ function AppSettingsPanel() {
         bakongAccountId: bakongId.trim() || null,
         bakongMerchantName: bakongName.trim() || null,
         bakongMerchantCity: bakongCity.trim() || null,
+        khqrDynamic,
       });
       setSuccess("App settings saved.");
     } catch (err) {
@@ -339,6 +344,26 @@ function AppSettingsPanel() {
               className={inputClass}
             />
           </Field>
+
+          <Field
+            label="QR code type"
+            hint="How the Take Payment screen builds its code — the printable poster is always static"
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <QrTypeOption
+                selected={khqrDynamic}
+                onSelect={() => setKhqrDynamic(true)}
+                title="Dynamic"
+                detail="Amount filled in automatically. Expires after 5 minutes, so a new code is generated per order."
+              />
+              <QrTypeOption
+                selected={!khqrDynamic}
+                onSelect={() => setKhqrDynamic(false)}
+                title="Static"
+                detail="One reusable code that never expires. The customer types the amount themselves."
+              />
+            </div>
+          </Field>
         </div>
       </div>
 
@@ -361,6 +386,52 @@ function AppSettingsPanel() {
         {saving ? "Saving…" : "Save changes"}
       </button>
     </form>
+  );
+}
+
+// One choice in the QR-type picker: a card that reads as a radio button.
+function QrTypeOption({
+  selected,
+  onSelect,
+  title,
+  detail,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`rounded-xl border p-3 text-left transition ${
+        selected
+          ? "border-pos-button bg-pos-button/5 ring-2 ring-pos-button/20"
+          : "border-stone-200 hover:bg-stone-50 dark:border-stone-700 dark:hover:bg-stone-800"
+      }`}
+    >
+      <span className="flex items-center gap-2">
+        <span
+          className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${
+            selected
+              ? "border-pos-button"
+              : "border-stone-300 dark:border-stone-600"
+          }`}
+        >
+          {selected && (
+            <span className="h-2 w-2 rounded-full bg-pos-button" />
+          )}
+        </span>
+        <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+          {title}
+        </span>
+      </span>
+      <span className="mt-1 block text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+        {detail}
+      </span>
+    </button>
   );
 }
 
