@@ -27,8 +27,8 @@ interface SocketData {
 }
 
 /**
- * Pushes live order updates to connected clients (the kitchen / barista
- * display). The frontend just listens for these events instead of polling:
+ * Pushes live order updates to connected clients (the Orders queue). The
+ * frontend just listens for these events instead of polling:
  *   socket.on('order.created', ...)  // a new order came in
  *   socket.on('order.updated', ...)  // its status changed
  *
@@ -51,7 +51,6 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private static readonly ORDER_FEED_PAGES = [
     'orders',
     'order-history',
-    'kitchen',
     'payments',
   ];
 

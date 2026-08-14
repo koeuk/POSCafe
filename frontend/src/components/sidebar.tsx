@@ -79,19 +79,6 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    key: "kitchen",
-    href: "/kitchen",
-    label: "Kitchen",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
-        <path d="M6 3v6a3 3 0 1 0 6 0V3" />
-        <path d="M9 12v9" />
-        <path d="M17 3v18" />
-        <path d="M14 7h6" />
-      </svg>
-    ),
-  },
-  {
     key: "categories",
     href: { staff: "/cashier/categories", admin: "/categories" },
     label: "Categories",

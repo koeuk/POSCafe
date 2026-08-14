@@ -24,7 +24,7 @@ export class Order {
   @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.PENDING })
   status: OrderStatus;
 
-  // Payment state, tracked separately from the kitchen status above.
+  // Payment state, tracked separately from the fulfilment status above.
   @Column({
     type: 'enum',
     enum: PaymentStatus,

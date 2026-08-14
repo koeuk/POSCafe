@@ -147,7 +147,7 @@ export class OrdersService {
     });
 
     // Return the fully-populated order (with items + product details),
-    // and broadcast it live to the kitchen / barista screens.
+    // and broadcast it live to the Orders queue on every screen.
     const order = await this.findOne(orderId);
     this.gateway.emitOrderCreated(order);
     return order;
@@ -204,7 +204,7 @@ export class OrdersService {
     return order;
   }
 
-  // Legal kitchen-status transitions. COMPLETED and CANCELLED are terminal.
+  // Legal fulfilment-status transitions. COMPLETED and CANCELLED are terminal.
   // Every active state may jump straight to COMPLETED (payment completes the
   // order from wherever it is) or CANCELLED.
   private static readonly STATUS_TRANSITIONS: Record<

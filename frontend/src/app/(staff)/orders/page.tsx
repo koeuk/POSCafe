@@ -1,12 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io } from "socket.io-client";
 import { StaffShell } from "@/components/staff-shell";
 import { StatusTabs } from "@/components/status-tabs";
-import { api } from "@/lib/api";
+import { api, getApiUrl, getToken } from "@/lib/api";
 import { STATUS_FILTERS } from "@/lib/orders";
 import { OrderStatus, type OrderWithUser } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
+
+// Same host the app was opened from — see getApiUrl(). An explicit
+// NEXT_PUBLIC_SOCKET_URL still wins if the realtime server lives elsewhere.
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? getApiUrl();
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   [OrderStatus.PENDING]: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
@@ -23,44 +28,102 @@ const NEXT_STEP: Partial<Record<OrderStatus, { label: string; status: OrderStatu
   [OrderStatus.READY]: { label: "Complete", status: OrderStatus.COMPLETED },
 };
 
+// Newest first, matching the order the API returns them in.
+function byNewest(a: OrderWithUser, b: OrderWithUser) {
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 function OrdersQueue() {
   const [orders, setOrders] = useState<OrderWithUser[]>([]);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [live, setLive] = useState(false);
 
   const load = useCallback(async () => {
     const query = filter === "all" ? "" : `?status=${filter}`;
     return api<OrderWithUser[]>(`/orders${query}`);
   }, [filter]);
 
-  // Load on mount/filter change, then poll every 10s for a live queue.
+  // The socket subscription is mounted once, so it reads the current filter
+  // and loader through refs instead of resubscribing on every tab change.
+  const filterRef = useRef(filter);
+  const loadRef = useRef(load);
+  useEffect(() => {
+    filterRef.current = filter;
+    loadRef.current = load;
+  });
+
+  // Load on mount and whenever the status filter changes.
   useEffect(() => {
     let cancelled = false;
 
-    async function run(showSpinner: boolean) {
-      if (showSpinner) setLoading(true);
+    async function run() {
+      setLoading(true);
       try {
         const data = await load();
-        if (!cancelled) setError(null);
-        if (!cancelled) setOrders(data);
+        if (!cancelled) {
+          setError(null);
+          setOrders(data);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load orders");
         }
       } finally {
-        if (!cancelled && showSpinner) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    void run(true);
-    const interval = setInterval(() => run(false), 10_000);
+    void run();
     return () => {
       cancelled = true;
-      clearInterval(interval);
     };
   }, [load]);
+
+  // Live updates via Socket.IO (authenticated with the JWT): new orders from
+  // the POS and status changes made on any screen appear here instantly.
+  useEffect(() => {
+    const socket = io(SOCKET_URL, {
+      auth: { token: getToken() ?? "" },
+      transports: ["websocket", "polling"],
+    });
+
+    // Refetch on every (re)connect: events emitted while the socket was down
+    // are gone for good, so the list has to be rebuilt from the server.
+    socket.on("connect", () => {
+      setLive(true);
+      loadRef.current().then(
+        (data) => {
+          setOrders(data);
+          setError(null);
+        },
+        () => {
+          // A failed catch-up refetch isn't fatal — the next event or filter
+          // change will refresh the list.
+        },
+      );
+    });
+    socket.on("disconnect", () => setLive(false));
+
+    // Insert or replace the order, dropping it when it no longer matches the
+    // active status filter (e.g. it just moved out of the tab being viewed).
+    function upsert(order: OrderWithUser) {
+      setOrders((prev) => {
+        const rest = prev.filter((o) => o.id !== order.id);
+        const active = filterRef.current;
+        if (active !== "all" && order.status !== active) return rest;
+        return [order, ...rest].sort(byNewest);
+      });
+    }
+    socket.on("order.created", upsert);
+    socket.on("order.updated", upsert);
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   async function changeStatus(id: number, status: OrderStatus) {
     setUpdatingId(id);
@@ -102,9 +165,25 @@ function OrdersQueue() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Orders</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">
-            {activeCount} active · {orders.length} total · live
+            {/* Counts describe what's on screen, which under a status filter
+                is only that status — so label them by the active tab. */}
+            {filter === "all"
+              ? `${activeCount} active · ${orders.length} total`
+              : `${orders.length} ${filter}`}
           </p>
         </div>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+            live
+              ? "bg-green-500/15 text-green-600 dark:text-green-400"
+              : "bg-red-500/15 text-red-600 dark:text-red-400"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${live ? "bg-green-400" : "bg-red-400"}`}
+          />
+          {live ? "Live" : "Offline"}
+        </span>
       </header>
 
       <section className={`rounded-2xl p-5 ${GLASS}`}>

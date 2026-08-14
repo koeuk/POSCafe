@@ -32,7 +32,7 @@ export class OrdersController {
   // Read by the Orders, Order History, Kitchen, Take Payment and Dashboard
   // screens. Optional filters: ?status=pending, ?mine=true (only my orders),
   // ?unpaid=true (orders without a payment yet — for the Take Payment screen).
-  @RequiresPage('orders', 'order-history', 'kitchen', 'payments', 'dashboard')
+  @RequiresPage('orders', 'order-history', 'payments', 'dashboard')
   @Get()
   findAll(
     @CurrentUser('id') userId: number,
@@ -48,14 +48,14 @@ export class OrdersController {
   }
 
   // Viewing a single order: same access as viewing the list.
-  @RequiresPage('orders', 'order-history', 'kitchen', 'payments')
+  @RequiresPage('orders', 'order-history', 'payments')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.ordersService.findOne(id);
   }
 
   // Status changes come from the Orders, Order History and Kitchen screens.
-  @RequiresPage('orders', 'order-history', 'kitchen')
+  @RequiresPage('orders', 'order-history')
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseIntPipe) id: number,

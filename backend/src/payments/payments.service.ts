@@ -90,7 +90,7 @@ export class PaymentsService {
       return savedPayment;
     });
 
-    // Broadcast the now-paid, completed order to the kitchen / cashier screens.
+    // Broadcast the now-paid, completed order to the cashier screens.
     // The money is already committed at this point, so a failed broadcast must
     // not fail the request: the cashier would see "payment failed", retry, and
     // hit the already-paid conflict with no way to read back the change due.
