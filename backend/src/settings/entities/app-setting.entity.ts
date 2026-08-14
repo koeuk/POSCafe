@@ -21,4 +21,18 @@ export class AppSetting {
   // KHR per 1 USD, used to show riel amounts alongside dollar prices.
   @Column({ default: 4100 })
   khrPerUsd: number;
+
+  // Bakong account the KHQR pays into, e.g. "koeuk@aclb". null = QR payment
+  // is not configured, so the pay screen shows no code.
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  bakongAccountId: string | null;
+
+  // Merchant name shown in the customer's banking app (falls back to appName).
+  // KHQR limits this to 25 characters.
+  @Column({ type: 'varchar', length: 25, nullable: true })
+  bakongMerchantName: string | null;
+
+  // Merchant city shown in the banking app. KHQR limits it to 15 characters.
+  @Column({ type: 'varchar', length: 15, nullable: true })
+  bakongMerchantCity: string | null;
 }

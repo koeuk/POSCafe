@@ -17,12 +17,16 @@ export interface AppSettings {
   logoUrl: string | null;
   // KHR per 1 USD, for showing riel amounts alongside dollar prices.
   khrPerUsd: number;
+  // Whether a Bakong account is configured, so the pay screen knows if it can
+  // show a real KHQR code. The account id itself stays admin-only.
+  khqrEnabled: boolean;
 }
 
 const DEFAULTS: AppSettings = {
   appName: "POSCAFE",
   logoUrl: null,
   khrPerUsd: 4100,
+  khqrEnabled: false,
 };
 
 // Persisted so the branding applies on first paint (before the fetch lands),
@@ -113,6 +117,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         appName: data.appName ?? DEFAULTS.appName,
         logoUrl: data.logoUrl ?? null,
         khrPerUsd: data.khrPerUsd || DEFAULTS.khrPerUsd,
+        khqrEnabled: Boolean(data.khqrEnabled),
       };
       setSettings(next);
       applyDocumentBranding(next);

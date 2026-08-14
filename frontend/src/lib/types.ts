@@ -9,6 +9,9 @@ export interface User {
   id: number;
   name: string;
   username: string;
+  // Recovery address for the forgot-password code. null = no self-service
+  // reset for this account.
+  email?: string | null;
   role: Role;
   avatar?: string | null;
   // Sidebar pages a cashier may see (keys from lib/permissions).
@@ -159,6 +162,25 @@ export interface Payment {
   refundedAt: string | null;
   refundedById: number | null;
   createdAt: string;
+}
+
+// Bakong/KHQR configuration (GET /settings/payment, admin only).
+export interface PaymentConfig {
+  bakongAccountId: string | null;
+  bakongMerchantName: string | null;
+  bakongMerchantCity: string | null;
+}
+
+// A generated KHQR for one order (GET /payments/khqr/:orderId).
+export interface Khqr {
+  // The EMVCo/KHQR string to render as a QR code.
+  qr: string;
+  md5: string;
+  amount: number;
+  currency: "USD";
+  merchantName: string;
+  // Epoch ms after which the code stops being accepted.
+  expiresAt: number;
 }
 
 // Editable size row used by the product form and the stock manager:

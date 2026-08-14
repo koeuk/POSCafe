@@ -12,7 +12,12 @@ import {
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
 import { formatKhr, formatPrice } from "@/lib/pricing";
-import { PaymentMethod, type Order, type Payment } from "@/lib/types";
+import {
+  PaymentMethod,
+  type Khqr,
+  type Order,
+  type Payment,
+} from "@/lib/types";
 
 const QUICK_CASH = [5, 10, 20, 50];
 
@@ -335,9 +340,13 @@ function PayScreen() {
                   ≈ {formatKhr(due, khrPerUsd)}
                 </span>
               </p>
-              <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
-                Confirm after the terminal or QR transfer succeeds.
-              </p>
+              {method === PaymentMethod.QR && order ? (
+                <KhqrPanel orderId={order.id} />
+              ) : (
+                <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
+                  Confirm after the terminal transfer succeeds.
+                </p>
+              )}
             </div>
           )}
 
@@ -356,6 +365,131 @@ function PayScreen() {
       </div>
     </Shell>
   );
+}
+
+/**
+ * Fetches a dynamic KHQR for the order and renders it as a scannable code.
+ * The amount is embedded, so the customer only confirms in their banking app.
+ * Codes expire (Bakong requires it), so the panel counts down and offers a
+ * regenerate button rather than showing a code a bank would reject.
+ */
+function KhqrPanel({ orderId }: { orderId: number }) {
+  const { khqrEnabled } = useBranding();
+  const [image, setImage] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Bumped to re-request a fresh code once the current one expires.
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!khqrEnabled) return;
+    let cancelled = false;
+
+    async function run() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await api<Khqr>(`/payments/khqr/${orderId}`);
+        // Render the KHQR payload as an image. Imported lazily so the QR
+        // library isn't in the bundle for cashiers who never take QR payments.
+        const { toDataURL } = await import("qrcode");
+        const url = await toDataURL(data.qr, { margin: 1, width: 320 });
+        if (!cancelled) {
+          setImage(url);
+          setExpiresAt(data.expiresAt);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Could not build the QR code",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, khqrEnabled, attempt]);
+
+  // Countdown to expiry, so the cashier knows when to regenerate.
+  useEffect(() => {
+    if (!expiresAt) return;
+    function tick() {
+      setSecondsLeft(Math.max(0, Math.round((expiresAt! - Date.now()) / 1000)));
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  if (!khqrEnabled) {
+    return (
+      <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+        QR payment isn&apos;t set up yet — add your Bakong account in Settings to
+        show a scannable KHQR here. You can still confirm a transfer manually.
+      </p>
+    );
+  }
+
+  const expired = expiresAt !== null && secondsLeft <= 0;
+
+  return (
+    <div className="mt-3">
+      {loading ? (
+        <p className="text-sm text-stone-400 dark:text-stone-500">
+          Generating QR…
+        </p>
+      ) : error ? (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
+          {error}
+        </p>
+      ) : image ? (
+        <>
+          <div className="relative inline-block rounded-xl bg-white p-3 shadow-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image}
+              alt="KHQR code for this order"
+              width={220}
+              height={220}
+              className={`h-[220px] w-[220px] ${expired ? "opacity-20" : ""}`}
+            />
+            {expired && (
+              <span className="absolute inset-0 grid place-items-center text-sm font-semibold text-stone-700">
+                QR expired
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+            {expired
+              ? "Generate a new code to try again."
+              : `Scan with any Cambodian banking app · expires in ${formatCountdown(secondsLeft)}`}
+          </p>
+          {expired && (
+            <button
+              type="button"
+              onClick={() => setAttempt((n) => n + 1)}
+              className="mt-2 rounded-lg border border-stone-300 px-4 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+            >
+              New QR code
+            </button>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function formatCountdown(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function Shell({

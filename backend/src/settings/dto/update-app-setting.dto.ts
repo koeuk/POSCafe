@@ -3,6 +3,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -32,4 +33,26 @@ export class UpdateAppSettingDto {
   @Min(100)
   @Max(100000)
   khrPerUsd?: number;
+
+  // Bakong account id, e.g. "koeuk@aclb" — the KHQR pays into this account.
+  // Empty string / null clears it (QR payment then shows no code).
+  @ValidateIf((_, value) => value !== null && value !== '')
+  @IsOptional()
+  @Matches(/^[a-zA-Z0-9._-]{1,32}@[a-zA-Z0-9]{2,16}$/, {
+    message: 'bakongAccountId must look like "name@bank"',
+  })
+  bakongAccountId?: string | null;
+
+  // KHQR caps these at 25 / 15 characters.
+  @ValidateIf((_, value) => value !== null && value !== '')
+  @IsOptional()
+  @IsString()
+  @MaxLength(25)
+  bakongMerchantName?: string | null;
+
+  @ValidateIf((_, value) => value !== null && value !== '')
+  @IsOptional()
+  @IsString()
+  @MaxLength(15)
+  bakongMerchantCity?: string | null;
 }

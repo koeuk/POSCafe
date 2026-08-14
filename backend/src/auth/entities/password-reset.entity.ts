@@ -38,9 +38,15 @@ export class PasswordReset {
   attempts: number;
 
   // Set once the code has been exchanged for a reset token, so the same code
-  // can't be used twice.
+  // can't be verified twice.
   @Column({ type: 'datetime', nullable: true })
   consumedAt: Date | null;
+
+  // Set once the password has actually been changed. The reset token names its
+  // own row, so this is what stops a captured token from being replayed to
+  // change the password a second time.
+  @Column({ type: 'datetime', nullable: true })
+  completedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

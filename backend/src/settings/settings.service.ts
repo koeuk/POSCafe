@@ -31,11 +31,48 @@ export class SettingsService implements OnModuleInit {
     );
   }
 
+  /**
+   * The branding every visitor may see. GET /settings is public (the login
+   * screen needs it), so the payment configuration is deliberately left out —
+   * it's admin-only and served by `findPaymentConfig`.
+   */
+  async findPublic() {
+    const s = await this.find();
+    return {
+      appName: s.appName,
+      logoUrl: s.logoUrl,
+      khrPerUsd: s.khrPerUsd,
+      // Lets the pay screen show the QR tab only when it will actually work.
+      khqrEnabled: Boolean(s.bakongAccountId),
+    };
+  }
+
+  /** Bakong/KHQR configuration for the admin settings form. */
+  async findPaymentConfig() {
+    const s = await this.find();
+    return {
+      bakongAccountId: s.bakongAccountId,
+      bakongMerchantName: s.bakongMerchantName,
+      bakongMerchantCity: s.bakongMerchantCity,
+    };
+  }
+
   async update(dto: UpdateAppSettingDto): Promise<AppSetting> {
     const settings = await this.find();
     if (dto.appName !== undefined) settings.appName = dto.appName.trim();
     if (dto.logoUrl !== undefined) settings.logoUrl = dto.logoUrl;
     if (dto.khrPerUsd !== undefined) settings.khrPerUsd = dto.khrPerUsd;
+    // An empty string means "clear it" — stored as null so the KHQR generator
+    // sees a single "not configured" value.
+    if (dto.bakongAccountId !== undefined) {
+      settings.bakongAccountId = dto.bakongAccountId?.trim() || null;
+    }
+    if (dto.bakongMerchantName !== undefined) {
+      settings.bakongMerchantName = dto.bakongMerchantName?.trim() || null;
+    }
+    if (dto.bakongMerchantCity !== undefined) {
+      settings.bakongMerchantCity = dto.bakongMerchantCity?.trim() || null;
+    }
     return this.repo.save(settings);
   }
 }

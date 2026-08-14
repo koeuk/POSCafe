@@ -69,9 +69,21 @@ export class UsersService {
       .getOne();
   }
 
+  /** findByIdentifier, plus the password column (for login verification). */
+  findByIdentifierWithPassword(identifier: string): Promise<User | null> {
+    const value = identifier.trim();
+    return this.repo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.username = :value', { value })
+      .orWhere('LOWER(user.email) = LOWER(:value)', { value })
+      .getOne();
+  }
+
   /**
-   * Looks a user up by either username or email — the password-reset form
-   * accepts whichever the admin remembers. Email is matched case-insensitively
+   * Looks a user up by either username or email — sign-in and the reset form
+   * both accept whichever the staff member remembers. Email is matched
+   * case-insensitively
    * because staff type it however their keyboard felt at the time; MySQL's
    * default collation already does this, LOWER() makes it explicit and
    * collation-independent.

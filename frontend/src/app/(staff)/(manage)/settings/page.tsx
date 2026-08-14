@@ -13,7 +13,7 @@ import { useClickOutside } from "@/lib/use-click-outside";
 import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
 import { api, uploadImage } from "@/lib/api";
-import { Role, type User } from "@/lib/types";
+import { Role, type PaymentConfig, type User } from "@/lib/types";
 import {
   CASHIER_PAGES,
   DEFAULT_CASHIER_PAGES,
@@ -31,7 +31,13 @@ const ROLE_META: Record<Role, { label: string; pill: string }> = {
   },
 };
 
-const EMPTY = { name: "", username: "", password: "", role: Role.CASHIER };
+const EMPTY = {
+  name: "",
+  username: "",
+  email: "",
+  password: "",
+  role: Role.CASHIER,
+};
 
 const sw = {
   fill: "none",
@@ -136,9 +142,33 @@ function AppSettingsPanel() {
   const [name, setName] = useState(appName);
   const [logo, setLogo] = useState<string | null>(logoUrl);
   const [rate, setRate] = useState(String(khrPerUsd));
+  // Bakong/KHQR config lives behind an admin-only endpoint, so it's loaded
+  // separately from the public branding settings.
+  const [bakongId, setBakongId] = useState("");
+  const [bakongName, setBakongName] = useState("");
+  const [bakongCity, setBakongCity] = useState("");
+  const [savedPayment, setSavedPayment] = useState<PaymentConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<PaymentConfig>("/settings/payment")
+      .then((cfg) => {
+        if (cancelled) return;
+        setSavedPayment(cfg);
+        setBakongId(cfg.bakongAccountId ?? "");
+        setBakongName(cfg.bakongMerchantName ?? "");
+        setBakongCity(cfg.bakongMerchantCity ?? "");
+      })
+      .catch(() => {
+        // Non-fatal: the rest of the form still works without it.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Sync local fields once branding has loaded / changed from the backend.
   useEffect(() => {
@@ -152,9 +182,21 @@ function AppSettingsPanel() {
   const rateNum = Number(rate);
   const rateValid =
     Number.isInteger(rateNum) && rateNum >= 100 && rateNum <= 100000;
+  // A Bakong id looks like "name@bank"; empty is allowed (QR stays off).
+  const bakongValid =
+    bakongId.trim() === "" || /^[\w.-]{1,32}@[a-zA-Z0-9]{2,16}$/.test(bakongId.trim());
+  const paymentDirty =
+    savedPayment !== null &&
+    (bakongId.trim() !== (savedPayment.bakongAccountId ?? "") ||
+      bakongName.trim() !== (savedPayment.bakongMerchantName ?? "") ||
+      bakongCity.trim() !== (savedPayment.bakongMerchantCity ?? ""));
   const dirty =
-    name.trim() !== appName || logo !== logoUrl || rateNum !== khrPerUsd;
-  const canSave = name.trim().length > 0 && rateValid && dirty && !saving;
+    name.trim() !== appName ||
+    logo !== logoUrl ||
+    rateNum !== khrPerUsd ||
+    paymentDirty;
+  const canSave =
+    name.trim().length > 0 && rateValid && bakongValid && dirty && !saving;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -164,9 +206,21 @@ function AppSettingsPanel() {
     try {
       await api("/settings", {
         method: "PATCH",
-        body: { appName: name.trim(), logoUrl: logo, khrPerUsd: rateNum },
+        body: {
+          appName: name.trim(),
+          logoUrl: logo,
+          khrPerUsd: rateNum,
+          bakongAccountId: bakongId.trim() || null,
+          bakongMerchantName: bakongName.trim() || null,
+          bakongMerchantCity: bakongCity.trim() || null,
+        },
       });
       await refresh();
+      setSavedPayment({
+        bakongAccountId: bakongId.trim() || null,
+        bakongMerchantName: bakongName.trim() || null,
+        bakongMerchantCity: bakongCity.trim() || null,
+      });
       setSuccess("App settings saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -227,6 +281,65 @@ function AppSettingsPanel() {
             </span>
           </div>
         </Field>
+      </div>
+
+      <div className="mt-7 border-t border-stone-100 pt-5 dark:border-stone-800">
+        <h3 className="font-semibold text-stone-900 dark:text-stone-100">
+          QR payment (KHQR)
+        </h3>
+        <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
+          Your Bakong account. Once set, the Take Payment screen shows a
+          scannable KHQR with the order amount already filled in.
+        </p>
+
+        <div className="mt-4 space-y-4">
+          <Field
+            label="Bakong account ID"
+            hint='Looks like "yourname@aclb" — find it in your banking app'
+          >
+            <input
+              type="text"
+              value={bakongId}
+              onChange={(e) => setBakongId(e.target.value)}
+              placeholder="yourname@aclb"
+              autoComplete="off"
+              spellCheck={false}
+              className={inputClass}
+            />
+            {!bakongValid && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                Must look like &quot;name@bank&quot;.
+              </p>
+            )}
+          </Field>
+
+          <Field
+            label="Merchant name"
+            hint="Shown in the customer's banking app — max 25 characters"
+          >
+            <input
+              type="text"
+              value={bakongName}
+              onChange={(e) => setBakongName(e.target.value)}
+              maxLength={25}
+              placeholder={name || "POSCAFE"}
+              autoComplete="off"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field label="Merchant city" hint="Max 15 characters">
+            <input
+              type="text"
+              value={bakongCity}
+              onChange={(e) => setBakongCity(e.target.value)}
+              maxLength={15}
+              placeholder="Phnom Penh"
+              autoComplete="off"
+              className={inputClass}
+            />
+          </Field>
+        </div>
       </div>
 
       {error && (
@@ -503,6 +616,7 @@ function CreateUserModal({
         body: {
           name: form.name.trim(),
           username: form.username.trim(),
+          email: form.email.trim(),
           password: form.password,
           role: form.role,
           avatar,
@@ -583,6 +697,24 @@ function CreateUserModal({
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               placeholder="jane"
+              autoComplete="off"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
+            label="Email"
+            hint={
+              form.role === Role.ADMIN
+                ? "Required for the forgot-password code — without one this admin can't reset themselves"
+                : "Optional — cashiers get their password reset by an admin"
+            }
+          >
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="jane@example.com"
               autoComplete="off"
               className={inputClass}
             />
@@ -675,7 +807,20 @@ function StaffRow({
         </p>
         <p className="truncate text-xs text-stone-400 dark:text-stone-500">
           @{user.username}
+          {user.email && <span className="ml-1.5">· {user.email}</span>}
         </p>
+        {/* An admin with no email can't use the forgot-password flow, and
+            there's no one above them to reset it — surface that here rather
+            than at the moment they're locked out. */}
+        {user.role === Role.ADMIN && !user.email && (
+          <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-500">
+            <svg viewBox="0 0 24 24" className="h-3 w-3 flex-shrink-0" {...sw}>
+              <path d="M12 9v4M12 17h.01" />
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+            </svg>
+            No recovery email
+          </p>
+        )}
       </div>
       <span
         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_META[user.role].pill}`}
@@ -772,6 +917,7 @@ function EditUserModal({
 }) {
   const [name, setName] = useState(user.name);
   const [username, setUsername] = useState(user.username);
+  const [email, setEmail] = useState(user.email ?? "");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>(user.role);
   const [avatar, setAvatar] = useState<string | null>(user.avatar ?? null);
@@ -788,6 +934,9 @@ function EditUserModal({
         body: {
           name: name.trim(),
           username: username.trim(),
+          // "" clears the address on the backend; null would too, but the
+          // input can only ever produce a string.
+          email: email.trim(),
           role,
           avatar,
           ...(password ? { password } : {}),
@@ -856,6 +1005,24 @@ function EditUserModal({
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              autoComplete="off"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
+            label="Email"
+            hint={
+              role === Role.ADMIN
+                ? "Where the forgot-password code is sent"
+                : "Optional — cashiers get their password reset by an admin"
+            }
+          >
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="jane@example.com"
               autoComplete="off"
               className={inputClass}
             />
