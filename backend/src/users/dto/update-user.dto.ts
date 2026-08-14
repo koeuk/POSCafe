@@ -1,6 +1,7 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -25,6 +26,12 @@ export class UpdateUserDto {
   @IsString()
   @MinLength(6)
   password?: string;
+
+  // null or "" clears the recovery address; a string sets it.
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== '')
+  @IsEmail()
+  email?: string | null;
 
   @IsOptional()
   @IsEnum(Role)

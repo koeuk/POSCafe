@@ -15,6 +15,7 @@ export interface CreateUserData {
   name: string;
   username: string;
   password: string; // already hashed
+  email?: string | null;
   role?: Role;
   avatar?: string;
   allowedPages?: string[];
@@ -24,9 +25,20 @@ export interface NewUserInput {
   name: string;
   username: string;
   password: string; // plain text — hashed here
+  email?: string | null;
   role: Role;
   avatar?: string;
   allowedPages?: string[];
+}
+
+/**
+ * Trims and lowercases an email so the unique index and the reset lookup agree,
+ * and turns an empty string into null — the staff form submits "" when the
+ * field is cleared, and a blank address must not occupy the unique index.
+ */
+function normalizeEmail(email: string | null | undefined): string | null {
+  const value = email?.trim().toLowerCase();
+  return value ? value : null;
 }
 
 @Injectable()
@@ -55,6 +67,34 @@ export class UsersService {
       .addSelect('user.password')
       .where('user.username = :username', { username })
       .getOne();
+  }
+
+  /**
+   * Looks a user up by either username or email — the password-reset form
+   * accepts whichever the admin remembers. Email is matched case-insensitively
+   * because staff type it however their keyboard felt at the time; MySQL's
+   * default collation already does this, LOWER() makes it explicit and
+   * collation-independent.
+   */
+  findByIdentifier(identifier: string): Promise<User | null> {
+    const value = identifier.trim();
+    return this.repo
+      .createQueryBuilder('user')
+      .where('user.username = :value', { value })
+      .orWhere('LOWER(user.email) = LOWER(:value)', { value })
+      .getOne();
+  }
+
+  findByEmail(email: string): Promise<User | null> {
+    return this.repo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim() })
+      .getOne();
+  }
+
+  /** Sets a new password from an already-verified reset. `password` is plain text. */
+  async setPassword(id: number, password: string): Promise<void> {
+    await this.repo.update(id, { password: await bcrypt.hash(password, 10) });
   }
 
   create(data: CreateUserData): Promise<User> {
@@ -102,11 +142,16 @@ export class UsersService {
     if (existing) {
       throw new ConflictException('Username already taken');
     }
+    const email = normalizeEmail(input.email);
+    if (email && (await this.findByEmail(email))) {
+      throw new ConflictException('Email already in use');
+    }
     const password = await bcrypt.hash(input.password, 10);
     const user = await this.create({
       name: input.name,
       username: input.username,
       password,
+      email,
       role: input.role,
       avatar: input.avatar,
       // Page restrictions only apply to cashiers.
@@ -129,8 +174,16 @@ export class UsersService {
         throw new ConflictException('Username already taken');
       }
     }
+    const email = dto.email === undefined ? undefined : normalizeEmail(dto.email);
+    if (email) {
+      const existing = await this.findByEmail(email);
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Email already in use');
+      }
+    }
 
     const patch: Partial<User> = {};
+    if (email !== undefined) patch.email = email;
     if (dto.name !== undefined) patch.name = dto.name;
     if (dto.username !== undefined) patch.username = dto.username;
     if (dto.role !== undefined) patch.role = dto.role;

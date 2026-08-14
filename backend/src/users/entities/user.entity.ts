@@ -22,6 +22,12 @@ export class User {
   @Column({ select: false })
   password: string;
 
+  // Recovery address for the forgot-password OTP. Nullable and unique: MySQL
+  // allows many NULLs in a unique index, so accounts without an email (every
+  // cashier, by default) don't collide with each other.
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  email: string | null;
+
   // Profile picture URL (uploaded via /uploads/image). null = use initial.
   // Explicit type: TypeORM can't infer a column type from a `string | null` union.
   @Column({ type: 'varchar', nullable: true })
