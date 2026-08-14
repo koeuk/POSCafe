@@ -186,7 +186,8 @@ export class UsersService {
         throw new ConflictException('Username already taken');
       }
     }
-    const email = dto.email === undefined ? undefined : normalizeEmail(dto.email);
+    const email =
+      dto.email === undefined ? undefined : normalizeEmail(dto.email);
     if (email) {
       const existing = await this.findByEmail(email);
       if (existing && existing.id !== id) {

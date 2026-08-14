@@ -21,6 +21,14 @@ export interface KhqrPayload {
   expiresAt: number;
 }
 
+/** A reusable shop-wide KHQR: no amount, no expiry, safe to print. */
+export interface StaticKhqrPayload {
+  qr: string;
+  md5: string;
+  merchantName: string;
+  merchantCity: string;
+}
+
 /**
  * Builds a dynamic KHQR (Bakong) for an order: the amount is embedded, so the
  * customer scans and confirms without typing anything. Generation is offline —
@@ -34,6 +42,46 @@ export class KhqrService {
     private readonly settingsService: SettingsService,
     private readonly ordersService: OrdersService,
   ) {}
+
+  /**
+   * The shop's reusable KHQR — no amount and no expiry, so it can be printed
+   * and left on the counter. The customer types the amount themselves.
+   */
+  async staticQr(): Promise<StaticKhqrPayload> {
+    const settings = await this.settingsService.find();
+    const accountId = settings.bakongAccountId;
+    if (!accountId) {
+      throw new BadRequestException(
+        'QR payment is not set up yet — add your Bakong account in Settings.',
+      );
+    }
+
+    const merchantName = (settings.bakongMerchantName || settings.appName)
+      .trim()
+      .slice(0, 25);
+    const merchantCity = (settings.bakongMerchantCity || 'Phnom Penh')
+      .trim()
+      .slice(0, 15);
+
+    // Omitting amount + expiry is what makes this a static (reusable) KHQR.
+    const info = new IndividualInfo(accountId, merchantName, merchantCity, {
+      currency: khqrData.currency.usd,
+    });
+
+    const result = new BakongKHQR().generateIndividual(info);
+    if (result.status.code !== 0 || !result.data) {
+      throw new BadRequestException(
+        `Could not build the KHQR code: ${result.status.message ?? 'unknown error'}`,
+      );
+    }
+
+    return {
+      qr: result.data.qr,
+      md5: result.data.md5,
+      merchantName,
+      merchantCity,
+    };
+  }
 
   async forOrder(orderId: number): Promise<KhqrPayload> {
     const settings = await this.settingsService.find();

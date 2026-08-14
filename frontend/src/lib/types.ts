@@ -183,6 +183,14 @@ export interface Khqr {
   expiresAt: number;
 }
 
+// The shop's reusable KHQR (GET /payments/khqr/static): no amount, no expiry.
+export interface StaticKhqr {
+  qr: string;
+  md5: string;
+  merchantName: string;
+  merchantCity: string;
+}
+
 // Editable size row used by the product form and the stock manager:
 // raw string inputs, parsed/validated on save.
 export interface SizeRow {

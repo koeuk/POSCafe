@@ -222,7 +222,11 @@ export class AuthService {
       throw expired();
     }
     // A login token must not double as a reset token: same secret, different job.
-    if (payload.purpose !== RESET_TOKEN_PURPOSE || !payload.sub || !payload.rid) {
+    if (
+      payload.purpose !== RESET_TOKEN_PURPOSE ||
+      !payload.sub ||
+      !payload.rid
+    ) {
       throw expired();
     }
 
@@ -249,7 +253,9 @@ export class AuthService {
   }
 
   /** Newest code for this user that hasn't been used up. */
-  private latestOutstandingReset(userId: number): Promise<PasswordReset | null> {
+  private latestOutstandingReset(
+    userId: number,
+  ): Promise<PasswordReset | null> {
     return this.resets.findOne({
       where: { userId, consumedAt: IsNull() },
       order: { id: 'DESC' },

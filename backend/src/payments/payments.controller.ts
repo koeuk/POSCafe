@@ -18,6 +18,14 @@ export class PaymentsController {
     private readonly khqrService: KhqrService,
   ) {}
 
+  // The shop's reusable KHQR for the printable counter poster. Declared before
+  // the ':orderId' route below so "static" isn't parsed as an order id.
+  @RequiresPage('qr', 'payments')
+  @Get('khqr/static')
+  staticKhqr() {
+    return this.khqrService.staticQr();
+  }
+
   // The KHQR the customer scans for this order (amount already embedded).
   @RequiresPage('payments')
   @Get('khqr/:orderId')

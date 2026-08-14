@@ -9,9 +9,10 @@
 // checkout (pricing, discounts, stock), payment (change, paid+completed),
 // refund (permissions, restock, revenue exclusion) and the day-close report.
 //
-// Runs against a throwaway MySQL database (poscafe_test) that is dropped and
-// recreated on every run; the app builds its schema there via synchronize.
-process.env.DB_NAME = 'poscafe_test';
+// Runs against a throwaway MySQL database (poscafe_test_pos) that is dropped and
+// recreated on every run (one database per suite so parallel Jest
+// workers never clobber each other); the app builds its schema there via synchronize.
+process.env.DB_NAME = 'poscafe_test_pos';
 process.env.DB_SYNCHRONIZE = 'true';
 process.env.DB_MIGRATIONS_RUN = 'false';
 
@@ -39,8 +40,8 @@ describe('POS flow (e2e)', () => {
       user: process.env.DB_USER ?? 'root',
       password: process.env.DB_PASSWORD ?? '',
     });
-    await conn.query('DROP DATABASE IF EXISTS poscafe_test');
-    await conn.query('CREATE DATABASE poscafe_test CHARACTER SET utf8mb4');
+    await conn.query('DROP DATABASE IF EXISTS poscafe_test_pos');
+    await conn.query('CREATE DATABASE poscafe_test_pos CHARACTER SET utf8mb4');
     await conn.end();
 
     const moduleRef = await Test.createTestingModule({
