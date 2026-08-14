@@ -29,8 +29,8 @@ export class OrdersController {
     return this.ordersService.create(userId, dto);
   }
 
-  // Read by the Orders, Order History, Kitchen, Take Payment and Dashboard
-  // screens. Optional filters: ?status=pending, ?mine=true (only my orders),
+  // Read by the Orders, Order History, Take Payment and Dashboard screens.
+  // Optional filters: ?status=pending, ?mine=true (only my orders),
   // ?unpaid=true (orders without a payment yet — for the Take Payment screen).
   @RequiresPage('orders', 'order-history', 'payments', 'dashboard')
   @Get()
@@ -54,7 +54,7 @@ export class OrdersController {
     return this.ordersService.findOne(id);
   }
 
-  // Status changes come from the Orders, Order History and Kitchen screens.
+  // Status changes come from the Orders and Order History screens.
   @RequiresPage('orders', 'order-history')
   @Patch(':id/status')
   updateStatus(
