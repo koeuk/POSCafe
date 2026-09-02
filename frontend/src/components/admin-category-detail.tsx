@@ -20,22 +20,39 @@ export function AdminCategoryDetail({
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
+      <header className={`mb-6 flex flex-wrap items-start justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
-          <p className="text-sm font-medium text-stone-400 dark:text-stone-500">Menu Category</p>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+          {/* Same breadcrumb-plus-Back header as the product detail page. */}
+          <nav className="flex items-center gap-1.5 text-sm text-stone-400 dark:text-stone-500">
+            <Link href={`${base}/categories`} className="hover:underline">
+              Categories
+            </Link>
+            <span>/</span>
+            <span className="text-stone-600 dark:text-stone-300">
+              {category.name}
+            </span>
+          </nav>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             {category.name}
           </h1>
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
             {category.description || "No category description has been added."}
           </p>
         </div>
-        <Link
-          href={`${base}/categories`}
-          className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
-        >
-          Categories
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`${base}/categories`}
+            className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+          >
+            ← Back
+          </Link>
+          <Link
+            href={`${base}/categories?edit=${category.id}`}
+            className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
+          >
+            Edit category
+          </Link>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
