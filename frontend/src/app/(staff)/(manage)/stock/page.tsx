@@ -98,7 +98,7 @@ function Stock() {
     <main className="mx-auto max-w-7xl">
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-pos-page-fg">
-          Stock
+          Inventory
         </h1>
         <p className="text-sm text-pos-page-fg/60">
           Manage sizes and how many items are in stock.

@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useBranding } from "@/lib/branding-context";
-import { effectivePrice, formatPrice, hasDiscount, hasSizes } from "@/lib/pricing";
+import {
+  effectivePrice,
+  formatPrice,
+  hasDiscount,
+  hasSizes,
+} from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
 import { useMenuFilter } from "@/lib/use-menu-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -37,12 +42,31 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
 
   const hasResults = visible.length > 0;
 
+  // The brand row folds away once the customer starts scrolling, leaving the
+  // search box and category chips pinned. On a phone that row is a third of
+  // the header, and a customer who is already scrolling knows whose menu they
+  // are reading.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    const top = scrollRef.current?.scrollTop ?? 0;
+    // Hysteresis: fold at 48px but only unfold near the very top, so a scroll
+    // that comes to rest on the threshold can't flutter the header open and
+    // shut (the fold itself changes the scroll height, which would re-trigger).
+    setCollapsed((was) => (was ? top > 12 : top > 48));
+  }, []);
+
   return (
     <div className="font-ios flex h-screen flex-col bg-amber-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
       {/* Header (pinned) */}
       {/* Tighter vertical rhythm on phones — the header is pinned, so every
           pixel it takes is a pixel of menu the customer can't see. */}
-      <header className="relative flex-shrink-0 overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-green-900 px-4 pb-4 pt-5 text-emerald-50 sm:px-5 sm:pb-7 sm:pt-9 dark:from-stone-900 dark:via-stone-900 dark:to-stone-950 dark:text-amber-50">
+      <header
+        className={`relative flex-shrink-0 overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-green-900 px-4 text-emerald-50 transition-[padding] duration-300 motion-reduce:transition-none sm:px-5 dark:from-stone-900 dark:via-stone-900 dark:to-stone-950 dark:text-amber-50 ${
+          collapsed ? "pb-3 pt-3 sm:pb-4 sm:pt-4" : "pb-4 pt-5 sm:pb-7 sm:pt-9"
+        }`}
+      >
         {/* Soft depth glows */}
         <div
           aria-hidden
@@ -54,59 +78,82 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
         />
 
         <div className="relative mx-auto max-w-6xl">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3.5">
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl}
-                  alt={appName}
-                  className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-emerald-950/40"
-                />
-              ) : (
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pos-button text-pos-button-fg shadow-lg shadow-emerald-950/40">
-                  <CupIcon />
-                </span>
-              )}
-              <div>
-                <h1
-                  className={`${display.className} text-3xl font-black leading-none tracking-tight`}
-                >
-                  {appName}
-                </h1>
-                <p className="mt-1 text-sm font-medium text-emerald-100/75 sm:mt-1.5 dark:text-amber-200/70">
-                  Freshly brewed, made to order
-                </p>
+          {/* grid-rows 1fr→0fr animates to the content's real height, which
+              max-height guesswork can't do without clipping a long shop name. */}
+          <div
+            className={`grid transition-all duration-300 motion-reduce:transition-none ${
+              collapsed
+                ? "grid-rows-[0fr] opacity-0"
+                : "grid-rows-[1fr] opacity-100"
+            }`}
+            // Folded content is off-limits to tab and screen readers.
+            aria-hidden={collapsed}
+          >
+            <div className="overflow-hidden">
+              <div className="flex items-center gap-3.5">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt={appName}
+                    className="h-12 w-12 rounded-2xl object-cover shadow-lg shadow-emerald-950/40"
+                  />
+                ) : (
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pos-button text-pos-button-fg shadow-lg shadow-emerald-950/40">
+                    <CupIcon />
+                  </span>
+                )}
+                <div>
+                  <h1
+                    className={`${display.className} text-3xl font-black leading-none tracking-tight`}
+                  >
+                    {appName}
+                  </h1>
+                  <p className="mt-1 text-sm font-medium text-emerald-100/75 sm:mt-1.5 dark:text-amber-200/70">
+                    Freshly brewed, made to order
+                  </p>
+                </div>
               </div>
+            </div>
+          </div>
+
+          {/* Search — always visible. The theme toggle rides alongside it
+              rather than in the brand row, so folding doesn't take it away. */}
+          <div
+            className={`flex items-center gap-3 transition-[margin] duration-300 motion-reduce:transition-none ${
+              collapsed ? "mt-0" : "mt-4 sm:mt-6"
+            }`}
+          >
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
+                <SearchIcon />
+              </span>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search a drink, pastry, or category…"
+                className="w-full rounded-2xl border border-white/70 bg-white/95 py-3 pl-11 pr-11 text-sm text-stone-900 shadow-lg shadow-emerald-950/20 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/40 sm:py-3.5 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-700"
+                >
+                  <ClearIcon />
+                </button>
+              )}
             </div>
             <ThemeToggle />
           </div>
 
-          {/* Search */}
-          <div className="relative mt-4 sm:mt-6">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
-              <SearchIcon />
-            </span>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search a drink, pastry, or category…"
-              className="w-full rounded-2xl border border-white/70 bg-white/95 py-3 pl-11 pr-11 text-sm text-stone-900 shadow-lg shadow-emerald-950/20 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/40 sm:py-3.5 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                aria-label="Clear search"
-                className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-700"
-              >
-                <ClearIcon />
-              </button>
-            )}
-          </div>
-
           {/* Category filter — lives on the header, stays visible while scrolling */}
-          <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pt-1 pb-1 sm:mt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            className={`-mx-1 flex gap-2 overflow-x-auto px-1 pt-1 pb-1 transition-[margin] duration-300 motion-reduce:transition-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+              collapsed ? "mt-2" : "mt-3 sm:mt-4"
+            }`}
+          >
             <Chip
               label="All"
               active={activeCat === "all"}
@@ -125,7 +172,11 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
       </header>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+      >
         <div className="mx-auto max-w-6xl px-4 pb-20">
           {/* Promo banner */}
           {topDiscount > 0 && (

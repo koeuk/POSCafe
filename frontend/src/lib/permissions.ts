@@ -2,7 +2,7 @@
 //
 // `key` must match the `key` on the corresponding NAV item in
 // components/sidebar.tsx. Every sidebar page is grantable — management pages
-// (Dashboard, Categories, Products, Stock, Reports) have cashier routes under
+// (Dashboard, Categories, Products, Inventory, Reports) have cashier routes under
 // /cashier/* (see CASHIER_PAGE_HREFS) and are only visible once an admin grants
 // them via allowedPages. Routes with no page key here (e.g. /settings) stay
 // admin-only — see ADMIN_ONLY_PREFIXES below.
@@ -21,7 +21,7 @@ export const CASHIER_PAGES: PagePermission[] = [
   { key: "payments", label: "Payments" },
   { key: "categories", label: "Categories" },
   { key: "products", label: "Products" },
-  { key: "stock", label: "Stock" },
+  { key: "stock", label: "Inventory" },
   { key: "order-history", label: "Order History" },
   { key: "reports", label: "Reports" },
   { key: "qr", label: "QR Code" },
