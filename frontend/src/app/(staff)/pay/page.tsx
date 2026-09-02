@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { api } from "@/lib/api";
@@ -37,7 +38,12 @@ function PayScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [alreadyPaid, setAlreadyPaid] = useState(false);
+  // The payment already on file, if any. Kept whole rather than as a boolean:
+  // it carries the change owed, which is the one number the cashier needs when
+  // they land back here after a reload or a lost response.
+  const [alreadyPaid, setAlreadyPaid] = useState<Payment | null>(null);
+  // Synchronous double-submit guard — see confirm().
+  const submittingRef = useRef(false);
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [tendered, setTendered] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -51,7 +57,7 @@ function PayScreen() {
       setError(null);
       setOrder(null);
       setPaid(null);
-      setAlreadyPaid(false);
+      setAlreadyPaid(null);
       setMethod(PaymentMethod.CASH);
       setTendered("");
       try {
@@ -64,7 +70,7 @@ function PayScreen() {
             setOrder(ord);
             // The API client returns `undefined` (not `null`) for an empty
             // body, so use a loose check to catch both "no payment" cases.
-            setAlreadyPaid(existing != null);
+            setAlreadyPaid(existing);
           }
         } else {
           const list = await api<Order[]>("/orders?unpaid=true");
@@ -110,6 +116,12 @@ function PayScreen() {
 
   async function confirm() {
     if (!order) return;
+    // `submitting` only disables the button on the next render, so a
+    // double-tap on a laggy tablet enters here twice. The backend rejects the
+    // second with "already been paid" — but that error would replace the
+    // success screen and take the change owed with it.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -123,8 +135,25 @@ function PayScreen() {
       });
       setPaid(payment);
     } catch (err) {
+      // The payment may well have committed and only the response was lost
+      // (WiFi drop, tablet sleep, proxy timeout). Showing "Payment failed"
+      // then would be a lie that leaves the cashier with the customer's cash
+      // and no idea what change to hand back. Ask the server what actually
+      // happened before reporting a failure.
+      try {
+        const settled = await api<Payment | null>(
+          `/payments/order/${order.id}`,
+        );
+        if (settled) {
+          setPaid(settled);
+          return;
+        }
+      } catch {
+        // Still unreachable — fall through to the original error.
+      }
       setError(err instanceof Error ? err.message : "Payment failed");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }

@@ -156,7 +156,7 @@ export class ProductsService {
       // but it stays in the table waiting for the next query that sums
       // products.stock to report cups that don't exist. Journal the drop so
       // the correction is visible rather than silent.
-      if (sizes.length > 0 && product.stock !== 0) {
+      if (sizes !== null && sizes.length > 0 && product.stock !== 0) {
         await this.recordMovement(
           id,
           null,

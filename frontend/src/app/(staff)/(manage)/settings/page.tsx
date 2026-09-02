@@ -149,6 +149,8 @@ function AppSettingsPanel() {
   const [bakongCity, setBakongCity] = useState("");
   const [khqrDynamic, setKhqrDynamic] = useState(true);
   const [savedPayment, setSavedPayment] = useState<PaymentConfig | null>(null);
+  // True when GET /settings/payment failed, so the Bakong fields never loaded.
+  const [paymentLoadFailed, setPaymentLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -165,7 +167,11 @@ function AppSettingsPanel() {
         setKhqrDynamic(cfg.khqrDynamic);
       })
       .catch(() => {
-        // Non-fatal: the rest of the form still works without it.
+        // Non-fatal for the rest of the form, but it must be visible: with no
+        // loaded config the payment fields sit empty, and saving would send
+        // those blanks as "clear it". `savedPayment` stays null, which is what
+        // stops handleSave including them at all.
+        if (!cancelled) setPaymentLoadFailed(true);
       });
     return () => {
       cancelled = true;
@@ -186,7 +192,8 @@ function AppSettingsPanel() {
     Number.isInteger(rateNum) && rateNum >= 100 && rateNum <= 100000;
   // A Bakong id looks like "name@bank"; empty is allowed (QR stays off).
   const bakongValid =
-    bakongId.trim() === "" || /^[\w.-]{1,32}@[a-zA-Z0-9]{2,16}$/.test(bakongId.trim());
+    bakongId.trim() === "" ||
+    /^[\w.-]{1,32}@[a-zA-Z0-9]{2,16}$/.test(bakongId.trim());
   const paymentDirty =
     savedPayment !== null &&
     (bakongId.trim() !== (savedPayment.bakongAccountId ?? "") ||
@@ -213,19 +220,29 @@ function AppSettingsPanel() {
           appName: name.trim(),
           logoUrl: logo,
           khrPerUsd: rateNum,
+          // Only send the payment fields when they actually loaded. The
+          // backend reads an explicit null as "clear it", so sending the
+          // blank defaults after a failed GET would wipe a configured Bakong
+          // account — silently turning off QR payments shop-wide — for an
+          // admin who only came here to rename the shop.
+          ...(savedPayment !== null
+            ? {
+                bakongAccountId: bakongId.trim() || null,
+                bakongMerchantName: bakongName.trim() || null,
+                bakongMerchantCity: bakongCity.trim() || null,
+                khqrDynamic,
+              }
+            : {}),
+        },
+      });
+      await refresh();
+      if (savedPayment !== null)
+        setSavedPayment({
           bakongAccountId: bakongId.trim() || null,
           bakongMerchantName: bakongName.trim() || null,
           bakongMerchantCity: bakongCity.trim() || null,
           khqrDynamic,
-        },
-      });
-      await refresh();
-      setSavedPayment({
-        bakongAccountId: bakongId.trim() || null,
-        bakongMerchantName: bakongName.trim() || null,
-        bakongMerchantCity: bakongCity.trim() || null,
-        khqrDynamic,
-      });
+        });
       setSuccess("App settings saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -296,6 +313,14 @@ function AppSettingsPanel() {
           Your Bakong account. Once set, the Take Payment screen shows a
           scannable KHQR with the order amount already filled in.
         </p>
+
+        {paymentLoadFailed && (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            Couldn&apos;t load the current QR settings, so these fields are
+            blank — they are <strong>not</strong> your saved values. Saving
+            won&apos;t change them. Reload the page to try again.
+          </p>
+        )}
 
         <div className="mt-4 space-y-4">
           <Field
@@ -420,9 +445,7 @@ function QrTypeOption({
               : "border-stone-300 dark:border-stone-600"
           }`}
         >
-          {selected && (
-            <span className="h-2 w-2 rounded-full bg-pos-button" />
-          )}
+          {selected && <span className="h-2 w-2 rounded-full bg-pos-button" />}
         </span>
         <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
           {title}
@@ -602,15 +625,15 @@ function StaffPanel() {
             {[...users]
               .sort((a, b) => b.id - a.id)
               .map((u) => (
-              <StaffRow
-                key={u.id}
-                user={u}
-                isSelf={u.id === currentUser?.id}
-                onEdit={() => setEditing(u)}
-                onDelete={() => setDeleting(u)}
-                onPermissions={() => setPermitting(u)}
-              />
-            ))}
+                <StaffRow
+                  key={u.id}
+                  user={u}
+                  isSelf={u.id === currentUser?.id}
+                  onEdit={() => setEditing(u)}
+                  onDelete={() => setDeleting(u)}
+                  onPermissions={() => setPermitting(u)}
+                />
+              ))}
           </ul>
         )}
       </div>
@@ -810,7 +833,10 @@ function CreateUserModal({
           </Field>
 
           {form.role === Role.CASHIER && (
-            <Field label="Page access" hint="Sidebar pages this cashier can see">
+            <Field
+              label="Page access"
+              hint="Sidebar pages this cashier can see"
+            >
               <PagePermissions value={pages} onChange={setPages} />
             </Field>
           )}
@@ -842,7 +868,6 @@ function CreateUserModal({
     </div>
   );
 }
-
 
 // ── Staff row + ⋮ dropdown ───────────────────────────────────────────────
 
@@ -1254,9 +1279,7 @@ function PagePermissions({
 }) {
   function toggle(key: string) {
     onChange(
-      value.includes(key)
-        ? value.filter((k) => k !== key)
-        : [...value, key],
+      value.includes(key) ? value.filter((k) => k !== key) : [...value, key],
     );
   }
 

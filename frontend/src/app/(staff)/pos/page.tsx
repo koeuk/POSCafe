@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { ProductDetailDrawer } from "@/components/product-detail-drawer";
 import { rolePathBase } from "@/lib/permissions";
@@ -188,10 +188,20 @@ function POSScreen() {
     [],
   );
 
+  // Synchronous double-submit guard — see handleCheckout.
+  const placingRef = useRef(false);
+
   const clearCart = useCallback(() => setCart([]), []);
 
   async function handleCheckout() {
     if (cart.length === 0) return;
+    // `placing` only disables the button on the NEXT render, so two taps
+    // dispatched in the same frame both get past it. Order creation has no
+    // idempotency key and the backend happily creates a second order, taking
+    // the stock with it — the customer pays once and the books show two
+    // orders. A ref flips synchronously, so the second tap returns here.
+    if (placingRef.current) return;
+    placingRef.current = true;
     setPlacing(true);
     setCheckoutError(null);
     setLastOrder(null);
@@ -223,6 +233,7 @@ function POSScreen() {
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Checkout failed");
     } finally {
+      placingRef.current = false;
       setPlacing(false);
     }
   }

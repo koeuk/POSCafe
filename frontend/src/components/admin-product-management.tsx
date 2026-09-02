@@ -404,6 +404,11 @@ export function AdminProductManagement({
 
     // Sizes: pick a size + price per row. Quantities are set on the Stock page.
     const parsedSizes = buildSizes(productForm.sizes);
+    // Did the product being edited actually have sizes? Distinguishes
+    // "cleared them deliberately" from "there was never a size editor".
+    const hadSizes =
+      productForm.id !== null &&
+      (products.find((p) => p.id === productForm.id)?.variants?.length ?? 0) > 0;
     if (parsedSizes instanceof Error) {
       setError(parsedSizes.message);
       return;
@@ -419,7 +424,15 @@ export function AdminProductManagement({
       discountPercent: Number(productForm.discountPercent || "0"),
       image: productForm.image.trim() || undefined,
       gallery: productForm.gallery.length > 0 ? productForm.gallery : null,
-      sizes: parsedSizes,
+      // `null` means "no size rows on the form", which the backend reads as
+      // "remove every size" — it deletes the variant rows and the stock they
+      // hold. That is only ever intended when the product HAD sizes and the
+      // admin cleared them; when the form simply never showed a size editor
+      // (an unsized product, or an empty size catalog) the field must be
+      // omitted so the existing variants are left untouched.
+      ...(parsedSizes !== null || hadSizes
+        ? { sizes: parsedSizes }
+        : {}),
       categoryId: Number(productForm.categoryId),
       isAvailable: productForm.isAvailable,
     };

@@ -115,8 +115,17 @@ export function landingHref(
   allowedPages: string[] | null | undefined,
 ): string {
   if (role === "admin") return "/dashboard";
-  return firstAllowedHref(resolveCashierPages(allowedPages)) ?? "/dashboard";
+  // A cashier granted nothing has nowhere legitimate to go. Falling back to
+  // /dashboard sends them to a page PageGuard immediately bounces, and
+  // PageGuard's own fallback is /login, which bounces straight back here —
+  // an infinite loop with no way to even reach the logout button. Both
+  // fallbacks must therefore agree on the same terminal page.
+  return firstAllowedHref(resolveCashierPages(allowedPages)) ?? NO_ACCESS_HREF;
 }
+
+// Where a user with no granted pages lands. A real page (not a redirect
+// target) so the loop terminates and they can sign out.
+export const NO_ACCESS_HREF = "/no-access";
 
 // Admin-only routes that have no cashier-assignable page key. Cashiers are
 // denied these even though they don't map to a CASHIER_PAGES entry.

@@ -263,6 +263,21 @@ export class OrdersService {
         );
       }
 
+      // COMPLETED is terminal and stock was decremented at creation, so
+      // completing an unpaid order strands the cups: they can never be
+      // reclaimed (no transition out of COMPLETED) and the sale never reaches
+      // revenue, which only counts paymentStatus = PAID. That is an
+      // unauditable way to give away inventory, so payment has to come first —
+      // payments.service marks the order COMPLETED itself once money lands.
+      if (
+        status === OrderStatus.COMPLETED &&
+        order.paymentStatus !== PaymentStatus.PAID
+      ) {
+        throw new BadRequestException(
+          'Take payment before completing this order (or cancel it to return the stock)',
+        );
+      }
+
       // Cancelling returns the reserved cups to inventory. `create()` decrements
       // stock up front, so without this the units are lost for good.
       if (status === OrderStatus.CANCELLED) {

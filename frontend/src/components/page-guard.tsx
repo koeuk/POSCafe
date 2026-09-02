@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
+  NO_ACCESS_HREF,
   firstAllowedHref,
   isPathAllowed,
   resolveCashierPages,
@@ -29,8 +30,15 @@ export function PageGuard({ children }: { children: ReactNode }) {
       user.role === Role.ADMIN
         ? "/dashboard"
         : firstAllowedHref(resolveCashierPages(user.allowedPages));
-    router.replace(target ?? "/login");
-  }, [loading, user, allowed, router]);
+    // Must match landingHref's fallback. Redirecting to /login instead would
+    // bounce off the login page (which sends a signed-in user back to their
+    // landing href) and loop forever.
+    router.replace(target ?? NO_ACCESS_HREF);
+    // `pathname` matters even though only `allowed` is read: navigating from
+    // one blocked page to another leaves `allowed` false on both sides, so
+    // without it the effect never re-runs and the redirect never fires —
+    // leaving the user stuck on "Redirecting…" for good.
+  }, [loading, user, allowed, pathname, router]);
 
   if (!loading && user && !allowed) {
     return (

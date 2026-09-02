@@ -210,12 +210,24 @@ export class ReportsService {
       throw new BadRequestException('date must be YYYY-MM-DD');
     }
 
-    // Payments taken on the target day and not (yet) refunded.
+    // Payments taken on the target day, excluding those refunded *that same
+    // day* — a same-day refund never reached the till, so it must not appear
+    // in the cash expected in the drawer.
+    //
+    // A refund issued on a LATER day must NOT retroactively remove the payment
+    // here: the money genuinely was in Monday's drawer and was counted against
+    // Monday's physical cash-up. Filtering on `refundedAt IS NULL` alone would
+    // rewrite an already-closed day every time an old order is refunded, and
+    // the same amount would be deducted twice — once by vanishing from its own
+    // day, and again in the refunds bucket of the day it was refunded on.
     const takenQb = () =>
       this.paymentRepo
         .createQueryBuilder('p')
         .where("DATE_FORMAT(p.createdAt, '%Y-%m-%d') = :d", { d: target })
-        .andWhere('p.refundedAt IS NULL');
+        .andWhere(
+          "(p.refundedAt IS NULL OR DATE_FORMAT(p.refundedAt, '%Y-%m-%d') > :d)",
+          { d: target },
+        );
 
     const byMethodRaw = await takenQb()
       .select('p.method', 'method')
