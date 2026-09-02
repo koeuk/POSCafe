@@ -472,8 +472,11 @@ function ProductStock({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Set when removing a size would discard stock — see removeExistingSize.
+  const [pendingSizeRemoval, setPendingSizeRemoval] = useState<{
+    size: string;
+    stock: number;
+  } | null>(null);
   const [removedSizes, setRemovedSizes] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
 
@@ -555,7 +558,22 @@ function ProductStock({
     setNewRows((rows) => rows.filter((_, i) => i !== index));
   }
 
+  /**
+   * Dropping a size deletes its variant row on save, taking the stock with it.
+   * Ask first when there is anything to lose — the size catalog above already
+   * confirms its own deletes, and losing 28 cups to a stray click is worse
+   * than one extra dialog. An empty size goes without ceremony.
+   */
   function removeExistingSize(size: string) {
+    const onHand = Math.max(0, Number(values[size] ?? "0"));
+    if (onHand > 0) {
+      setPendingSizeRemoval({ size, stock: onHand });
+      return;
+    }
+    commitSizeRemoval(size);
+  }
+
+  function commitSizeRemoval(size: string) {
     setSaved(false);
     setRemovedSizes((prev) => {
       const next = new Set(prev);
@@ -569,19 +587,6 @@ function ProductStock({
     setEditing(false);
     setError(null);
     setSaved(false);
-  }
-
-  async function remove() {
-    setDeleting(true);
-    setError(null);
-    try {
-      await api(`/products/${product.id}`, { method: "DELETE" });
-      await onSaved(); // product drops off the list
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete");
-      setDeleting(false);
-      setConfirmOpen(false);
-    }
   }
 
   function set(key: string, v: string) {
@@ -761,16 +766,6 @@ function ProductStock({
               {saved ? "Saved ✓" : "Edit"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            disabled={deleting}
-            aria-label={`Delete ${product.name}`}
-            title="Delete product"
-            className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg border border-stone-200 text-stone-400 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-500 dark:hover:border-red-500/40 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-          >
-            ✕
-          </button>
         </div>
       </div>
 
@@ -952,13 +947,19 @@ function ProductStock({
         <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
       )}
 
-      {confirmOpen && (
+      {pendingSizeRemoval && (
         <ConfirmDialog
-          title="Delete product"
-          message={`Delete "${product.name}"? This permanently removes the product and its stock.`}
-          busy={deleting}
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={remove}
+          title="Remove size"
+          message={
+            `Remove "${pendingSizeRemoval.size}" from ${product.name}? ` +
+            `${pendingSizeRemoval.stock} in stock will be discarded when you save.`
+          }
+          confirmLabel="Remove size"
+          onCancel={() => setPendingSizeRemoval(null)}
+          onConfirm={() => {
+            commitSizeRemoval(pendingSizeRemoval.size);
+            setPendingSizeRemoval(null);
+          }}
         />
       )}
     </li>

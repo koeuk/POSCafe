@@ -150,6 +150,22 @@ export class ProductsService {
     // Only reconcile size variants when sizes were part of the update.
     if (sizes !== undefined) {
       await this.syncVariants(id, sizes, userId ?? null);
+      // A sized product keeps its quantities on the variants, so the base
+      // column must not keep the figure it held while the product was
+      // sizeless. totalStock() prefers variants and hides the stale number,
+      // but it stays in the table waiting for the next query that sums
+      // products.stock to report cups that don't exist. Journal the drop so
+      // the correction is visible rather than silent.
+      if (sizes.length > 0 && product.stock !== 0) {
+        await this.recordMovement(
+          id,
+          null,
+          -product.stock,
+          0,
+          userId ?? null,
+        );
+        await this.repo.update(id, { stock: 0 });
+      }
     }
     return this.findOne(id);
   }
