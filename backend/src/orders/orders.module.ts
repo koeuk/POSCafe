@@ -8,6 +8,9 @@ import { OrdersController } from './orders.controller';
 import { OrdersGateway } from './orders.gateway';
 import { OrdersService } from './orders.service';
 
+import { InventoryModule } from '../inventory/inventory.module';
+import { RecipesModule } from '../recipes/recipes.module';
+
 @Module({
   // AuthModule gives the gateway a JwtService to verify socket tokens;
   // UsersModule lets it re-check the account is still active on connect.
@@ -15,6 +18,8 @@ import { OrdersService } from './orders.service';
     TypeOrmModule.forFeature([Order, OrderItem]),
     AuthModule,
     UsersModule,
+    InventoryModule,
+    RecipesModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService, OrdersGateway],

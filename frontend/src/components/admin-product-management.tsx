@@ -532,8 +532,21 @@ export function AdminProductManagement({
                         <td className="px-4 py-3">
                           <StatusPill active={category.isActive} activeLabel="Active" inactiveLabel="Hidden" />
                         </td>
-                        <td className="px-4 py-3 text-stone-500 dark:text-stone-400">
-                          {category.image ? "Attached" : "-"}
+                        <td className="px-4 py-3">
+                          {category.image ? (
+                            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-stone-200/80 bg-stone-100 shadow-sm dark:border-stone-800 dark:bg-stone-800">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={category.image}
+                                alt={category.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-stone-100 text-xs font-medium text-stone-400 dark:bg-stone-800/80 dark:text-stone-500">
+                              —
+                            </div>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <RowActions

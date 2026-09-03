@@ -84,6 +84,50 @@ export interface StockMovement {
   createdAt: string;
 }
 
+// Raw materials, packaging supplies (cups, lids, straws) & ingredients
+export interface InventoryItem {
+  id: number;
+  name: string;
+  category: string; // 'packaging' | 'ingredient' | 'other'
+  unit: string; // 'pcs', 'g', 'ml', 'kg', 'L'
+  stockQuantity: string; // DECIMAL-as-string
+  minThreshold: string; // DECIMAL-as-string
+  costPerUnit: string; // DECIMAL-as-string
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface InventoryMovement {
+  id: number;
+  inventoryItemId: number;
+  inventoryItem?: InventoryItem;
+  delta: string;
+  stockAfter: string;
+  reason: string;
+  orderId?: number | null;
+  userId?: number | null;
+  user?: { id: number; name: string } | null;
+  createdAt: string;
+}
+
+export interface RecipeItem {
+  id: number;
+  recipeId: number;
+  inventoryItemId: number;
+  inventoryItem?: InventoryItem;
+  quantity: string; // DECIMAL-as-string
+}
+
+export interface Recipe {
+  id: number;
+  productId: number;
+  product?: Product;
+  size: string | null;
+  items: RecipeItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Master cup-size catalog (Small / Medium / Large), managed on the Stock page.
 export interface Size {
   id: number;

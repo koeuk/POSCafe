@@ -12,10 +12,14 @@ import {
   type StockMovement,
 } from "@/lib/types";
 
+import { ConsumablesManager } from "@/components/consumables-manager";
+import { RecipesManager } from "@/components/recipes-manager";
+
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
 
 function Stock() {
+  const [activeTab, setActiveTab] = useState<"consumables" | "recipes" | "products">("consumables");
   const [products, setProducts] = useState<Product[]>([]);
   const [sizes, setSizes] = useState<Size[]>([]);
   const [soldByProduct, setSoldByProduct] = useState<Record<number, number>>({});
@@ -96,13 +100,37 @@ function Stock() {
 
   return (
     <main className="mx-auto max-w-7xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-pos-page-fg">
-          Inventory
-        </h1>
-        <p className="text-sm text-pos-page-fg/60">
-          Manage sizes and how many items are in stock.
-        </p>
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-pos-page-fg">
+            Inventory & Recipe Management
+          </h1>
+          <p className="text-sm text-pos-page-fg/60">
+            Manage cups, lids, straws, raw ingredients, drink recipes, and finished product stock.
+          </p>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex items-center rounded-2xl border border-stone-200 bg-stone-100/70 p-1 dark:border-stone-800 dark:bg-stone-900">
+          {[
+            { id: "consumables", label: "🥤 Consumable Supplies (កែវ/ទុយយោ/គ្រឿងផ្សំ)" },
+            { id: "recipes", label: "📜 Drink Recipes (រូបមន្តផ្សំ)" },
+            { id: "products", label: "☕ Drink Stock (ចំនួនកែវសម្រេច)" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+                activeTab === tab.id
+                  ? "bg-white text-stone-900 shadow-md dark:bg-stone-800 dark:text-stone-100"
+                  : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </header>
 
       {error && (
@@ -111,7 +139,12 @@ function Stock() {
         </p>
       )}
 
-      {/* At-a-glance totals */}
+      {activeTab === "consumables" && <ConsumablesManager />}
+
+      {activeTab === "recipes" && <RecipesManager />}
+
+      {activeTab === "products" && (
+        <>
       <div className="mb-6 grid grid-cols-3 gap-3">
         <SummaryCard
           label="Items in stock"
@@ -179,6 +212,8 @@ function Stock() {
       )}
 
       <MovementsFeed movements={movements} />
+        </>
+      )}
     </main>
   );
 }

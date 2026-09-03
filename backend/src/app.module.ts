@@ -13,6 +13,9 @@ import { SizesModule } from './sizes/sizes.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 
+import { InventoryModule } from './inventory/inventory.module';
+import { RecipesModule } from './recipes/recipes.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -50,6 +53,8 @@ import { UsersModule } from './users/users.module';
     SettingsModule,
     SizesModule,
     UploadsModule,
+    InventoryModule,
+    RecipesModule,
   ],
   controllers: [],
   providers: [],

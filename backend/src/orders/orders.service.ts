@@ -11,6 +11,9 @@ import { roundCents, toNumber } from '../common/money';
 import { Payment } from '../payments/entities/payment.entity';
 import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
+import { InventoryItem } from '../inventory/entities/inventory-item.entity';
+import { InventoryMovement } from '../inventory/entities/inventory-movement.entity';
+import { Recipe } from '../recipes/entities/recipe.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -115,6 +118,49 @@ export class OrdersService {
           }
           product.stock -= line.quantity;
           await manager.save(product);
+        }
+
+        // Deduct consumable/packaging inventory based on Recipe (if defined)
+        let recipe = await manager.findOne(Recipe, {
+          where: { productId: product.id, size: size ?? (null as any) },
+          relations: { items: true },
+        });
+        if (!recipe && size) {
+          recipe = await manager.findOne(Recipe, {
+            where: { productId: product.id, size: null as any },
+            relations: { items: true },
+          });
+        }
+
+        if (recipe && recipe.items && recipe.items.length > 0) {
+          for (const rItem of recipe.items) {
+            const requiredQty = Number(rItem.quantity) * line.quantity;
+            const invItem = await manager.findOne(InventoryItem, {
+              where: { id: rItem.inventoryItemId },
+              lock: { mode: 'pessimistic_write' },
+            });
+
+            if (invItem) {
+              const currentStock = Number(invItem.stockQuantity);
+              if (currentStock < requiredQty) {
+                throw new BadRequestException(
+                  `Insufficient ${invItem.name} in inventory for "${product.name}": have ${currentStock} ${invItem.unit}, need ${requiredQty} ${invItem.unit}`,
+                );
+              }
+
+              invItem.stockQuantity = currentStock - requiredQty;
+              await manager.save(invItem);
+
+              const movement = manager.create(InventoryMovement, {
+                inventoryItemId: invItem.id,
+                delta: -requiredQty,
+                stockAfter: invItem.stockQuantity,
+                reason: 'order_deduction',
+                userId,
+              });
+              await manager.save(movement);
+            }
+          }
         }
 
         items.push(
@@ -369,18 +415,51 @@ export class OrdersService {
       if (variant) {
         variant.stock += item.quantity;
         await manager.save(variant);
-        continue;
+      } else {
+        const product = await manager.findOne(Product, {
+          where: { id: item.productId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        // The product may have been deleted since the order was placed — there
+        // is nothing to restock, and that shouldn't block the cancellation.
+        if (product) {
+          product.stock += item.quantity;
+          await manager.save(product);
+        }
       }
 
-      const product = await manager.findOne(Product, {
-        where: { id: item.productId },
-        lock: { mode: 'pessimistic_write' },
+      // Restock Recipe inventory items if applicable
+      let recipe = await manager.findOne(Recipe, {
+        where: { productId: item.productId, size: item.size ?? (null as any) },
+        relations: { items: true },
       });
-      // The product may have been deleted since the order was placed — there
-      // is nothing to restock, and that shouldn't block the cancellation.
-      if (product) {
-        product.stock += item.quantity;
-        await manager.save(product);
+      if (!recipe && item.size) {
+        recipe = await manager.findOne(Recipe, {
+          where: { productId: item.productId, size: null as any },
+          relations: { items: true },
+        });
+      }
+
+      if (recipe && recipe.items && recipe.items.length > 0) {
+        for (const rItem of recipe.items) {
+          const refundQty = Number(rItem.quantity) * item.quantity;
+          const invItem = await manager.findOne(InventoryItem, {
+            where: { id: rItem.inventoryItemId },
+            lock: { mode: 'pessimistic_write' },
+          });
+          if (invItem) {
+            invItem.stockQuantity = Number(invItem.stockQuantity) + refundQty;
+            await manager.save(invItem);
+
+            const movement = manager.create(InventoryMovement, {
+              inventoryItemId: invItem.id,
+              delta: refundQty,
+              stockAfter: invItem.stockQuantity,
+              reason: 'order_refund',
+            });
+            await manager.save(movement);
+          }
+        }
       }
     }
   }
