@@ -4,15 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PopSelect } from "@/components/pop-select";
 import { api } from "@/lib/api";
-import { type InventoryItem, type InventoryMovement, type Recipe } from "@/lib/types";
+import {
+  type Category,
+  type InventoryItem,
+  type InventoryMovement,
+  type Recipe,
+} from "@/lib/types";
 
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
 
-// Suggested groupings for new items; any other name is fine too.
-const DEFAULT_CATEGORIES = ["Packaging", "Ingredient", "Other"];
-// Sentinel option in the pickers that reveals a free-text input.
-const NEW_CATEGORY = "__new__";
+// Sentinel option in the unit picker that reveals a free-text input.
 const NEW_UNIT = "__new__";
 // Common units of measure; anything else can be typed in.
 const DEFAULT_UNITS = ["pcs", "g", "kg", "ml", "L"];
@@ -27,6 +29,9 @@ const REASON_LABELS: Record<string, string> = {
 
 export function ConsumablesManager() {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  // The shop's menu categories (managed on the Categories page). Consumables
+  // are filed under them so the supplies list mirrors the menu's sections.
+  const [categories, setCategories] = useState<Category[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,12 +64,15 @@ export function ConsumablesManager() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [itemList, recipeList, movementList] = await Promise.all([
-        api<InventoryItem[]>("/inventory"),
-        api<Recipe[]>("/recipes"),
-        api<InventoryMovement[]>("/inventory/movements?limit=30"),
-      ]);
+      const [itemList, categoryList, recipeList, movementList] =
+        await Promise.all([
+          api<InventoryItem[]>("/inventory"),
+          api<Category[]>("/categories"),
+          api<Recipe[]>("/recipes"),
+          api<InventoryMovement[]>("/inventory/movements?limit=30"),
+        ]);
       setItems(itemList);
+      setCategories(categoryList);
       setRecipes(recipeList);
       setMovements(movementList);
     } catch (err) {
@@ -100,15 +108,21 @@ export function ConsumablesManager() {
     return items.filter((i) => Number(i.stockQuantity) <= Number(i.minThreshold)).length;
   }, [items]);
 
-  // Groupings actually in use, for the filter tabs and the form suggestions.
-  const categories = useMemo(() => {
-    const seen = new Map<string, string>();
+  // Category names for the filter tabs: the menu categories, plus any name an
+  // existing item still carries that is no longer a category (so it stays
+  // reachable and can be re-filed).
+  const categoryNames = useMemo(() => {
+    const names = categories.map((c) => c.name);
+    const known = new Set(names.map((n) => n.toLowerCase()));
     for (const item of items) {
       const name = (item.category || "").trim();
-      if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+      if (name && !known.has(name.toLowerCase())) {
+        known.add(name.toLowerCase());
+        names.push(name);
+      }
     }
-    return [...seen.values()].sort((a, b) => a.localeCompare(b));
-  }, [items]);
+    return names;
+  }, [categories, items]);
 
   // Which drinks (and sizes) consume each item — the real link between a
   // consumable and the menu, straight from the recipes.
@@ -131,7 +145,7 @@ export function ConsumablesManager() {
     setEditingItem(null);
     setFormData({
       name: "",
-      category: categories[0] ?? DEFAULT_CATEGORIES[0],
+      category: categories[0]?.name ?? "",
       unit: "pcs",
       stockQuantity: "100",
       minThreshold: "20",
@@ -159,7 +173,7 @@ export function ConsumablesManager() {
     try {
       const payload = {
         name: formData.name.trim(),
-        category: formData.category.trim() || DEFAULT_CATEGORIES[0],
+        category: formData.category.trim() || categories[0]?.name || "General",
         unit: formData.unit.trim(),
         stockQuantity: Number(formData.stockQuantity) || 0,
         minThreshold: Number(formData.minThreshold) || 0,
@@ -256,7 +270,7 @@ export function ConsumablesManager() {
         <div className="flex flex-wrap items-center rounded-xl border border-stone-200 bg-stone-50 p-1 dark:border-stone-800 dark:bg-stone-900">
           {[
             { id: "all", label: "All Items" },
-            ...categories.map((c) => ({ id: c.toLowerCase(), label: c })),
+            ...categoryNames.map((c) => ({ id: c.toLowerCase(), label: c })),
           ].map((cat) => (
             <button
               key={cat.id}
@@ -489,13 +503,28 @@ export function ConsumablesManager() {
                     Category
                   </label>
                   {(() => {
-                    const options = [
-                      ...new Set([...categories, ...DEFAULT_CATEGORIES]),
-                    ];
-                    const isKnown = options.includes(formData.category);
                     const counts = new Map<string, number>();
                     for (const i of items) {
                       counts.set(i.category, (counts.get(i.category) ?? 0) + 1);
+                    }
+                    const options = categories.map((c) => ({
+                      value: c.name,
+                      label: c.name,
+                      hint: counts.get(c.name)
+                        ? `${counts.get(c.name)} item${counts.get(c.name) === 1 ? "" : "s"}`
+                        : undefined,
+                    }));
+                    // An item filed under a name that is no longer a category
+                    // keeps it selectable until it is re-filed.
+                    if (
+                      formData.category &&
+                      !categories.some((c) => c.name === formData.category)
+                    ) {
+                      options.push({
+                        value: formData.category,
+                        label: `${formData.category} (not a category)`,
+                        hint: undefined,
+                      });
                     }
                     return (
                       <>
@@ -503,36 +532,20 @@ export function ConsumablesManager() {
                           ariaLabel="Category"
                           className="mt-1"
                           buttonClassName={INPUT}
-                          value={isKnown ? formData.category : NEW_CATEGORY}
-                          onChange={(v) =>
-                            setFormData({
-                              ...formData,
-                              category: v === NEW_CATEGORY ? "" : v,
-                            })
+                          value={formData.category}
+                          placeholder={
+                            categories.length === 0
+                              ? "No categories yet"
+                              : "Select a category"
                           }
-                          options={[
-                            ...options.map((c) => ({
-                              value: c,
-                              label: c,
-                              hint: counts.get(c)
-                                ? `${counts.get(c)} item${counts.get(c) === 1 ? "" : "s"}`
-                                : undefined,
-                            })),
-                            { value: NEW_CATEGORY, label: "+ New category…" },
-                          ]}
+                          onChange={(v) =>
+                            setFormData({ ...formData, category: v })
+                          }
+                          options={options}
                         />
-                        {!isKnown && (
-                          <input
-                            type="text"
-                            autoFocus
-                            value={formData.category}
-                            onChange={(e) =>
-                              setFormData({ ...formData, category: e.target.value })
-                            }
-                            placeholder="Type the new category name"
-                            className={`${INPUT} mt-2 w-full`}
-                          />
-                        )}
+                        <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
+                          Same categories as the menu — add more on the Categories page.
+                        </p>
                       </>
                     );
                   })()}

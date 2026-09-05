@@ -5,12 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { rolePathBase } from "@/lib/permissions";
-import {
-  effectivePrice,
-  formatPrice,
-  hasDiscount,
-  hasSizes,
-} from "@/lib/pricing";
+import { effectivePrice, formatPrice, hasDiscount, hasSizes, isRecipeManaged, sizeStock, totalStock } from "@/lib/pricing";
 import { type Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
@@ -76,9 +71,8 @@ function ProductView({ id }: { id: string }) {
   const current = images[active] ?? null;
   const sized = hasSizes(product);
   const discounted = hasDiscount(product);
-  const totalStock = sized
-    ? (product.variants ?? []).reduce((sum, v) => sum + v.stock, 0)
-    : product.stock;
+  const madeToOrder = isRecipeManaged(product);
+  const units = totalStock(product);
 
   return (
     <main className="mx-auto max-w-5xl">
@@ -206,14 +200,17 @@ function ProductView({ id }: { id: string }) {
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Info label="Base price" value={formatPrice(product.price)} />
-            <Info label="Total stock" value={String(totalStock)} />
+            <Info
+              label={madeToOrder ? "Can be made (recipe)" : "In stock"}
+              value={String(units)}
+            />
             <Info label="Sizes" value={sized ? String(product.variants?.length ?? 0) : "—"} />
           </div>
 
           {sized && product.variants && product.variants.length > 0 && (
             <div className="mt-6">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                Sizes &amp; stock
+                Sizes &amp; prices
               </h2>
               <div className="mt-3 overflow-hidden rounded-xl border border-stone-200/70 dark:border-stone-800">
                 <table className="w-full text-left text-sm">
@@ -221,7 +218,9 @@ function ProductView({ id }: { id: string }) {
                     <tr>
                       <th className="px-4 py-2.5 font-medium">Size</th>
                       <th className="px-4 py-2.5 font-medium">Price</th>
-                      <th className="px-4 py-2.5 font-medium">In stock</th>
+                      {madeToOrder && (
+                        <th className="px-4 py-2.5 font-medium">Can be made</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
@@ -234,17 +233,19 @@ function ProductView({ id }: { id: string }) {
                           {s.size}
                         </td>
                         <td className="px-4 py-2.5">{formatPrice(s.price)}</td>
-                        <td className="px-4 py-2.5">
-                          <span
-                            className={
-                              (s.stock ?? 0) > 0
-                                ? ""
-                                : "text-red-500 dark:text-red-400"
-                            }
-                          >
-                            {s.stock ?? 0}
-                          </span>
-                        </td>
+                        {madeToOrder && (
+                          <td className="px-4 py-2.5">
+                            <span
+                              className={
+                                sizeStock(product, s.size) > 0
+                                  ? ""
+                                  : "text-red-500 dark:text-red-400"
+                              }
+                            >
+                              {sizeStock(product, s.size)}
+                            </span>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

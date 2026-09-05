@@ -115,10 +115,11 @@ describe('POS flow (e2e)', () => {
         price: 3,
         discountPercent: 10,
         categoryId: cat.body.id,
+        stock: 5,
         sizes: [
-          { size: 'S', price: 3, stock: 10 },
-          { size: 'M', price: 3.5, stock: 5 },
-          { size: 'L', price: 4, stock: 0 },
+          { size: 'S', price: 3 },
+          { size: 'M', price: 3.5 },
+          { size: 'L', price: 4 },
         ],
       })
       .expect(201);
@@ -198,10 +199,7 @@ describe('POS flow (e2e)', () => {
       .get(`/products/${latteId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    const m = product.body.variants.find(
-      (v: { size: string }) => v.size === 'M',
-    );
-    expect(m.stock).toBe(3); // 5 − 2
+    expect(product.body.stock).toBe(3); // 5 − 2, whatever the size
   });
 
   it('takes a cash payment: change computed, order paid + completed', async () => {
@@ -255,10 +253,7 @@ describe('POS flow (e2e)', () => {
       .get(`/products/${latteId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
-    const m = product.body.variants.find(
-      (v: { size: string }) => v.size === 'M',
-    );
-    expect(m.stock).toBe(5); // restocked
+    expect(product.body.stock).toBe(5); // restocked
 
     const summary = await http()
       .get('/reports/summary')

@@ -29,10 +29,6 @@ export class StockMovement {
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  // Size the change applies to, or null for a sizeless product's base stock.
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  size: string | null;
-
   // Signed change to the stock level (+ = restock, − = correction/waste).
   @Column()
   delta: number;

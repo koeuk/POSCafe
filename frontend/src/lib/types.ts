@@ -33,6 +33,8 @@ export interface Category {
   isActive: boolean;
 }
 
+export type StockMode = "count" | "recipe";
+
 // Note: TypeORM returns DECIMAL columns as strings (e.g. price "3.50").
 export interface Product {
   id: number;
@@ -46,13 +48,14 @@ export interface Product {
   // Additional gallery images (URLs or uploaded paths). null = none.
   gallery: string[] | null;
   isAvailable: boolean;
+  // One rule per product: 'count' = `stock` is the units on hand (whatever
+  // the size); 'recipe' = made to order from consumables, `stock` is 0.
+  stockMode: StockMode;
   stock: number;
-  // Size options (S/M/L): the single source of size name, price and stock.
+  // Size options (S/M/L): size name + price. Sizes never carry stock.
   // Empty/absent = the product has no sizes.
   variants?: ProductVariant[];
-  // Recipe availability per size (null size = the whole product / default).
-  // A product with a recipe is "made to order": its sellable count is the
-  // servings its ingredients cover, and `stock` / variant stock are ignored.
+  // 'recipe' products only: servings per size (null size = every size).
   // Read through recipeAvailability()/sizeStock()/totalStock() in pricing.ts.
   recipes?: RecipeAvailability[];
   categoryId: number;
@@ -71,7 +74,6 @@ export interface ProductVariant {
   // DECIMAL-as-string, like Product.price.
   price: string;
   sortOrder: number;
-  stock: number;
 }
 
 // Units sold per product (GET /products/sold, non-cancelled orders).
@@ -85,7 +87,6 @@ export interface StockMovement {
   id: number;
   productId: number;
   product?: Product;
-  size: string | null;
   // Signed change (+ = restock, − = correction).
   delta: number;
   stockAfter: number;
@@ -253,10 +254,9 @@ export interface StaticKhqr {
   merchantCity: string;
 }
 
-// Editable size row used by the product form and the stock manager:
-// raw string inputs, parsed/validated on save.
+// Editable size row used by the product form: raw string inputs,
+// parsed/validated on save.
 export interface SizeRow {
   size: string;
   price: string;
-  stock: string;
 }

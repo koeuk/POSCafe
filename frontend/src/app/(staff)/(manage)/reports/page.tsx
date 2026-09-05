@@ -121,11 +121,15 @@ interface DayClose {
 }
 
 interface StockReport {
-  bySize: { size: string; inStock: number; variants: number; outOfStock: number }[];
   // Optional: an older backend build may not send it yet.
-  byProduct?: { productId: number; productName: string; inStock: number }[];
+  byProduct: {
+    productId: number;
+    productName: string;
+    stockMode: "count" | "recipe";
+    inStock: number;
+  }[];
   totals: { inStock: number; outOfStock: number };
-  outOfStockItems: { productId: number; productName: string; size: string }[];
+  outOfStockItems: { productId: number; productName: string; size: string | null }[];
 }
 
 export default function ReportsPage() {
@@ -251,22 +255,13 @@ export default function ReportsPage() {
       ...(stock
         ? [
             {
-              title: "Stock by Size",
-              columns: ["Size", "In stock", "Variants", "Out of stock"],
-              rows: stock.bySize.map((s) => [
-                s.size,
-                s.inStock,
-                s.variants,
-                s.outOfStock,
-              ]),
-            },
-            {
               title: "Stock by Product",
-              columns: ["Product", "In stock", "Status"],
-              rows: (stock.byProduct ?? []).map((p) => [
+              columns: ["Product", "Tracking", "Available", "Status"],
+              rows: stock.byProduct.map((p) => [
                 p.productName,
+                p.stockMode === "recipe" ? "Made to order" : "Counted",
                 p.inStock,
-                p.inStock <= 0 ? "Sold out" : "In stock",
+                p.inStock <= 0 ? "Sold out" : "Available",
               ]),
             },
           ]
@@ -445,59 +440,31 @@ export default function ReportsPage() {
         </div>
       </section>
 
-      {/* Cup stock by size */}
+      {/* Stock by product */}
       <section className={`mt-6 rounded-2xl p-5 ${GLASS}`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-            Stock by Size
+            Stock
           </h2>
           {stock && (
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-              {stock.totals.inStock} in stock · {stock.totals.outOfStock} out of stock
+              {stock.totals.inStock} sellable units · {stock.totals.outOfStock} sold out
             </span>
           )}
         </div>
 
-        {!stock ||
-        (stock.bySize.length === 0 && (stock.byProduct ?? []).length === 0) ? (
+        {!stock || stock.byProduct.length === 0 ? (
           <p className="text-sm text-stone-400 dark:text-stone-500">
             No products yet.
           </p>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {stock.bySize.map((s) => (
-                <div
-                  key={s.size}
-                  className="rounded-xl border border-stone-200/70 p-4 dark:border-stone-800"
-                >
-                  <p className="text-sm font-medium text-stone-500 dark:text-stone-400">
-                    {s.size}
-                  </p>
-                  <p className="mt-1 text-2xl font-bold text-stone-900 dark:text-stone-100">
-                    {s.inStock}
-                    <span className="ml-1 text-sm font-normal text-stone-400">
-                      items
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-500">
-                    {s.outOfStock > 0
-                      ? `${s.outOfStock} of ${s.variants} out of stock`
-                      : `${s.variants} item${s.variants === 1 ? "" : "s"}`}
-                  </p>
-                </div>
-              ))}
-            </div>
-
             {/* Per-product availability: sold-out products first so problems
                 surface without scrolling. */}
-            {(stock.byProduct ?? []).length > 0 && (
-              <div className="mt-5">
-                <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Stock by product
-                </p>
+            {stock.byProduct.length > 0 && (
+              <div>
                 <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {[...(stock.byProduct ?? [])]
+                  {[...stock.byProduct]
                     .sort(
                       (a, b) =>
                         Number(b.inStock <= 0) - Number(a.inStock <= 0) ||
@@ -528,7 +495,11 @@ export default function ReportsPage() {
                                 : "text-green-600 dark:text-green-400"
                             }`}
                           >
-                            {out ? "Sold out" : `${p.inStock} in stock`}
+                            {out
+                              ? "Sold out"
+                              : p.stockMode === "recipe"
+                                ? `${p.inStock} can be made`
+                                : `${p.inStock} in stock`}
                           </span>
                         </div>
                       );
@@ -540,15 +511,16 @@ export default function ReportsPage() {
             {stock.outOfStockItems.length > 0 && (
               <div className="mt-5">
                 <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Out of stock sizes
+                  Sold out
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {stock.outOfStockItems.map((it) => (
                     <span
-                      key={`${it.productId}-${it.size}`}
+                      key={`${it.productId}-${it.size ?? ""}`}
                       className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400"
                     >
-                      {it.productName} · {it.size}
+                      {it.productName}
+                      {it.size ? ` · ${it.size}` : ""}
                     </span>
                   ))}
                 </div>

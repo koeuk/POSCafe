@@ -9,9 +9,9 @@ import {
 import { Product } from './product.entity';
 
 /**
- * A product's size option (e.g. S/M/L): its price and its stock. This table
- * is the single source of truth for sized products — menu display, checkout
- * pricing and stock tracking all read from here.
+ * A product's size option (e.g. S/M/L) and its price. Sizes never carry
+ * stock: a 'count' product keeps one figure on the product row, a 'recipe'
+ * product is made to order from consumables (see Product.stockMode).
  */
 @Entity('product_variants')
 @Index(['productId', 'size'], { unique: true })
@@ -37,7 +37,4 @@ export class ProductVariant {
   // Display/menu order (the position of the size row in the product form).
   @Column({ default: 0 })
   sortOrder: number;
-
-  @Column({ default: 0 })
-  stock: number;
 }

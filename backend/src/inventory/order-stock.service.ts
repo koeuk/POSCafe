@@ -1,21 +1,19 @@
 import { BadRequestException } from '@nestjs/common';
 import { EntityManager, IsNull } from 'typeorm';
 import { OrderItem } from '../orders/entities/order-item.entity';
-import { ProductVariant } from '../products/entities/product-variant.entity';
 import { Product } from '../products/entities/product.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { InventoryMovement } from './entities/inventory-movement.entity';
 
 /**
- * Where an order line's units came from. Recorded on the order item so a
- * cancel/refund reverses exactly what the sale did, even if the recipe or the
- * product's sizes change in between.
+ * Where an order line's units came from, recorded on the order item so a
+ * cancel/refund reverses exactly what the sale did — even if the product's
+ * stock mode or recipe changed in between.
  *
- *  - 'recipe': the product has a recipe, so the sale consumed consumables
- *    (cups, lids, beans, milk…). Finished-drink stock is NOT touched.
- *  - 'stock':  no recipe; the sale consumed the product's own stock count
- *    (per-size variant stock, or the base stock for sizeless products).
+ *  - 'recipe': the product is made to order; the sale consumed consumables
+ *    (cups, lids, beans, milk…).
+ *  - 'stock':  the product is counted; the sale took units off its stock.
  */
 export type StockSource = 'recipe' | 'stock';
 
@@ -25,8 +23,6 @@ export const MOVEMENT_ORDER_REVERSAL = 'order_refund';
 export interface OrderLine {
   /** Locked (pessimistic_write) by the caller. */
   product: Product;
-  /** Locked by the caller; null for sizeless products. */
-  variant: ProductVariant | null;
   size: string | null;
   quantity: number;
 }
@@ -37,9 +33,9 @@ interface IngredientNeed {
 }
 
 /**
- * Finds the recipe that governs a product + size. An exact size match wins;
- * a size-less recipe acts as the default for every size. Returns null when
- * the product has no (non-empty) recipe, i.e. it is stock-counted.
+ * The recipe that governs a product + size: an exact size match wins, a
+ * size-less recipe is the default for every size. null when the product has
+ * no usable recipe for that size.
  */
 export async function findRecipe(
   manager: EntityManager,
@@ -66,9 +62,9 @@ export async function findRecipe(
 /**
  * One order's stock deduction, run inside the order's transaction.
  *
- * Usage: `reserveLine()` per line (decides recipe vs stock and decrements
- * stock-counted products right away), then `commitIngredients()` once the
- * order row exists so the consumable movements can carry its id.
+ * Usage: `reserveLine()` per line (takes counted units off the product right
+ * away, or collects the recipe's ingredient needs), then `commitIngredients()`
+ * once the order row exists so the consumable movements can carry its id.
  *
  * Ingredient needs are accumulated across lines and applied once per
  * inventory item, in id order — so two drinks sharing milk lock the milk row
@@ -81,39 +77,35 @@ export class OrderStockDeduction {
   constructor(private readonly manager: EntityManager) {}
 
   async reserveLine(line: OrderLine): Promise<StockSource> {
-    const { product, variant, size, quantity } = line;
+    const { product, size, quantity } = line;
+    const label = size ? `${product.name} (${size})` : product.name;
 
-    const recipe = await findRecipe(this.manager, product.id, size);
-    if (recipe) {
+    if (product.stockMode === 'recipe') {
+      const recipe = await findRecipe(this.manager, product.id, size);
+      if (!recipe) {
+        throw new BadRequestException(
+          `"${label}" is made to order but has no recipe yet — add one on the Inventory page`,
+        );
+      }
       for (const item of recipe.items) {
         const need = this.needs.get(item.inventoryItemId) ?? {
           quantity: 0,
           products: new Set<string>(),
         };
         need.quantity += Number(item.quantity) * quantity;
-        need.products.add(size ? `${product.name} (${size})` : product.name);
+        need.products.add(label);
         this.needs.set(item.inventoryItemId, need);
       }
       return 'recipe';
     }
 
-    if (variant) {
-      if (variant.stock < quantity) {
-        throw new BadRequestException(
-          `Insufficient stock for "${product.name}" (${size}): have ${variant.stock}, need ${quantity}`,
-        );
-      }
-      variant.stock -= quantity;
-      await this.manager.save(variant);
-    } else {
-      if (product.stock < quantity) {
-        throw new BadRequestException(
-          `Insufficient stock for "${product.name}" (have ${product.stock}, need ${quantity})`,
-        );
-      }
-      product.stock -= quantity;
-      await this.manager.save(product);
+    if (product.stock < quantity) {
+      throw new BadRequestException(
+        `Insufficient stock for "${product.name}": have ${product.stock}, need ${quantity}`,
+      );
     }
+    product.stock -= quantity;
+    await this.manager.save(product);
     return 'stock';
   }
 
@@ -158,10 +150,10 @@ export class OrderStockDeduction {
 
 /**
  * Returns everything an order took out of inventory, mirroring the deduction
- * exactly: stock-counted lines go back to their variant/base stock; recipe
- * lines are reversed from the journaled consumable movements (not from the
- * current recipe, which may have changed since the sale). Idempotent — a
- * second call for the same order is a no-op.
+ * exactly: counted lines go back onto the product's stock; recipe lines are
+ * reversed from the journaled consumable movements (not from the current
+ * recipe, which may have changed since the sale). Idempotent — a second call
+ * for the same order is a no-op.
  */
 export async function reverseOrderStock(
   manager: EntityManager,
@@ -172,25 +164,13 @@ export async function reverseOrderStock(
 
   for (const item of items) {
     if (item.stockSource !== 'stock') continue;
-
-    const variant = item.size
-      ? await manager.findOne(ProductVariant, {
-          where: { productId: item.productId, size: item.size },
-          lock: { mode: 'pessimistic_write' },
-        })
-      : null;
-    if (variant) {
-      variant.stock += item.quantity;
-      await manager.save(variant);
-      continue;
-    }
-    // The product (or its size) may have been removed since the order was
-    // placed — nothing to restock, and that shouldn't block the cancellation.
+    // The product may have been removed since the order was placed — nothing
+    // to restock, and that shouldn't block the cancellation.
     const product = await manager.findOne(Product, {
       where: { id: item.productId },
       lock: { mode: 'pessimistic_write' },
     });
-    if (product && !item.size) {
+    if (product) {
       product.stock += item.quantity;
       await manager.save(product);
     }

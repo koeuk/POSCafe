@@ -10,6 +10,7 @@ import { OrderStatus } from '../common/enums/order-status.enum';
 import { toNumber } from '../common/money';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
+import { recipeServings } from '../recipes/recipe-servings';
 import { CreateProductDto, ProductSizeDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductVariant } from './entities/product-variant.entity';
@@ -23,10 +24,9 @@ export interface SoldCount {
 }
 
 /**
- * How many servings of a product (size) its recipe can currently make: the
- * tightest ingredient decides. Returned on every product so the POS and the
- * Inventory page can treat recipe products as "made to order" and never look
- * at the finished-drink stock count for them.
+ * Servings a 'recipe' product can make for one size (null size = the recipe
+ * that covers every size). Returned on every product so the POS and the
+ * Inventory page never have to compute it themselves.
  */
 export interface RecipeAvailability {
   size: string | null;
@@ -53,33 +53,25 @@ export class ProductsService {
     private readonly categoriesService: CategoriesService,
   ) {}
 
-  /** Attaches recipe availability (see RecipeAvailability) to each product. */
+  /**
+   * Attaches recipe availability to each product. Only 'recipe' products
+   * get entries — a 'count' product's availability is simply its `stock`.
+   */
   private async withAvailability(
     products: Product[],
   ): Promise<ProductWithAvailability[]> {
-    if (products.length === 0) return [];
-    const recipes = await this.recipeRepo.find({
-      where: { productId: In(products.map((p) => p.id)) },
-      relations: { items: { inventoryItem: true } },
-    });
+    const recipeProducts = products.filter((p) => p.stockMode === 'recipe');
     const byProduct = new Map<number, RecipeAvailability[]>();
-    for (const recipe of recipes) {
-      if (recipe.items.length === 0) continue; // empty recipe = stock-counted
-      const servings = Math.floor(
-        Math.min(
-          ...recipe.items.map((item) => {
-            const per = toNumber(item.quantity);
-            if (per <= 0) return Infinity;
-            return toNumber(item.inventoryItem?.stockQuantity ?? 0) / per;
-          }),
-        ),
-      );
-      const list = byProduct.get(recipe.productId) ?? [];
-      list.push({
-        size: recipe.size,
-        servings: Number.isFinite(servings) ? Math.max(0, servings) : 0,
+    if (recipeProducts.length > 0) {
+      const recipes = await this.recipeRepo.find({
+        where: { productId: In(recipeProducts.map((p) => p.id)) },
+        relations: { items: { inventoryItem: true } },
       });
-      byProduct.set(recipe.productId, list);
+      for (const recipe of recipes) {
+        const list = byProduct.get(recipe.productId) ?? [];
+        list.push({ size: recipe.size, servings: recipeServings(recipe) });
+        byProduct.set(recipe.productId, list);
+      }
     }
     return products.map((p) =>
       Object.assign(p, { recipes: byProduct.get(p.id) ?? [] }),
@@ -119,14 +111,13 @@ export class ProductsService {
   /** Log a manual stock change (no row for a no-op delta). */
   private async recordMovement(
     productId: number,
-    size: string | null,
     delta: number,
     stockAfter: number,
     userId: number | null,
   ): Promise<void> {
     if (delta === 0) return;
     await this.movementRepo.save(
-      this.movementRepo.create({ productId, size, delta, stockAfter, userId }),
+      this.movementRepo.create({ productId, delta, stockAfter, userId }),
     );
   }
 
@@ -156,18 +147,15 @@ export class ProductsService {
     // Ensure the category exists (throws NotFound otherwise).
     await this.categoriesService.findOne(dto.categoryId);
     const { sizes, ...productFields } = dto;
-    const product = this.repo.create(productFields);
+    const stockMode = dto.stockMode ?? 'count';
+    // A made-to-order product never holds finished stock.
+    const stock = stockMode === 'recipe' ? 0 : (dto.stock ?? 0);
+    const product = this.repo.create({ ...productFields, stockMode, stock });
     const saved = await this.repo.save(product);
-    if ((dto.stock ?? 0) > 0 && !(sizes && sizes.length > 0)) {
-      await this.recordMovement(
-        saved.id,
-        null,
-        dto.stock ?? 0,
-        dto.stock ?? 0,
-        userId ?? null,
-      );
+    if (stock > 0) {
+      await this.recordMovement(saved.id, stock, stock, userId ?? null);
     }
-    await this.syncVariants(saved.id, sizes ?? null, userId ?? null);
+    await this.syncVariants(saved.id, sizes ?? null);
     return this.findOne(saved.id);
   }
 
@@ -181,38 +169,42 @@ export class ProductsService {
       await this.categoriesService.findOne(dto.categoryId);
     }
     const previousStock = product.stock;
+    const previousMode = product.stockMode;
     const { sizes, ...productFields } = dto;
     Object.assign(product, productFields);
+
+    // Switching to made-to-order: the finished-stock count no longer means
+    // anything, so it is cleared (journaled) rather than left to confuse.
+    if (product.stockMode === 'recipe') {
+      product.stock = 0;
+    }
+
     // `findOne` eager-loads `category`, and TypeORM resolves the join column
     // from that relation object in preference to the raw `categoryId` — so
     // leaving a stale relation attached would silently undo a category move.
     if (dto.categoryId !== undefined) {
       Reflect.deleteProperty(product, 'category');
     }
+    Reflect.deleteProperty(product, 'recipes');
     await this.repo.save(product);
-    // Log a manual base-stock change (sized products track stock per-size).
-    if (dto.stock !== undefined && dto.stock !== previousStock) {
+
+    if (product.stock !== previousStock) {
       await this.recordMovement(
         id,
-        null,
-        dto.stock - previousStock,
-        dto.stock,
+        product.stock - previousStock,
+        product.stock,
         userId ?? null,
       );
     }
+    // Back to counting: the recipes are no longer used, so they go too —
+    // hidden data that silently comes back later is exactly the confusion
+    // the one-mode rule exists to avoid.
+    if (previousMode === 'recipe' && product.stockMode === 'count') {
+      await this.recipeRepo.delete({ productId: id });
+    }
     // Only reconcile size variants when sizes were part of the update.
     if (sizes !== undefined) {
-      await this.syncVariants(id, sizes, userId ?? null);
-      // A sized product keeps its quantities on the variants, so the base
-      // column must not keep the figure it held while the product was
-      // sizeless. totalStock() prefers variants and hides the stale number,
-      // but it stays in the table waiting for the next query that sums
-      // products.stock to report cups that don't exist. Journal the drop so
-      // the correction is visible rather than silent.
-      if (sizes !== null && sizes.length > 0 && product.stock !== 0) {
-        await this.recordMovement(id, null, -product.stock, 0, userId ?? null);
-        await this.repo.update(id, { stock: 0 });
-      }
+      await this.syncVariants(id, sizes);
     }
     return this.findOne(id);
   }
@@ -320,15 +312,13 @@ export class ProductsService {
   }
 
   /**
-   * Reconciles the variant rows (the single source of size name, price and
-   * stock) to match the submitted size options: upserts each size in order
-   * (preserving existing stock when the DTO omits it) and removes variants
-   * for sizes that no longer exist.
+   * Reconciles the variant rows (size name + price, in display order) to
+   * match the submitted size options, removing variants for sizes that no
+   * longer exist.
    */
   private async syncVariants(
     productId: number,
     sizes: ProductSizeDto[] | null,
-    userId: number | null,
   ): Promise<void> {
     const existing = await this.variantRepo.find({ where: { productId } });
     const wanted = sizes ?? [];
@@ -347,16 +337,6 @@ export class ProductsService {
       if (current) {
         current.price = s.price;
         current.sortOrder = index;
-        if (s.stock !== undefined && s.stock !== current.stock) {
-          await this.recordMovement(
-            productId,
-            s.size,
-            s.stock - current.stock,
-            s.stock,
-            userId,
-          );
-          current.stock = s.stock;
-        }
         await this.variantRepo.save(current);
       } else {
         await this.variantRepo.save(
@@ -365,18 +345,8 @@ export class ProductsService {
             size: s.size,
             price: s.price,
             sortOrder: index,
-            stock: s.stock ?? 0,
           }),
         );
-        if ((s.stock ?? 0) > 0) {
-          await this.recordMovement(
-            productId,
-            s.size,
-            s.stock ?? 0,
-            s.stock ?? 0,
-            userId,
-          );
-        }
       }
     }
   }

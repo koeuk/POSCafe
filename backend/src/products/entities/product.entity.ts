@@ -11,6 +11,9 @@ import {
 import { Category } from '../../categories/entities/category.entity';
 import { ProductVariant } from './product-variant.entity';
 
+export type StockMode = 'count' | 'recipe';
+export const STOCK_MODES: StockMode[] = ['count', 'recipe'];
+
 @Entity('products')
 export class Product {
   @PrimaryGeneratedColumn()
@@ -41,8 +44,15 @@ export class Product {
   @Column({ default: true })
   isAvailable: boolean;
 
-  // Whole-product stock (used for products WITHOUT size options). Sized
-  // products track stock per-size in `variants` instead.
+  // How the product's availability is tracked — one rule per product:
+  //  - 'count':  `stock` is the number of units on hand, whatever the size.
+  //              Sizes only differ by price.
+  //  - 'recipe': made to order. Each sale deducts the consumables in the
+  //              product's recipe(s) and `stock` is ignored (kept at 0).
+  @Column({ type: 'varchar', length: 10, default: 'count' })
+  stockMode: StockMode;
+
+  // Units on hand for a 'count' product. Always 0 for a 'recipe' product.
   @Column({ default: 0 })
   stock: number;
 

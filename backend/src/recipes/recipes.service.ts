@@ -4,8 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { Product } from '../products/entities/product.entity';
+import { StockMovement } from '../products/entities/stock-movement.entity';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { RecipeItem } from './entities/recipe-item.entity';
 import { Recipe } from './entities/recipe.entity';
@@ -64,8 +65,15 @@ export class RecipesService {
    * Create or update the recipe for a product + size combination. The size
    * must be one the product actually sells (or none for a sizeless product)
    * so every recipe is reachable from the POS and visible in the editor.
+   *
+   * Saving a recipe makes the product made to order: its stock mode flips to
+   * 'recipe' and any finished-stock count is cleared (journaled) so the
+   * Inventory page never shows a stale number next to the servings.
    */
-  async createOrUpdate(dto: CreateRecipeDto): Promise<Recipe> {
+  async createOrUpdate(
+    dto: CreateRecipeDto,
+    userId: number | null = null,
+  ): Promise<Recipe> {
     return this.dataSource.transaction(async (manager) => {
       const sizeParam = dto.size?.trim() || null;
 
@@ -126,6 +134,8 @@ export class RecipesService {
       );
       await manager.save(RecipeItem, items);
 
+      await this.makeToOrder(manager, product, userId);
+
       return manager.findOneOrFail(Recipe, {
         where: { id: recipe.id },
         relations: {
@@ -136,6 +146,27 @@ export class RecipesService {
         },
       });
     });
+  }
+
+  /** Flip a product to 'recipe' mode, clearing its counted stock (journaled). */
+  private async makeToOrder(
+    manager: EntityManager,
+    product: Product,
+    userId: number | null,
+  ): Promise<void> {
+    if (product.stockMode === 'recipe' && product.stock === 0) return;
+    const stock = product.stock;
+    await manager.update(Product, product.id, { stockMode: 'recipe', stock: 0 });
+    if (stock > 0) {
+      await manager.save(
+        manager.create(StockMovement, {
+          productId: product.id,
+          delta: -stock,
+          stockAfter: 0,
+          userId,
+        }),
+      );
+    }
   }
 
   async remove(id: number): Promise<void> {

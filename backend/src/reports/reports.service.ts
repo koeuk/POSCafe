@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  In,
   Repository,
   type ObjectLiteral,
   type SelectQueryBuilder,
@@ -12,26 +13,11 @@ import { OrderItem } from '../orders/entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Product } from '../products/entities/product.entity';
-import { ProductVariant } from '../products/entities/product-variant.entity';
+import { Recipe } from '../recipes/entities/recipe.entity';
+import { recipeServings } from '../recipes/recipe-servings';
 import { User } from '../users/entities/user.entity';
 
 // Raw aggregate rows (MySQL returns COUNT/SUM as strings; toNumber coerces).
-interface StockBySizeRow {
-  size: string;
-  inStock: string;
-  variants: string;
-  outOfStock: string;
-}
-interface OutOfStockRow {
-  productId: number;
-  productName: string;
-  size: string;
-}
-interface ProductStockRow {
-  productId: number;
-  productName: string;
-  inStock: string;
-}
 interface TotalsRow {
   orders: string;
   revenue: string;
@@ -64,14 +50,11 @@ export class ReportsService {
     private readonly itemRepo: Repository<OrderItem>,
     @InjectRepository(Payment)
     private readonly paymentRepo: Repository<Payment>,
-    @InjectRepository(ProductVariant)
-    private readonly variantRepo: Repository<ProductVariant>,
+    @InjectRepository(Recipe)
+    private readonly recipeRepo: Repository<Recipe>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
   ) {}
-
-  // Label for the stock-report group covering products that have no sizes.
-  private static readonly UNSIZED_LABEL = 'No size';
 
   /** Restricts a query on order alias `o` to paid orders. */
   private paidOnly<T extends ObjectLiteral>(
@@ -81,120 +64,94 @@ export class ReportsService {
   }
 
   /**
-   * Cup stock by size: how many cups of each size are in stock, and how many
-   * size-variants are out of stock. Sized products draw from product_variants;
-   * products with no variant rows keep their stock on the product itself and
-   * are reported under a single UNSIZED_LABEL group, so the totals cover the
-   * whole catalogue rather than just sized items.
+   * Stock at product level: counted products report their units on hand,
+   * made-to-order products the servings their recipes cover (best size).
+   * Lets the report answer "is Blueberry Muffin in stock?" and list every
+   * product or size that is sold out.
    */
   async stock() {
-    const bySizeRaw = await this.variantRepo
-      .createQueryBuilder('v')
-      .select('v.size', 'size')
-      .addSelect('SUM(v.stock)', 'inStock')
-      .addSelect('COUNT(*)', 'variants')
-      .addSelect('SUM(CASE WHEN v.stock <= 0 THEN 1 ELSE 0 END)', 'outOfStock')
-      .groupBy('v.size')
-      .orderBy('v.size', 'ASC')
-      .getRawMany<StockBySizeRow>();
-
-    const bySize = bySizeRaw.map((r) => ({
-      size: r.size,
-      inStock: toNumber(r.inStock),
-      variants: toNumber(r.variants),
-      outOfStock: toNumber(r.outOfStock),
-    }));
-
-    // Products with no variant rows: stock lives on the product itself.
-    const unsizedQb = () =>
-      this.productRepo.createQueryBuilder('p').where((qb) => {
-        const sub = qb
-          .subQuery()
-          .select('1')
-          .from(ProductVariant, 'v')
-          .where('v.productId = p.id')
-          .getQuery();
-        return `NOT EXISTS ${sub}`;
-      });
-
-    const unsizedRaw = await unsizedQb()
-      .select('COALESCE(SUM(p.stock), 0)', 'inStock')
-      .addSelect('COUNT(*)', 'variants')
-      .addSelect('SUM(CASE WHEN p.stock <= 0 THEN 1 ELSE 0 END)', 'outOfStock')
-      .getRawOne<Omit<StockBySizeRow, 'size'>>();
-
-    const unsized = {
-      size: ReportsService.UNSIZED_LABEL,
-      inStock: toNumber(unsizedRaw?.inStock ?? 0),
-      variants: toNumber(unsizedRaw?.variants ?? 0),
-      outOfStock: toNumber(unsizedRaw?.outOfStock ?? 0),
+    const products = await this.productRepo.find({
+      relations: { variants: true },
+      order: { name: 'ASC', variants: { sortOrder: 'ASC' } },
+    });
+    const recipeIds = products
+      .filter((p) => p.stockMode === 'recipe')
+      .map((p) => p.id);
+    const recipes =
+      recipeIds.length > 0
+        ? await this.recipeRepo.find({
+            where: { productId: In(recipeIds) },
+            relations: { items: { inventoryItem: true } },
+          })
+        : [];
+    const servingsFor = (productId: number, size: string | null) => {
+      const exact = size
+        ? recipes.find((r) => r.productId === productId && r.size === size)
+        : undefined;
+      const recipe =
+        exact ??
+        recipes.find((r) => r.productId === productId && r.size === null);
+      return recipe ? recipeServings(recipe) : 0;
     };
-    // Only surface the group when there are sizeless products at all.
-    const groups = unsized.variants > 0 ? [...bySize, unsized] : bySize;
 
-    const outOfStockVariants = await this.variantRepo
-      .createQueryBuilder('v')
-      .innerJoin('v.product', 'p')
-      .select('v.productId', 'productId')
-      .addSelect('p.name', 'productName')
-      .addSelect('v.size', 'size')
-      .where('v.stock <= 0')
-      .orderBy('p.name', 'ASC')
-      .getRawMany<OutOfStockRow>();
+    const byProduct: {
+      productId: number;
+      productName: string;
+      stockMode: string;
+      inStock: number;
+    }[] = [];
+    const outOfStockItems: {
+      productId: number;
+      productName: string;
+      size: string | null;
+    }[] = [];
 
-    const outOfStockUnsized = await unsizedQb()
-      .andWhere('p.stock <= 0')
-      .select('p.id', 'productId')
-      .addSelect('p.name', 'productName')
-      .orderBy('p.name', 'ASC')
-      .getRawMany<Omit<OutOfStockRow, 'size'>>();
-
-    // Per-product totals: sized products sum their variants (the source of
-    // truth for cup stock); unsized products use their own stock column. Lets
-    // the report answer "is Blueberry Muffin in stock?" at product level.
-    const sizedByProduct = await this.variantRepo
-      .createQueryBuilder('v')
-      .innerJoin('v.product', 'p')
-      .select('v.productId', 'productId')
-      .addSelect('p.name', 'productName')
-      .addSelect('SUM(v.stock)', 'inStock')
-      .groupBy('v.productId')
-      .addGroupBy('p.name')
-      .getRawMany<ProductStockRow>();
-
-    const unsizedByProduct = await unsizedQb()
-      .select('p.id', 'productId')
-      .addSelect('p.name', 'productName')
-      .addSelect('p.stock', 'inStock')
-      .getRawMany<ProductStockRow>();
-
-    const byProduct = [...sizedByProduct, ...unsizedByProduct]
-      .map((r) => ({
-        productId: r.productId,
-        productName: r.productName,
-        inStock: toNumber(r.inStock),
-      }))
-      .sort((a, b) => a.productName.localeCompare(b.productName));
+    for (const p of products) {
+      if (p.stockMode === 'recipe') {
+        const sizes: (string | null)[] =
+          p.variants.length > 0 ? p.variants.map((v) => v.size) : [null];
+        let best = 0;
+        for (const size of sizes) {
+          const servings = servingsFor(p.id, size);
+          best = Math.max(best, servings);
+          if (servings <= 0) {
+            outOfStockItems.push({
+              productId: p.id,
+              productName: p.name,
+              size,
+            });
+          }
+        }
+        byProduct.push({
+          productId: p.id,
+          productName: p.name,
+          stockMode: p.stockMode,
+          inStock: best,
+        });
+      } else {
+        byProduct.push({
+          productId: p.id,
+          productName: p.name,
+          stockMode: p.stockMode,
+          inStock: p.stock,
+        });
+        if (p.stock <= 0) {
+          outOfStockItems.push({
+            productId: p.id,
+            productName: p.name,
+            size: null,
+          });
+        }
+      }
+    }
 
     return {
-      bySize: groups,
       byProduct,
       totals: {
-        inStock: groups.reduce((s, b) => s + b.inStock, 0),
-        outOfStock: groups.reduce((s, b) => s + b.outOfStock, 0),
+        inStock: byProduct.reduce((s, p) => s + p.inStock, 0),
+        outOfStock: byProduct.filter((p) => p.inStock <= 0).length,
       },
-      outOfStockItems: [
-        ...outOfStockVariants.map((r) => ({
-          productId: r.productId,
-          productName: r.productName,
-          size: r.size,
-        })),
-        ...outOfStockUnsized.map((r) => ({
-          productId: r.productId,
-          productName: r.productName,
-          size: ReportsService.UNSIZED_LABEL,
-        })),
-      ].sort((a, b) => a.productName.localeCompare(b.productName)),
+      outOfStockItems,
     };
   }
 

@@ -45,14 +45,15 @@ export function hasSizes(product: Product): boolean {
 }
 
 /**
- * The recipe that governs a product + size, if any — same rule as the
- * backend: an exact size match wins, a size-less recipe is the default for
- * every size. null = the product is stock-counted for that size.
+ * The recipe availability for a product + size — same rule as the backend:
+ * an exact size match wins, a size-less recipe is the default for every
+ * size. null = no recipe covers that size (or the product is counted).
  */
 export function recipeAvailability(
   product: Product,
   size: string | null,
 ): RecipeAvailability | null {
+  if (product.stockMode !== "recipe") return null;
   const recipes = product.recipes ?? [];
   if (size) {
     const exact = recipes.find((r) => r.size === size);
@@ -61,38 +62,32 @@ export function recipeAvailability(
   return recipes.find((r) => r.size === null) ?? null;
 }
 
-/** Whether any of the product's sizes is made to order from a recipe. */
+/** Whether the product is made to order from consumables. */
 export function isRecipeManaged(product: Product): boolean {
-  return (product.recipes?.length ?? 0) > 0;
+  return product.stockMode === "recipe";
 }
 
 /**
- * Sellable units of one size: recipe servings when the size has a recipe,
- * otherwise the variant's stock count (0 if no variant row yet).
+ * Sellable units of one size: a made-to-order product's servings for that
+ * size (0 when no recipe covers it), otherwise the product's stock count —
+ * counted products keep one figure that every size draws from.
  */
-export function sizeStock(product: Product, size: string): number {
-  const recipe = recipeAvailability(product, size);
-  if (recipe) return recipe.servings;
-  return product.variants?.find((variant) => variant.size === size)?.stock ?? 0;
+export function sizeStock(product: Product, size: string | null): number {
+  if (isRecipeManaged(product)) {
+    return recipeAvailability(product, size)?.servings ?? 0;
+  }
+  return product.stock;
 }
 
 /**
- * Sellable units of the product as a whole. Stock-counted sizes add up (each
- * size is its own pile of cups); recipe sizes share ingredients, so only the
- * best of them counts. Unsized products use recipe servings or base `stock`.
+ * Sellable units of the product as a whole. A counted product is its stock;
+ * a made-to-order product's sizes share ingredients, so the best size counts.
  */
 export function totalStock(product: Product): number {
-  if (product.variants && product.variants.length > 0) {
-    let counted = 0;
-    let bestRecipe = 0;
-    for (const v of product.variants) {
-      const recipe = recipeAvailability(product, v.size);
-      if (recipe) bestRecipe = Math.max(bestRecipe, recipe.servings);
-      else counted += v.stock;
-    }
-    return counted + bestRecipe;
-  }
-  return recipeAvailability(product, null)?.servings ?? product.stock;
+  if (!isRecipeManaged(product)) return product.stock;
+  const sizes = product.variants ?? [];
+  if (sizes.length === 0) return sizeStock(product, null);
+  return Math.max(0, ...sizes.map((v) => sizeStock(product, v.size)));
 }
 
 /** Format a numeric/string amount as USD (e.g. 3.5 -> "$3.50"). */

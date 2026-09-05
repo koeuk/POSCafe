@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { rolePathBase } from "@/lib/permissions";
-import { formatPrice } from "@/lib/pricing";
+import { formatPrice, isRecipeManaged, totalStock } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
@@ -118,7 +118,12 @@ export function AdminCategoryDetail({
                         </p>
                       </td>
                       <td className="px-4 py-3">{productPriceLabel(product)}</td>
-                      <td className="px-4 py-3">{product.stock}</td>
+                      <td className="px-4 py-3">
+                        {totalStock(product)}
+                        {isRecipeManaged(product) && (
+                          <span className="ml-1 text-xs text-stone-400">to order</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         {product.isAvailable ? (
                           <span className="rounded-full bg-green-50 dark:bg-green-500/15 px-2 py-0.5 text-xs text-green-700 dark:text-green-300">

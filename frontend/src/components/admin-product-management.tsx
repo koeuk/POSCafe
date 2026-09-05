@@ -5,12 +5,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/lib/api";
+import { PopSelect } from "@/components/pop-select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { useImageUpload } from "@/lib/use-image-upload";
 import { rolePathBase } from "@/lib/permissions";
-import { formatPrice } from "@/lib/pricing";
-import type { Category, Product, Size, SizeRow } from "@/lib/types";
+import { formatPrice, isRecipeManaged, sizeStock, totalStock } from "@/lib/pricing";
+import { SizesManager } from "@/components/sizes-manager";
+import type { Category, Product, Size, SizeRow, StockMode } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 interface CategoryForm {
@@ -21,13 +23,15 @@ interface CategoryForm {
   isActive: boolean;
 }
 
-// A size row on the product form: chosen size name + its price + stock qty.
+// A size row on the product form: chosen size name + its price.
 
 interface ProductForm {
   id: number | null;
   name: string;
   categoryId: string;
   price: string;
+  // 'count' = one stock figure on the product; 'recipe' = made to order.
+  stockMode: StockMode;
   stock: string;
   discountPercent: string;
   image: string;
@@ -63,6 +67,7 @@ const EMPTY_PRODUCT_FORM: ProductForm = {
   name: "",
   categoryId: "",
   price: "",
+  stockMode: "count",
   stock: "0",
   discountPercent: "0",
   image: "",
@@ -319,6 +324,7 @@ export function AdminProductManagement({
       name: product.name,
       categoryId: String(product.categoryId),
       price: product.price,
+      stockMode: product.stockMode,
       stock: String(product.stock),
       discountPercent: String(product.discountPercent ?? 0),
       image: product.image ?? "",
@@ -327,7 +333,6 @@ export function AdminProductManagement({
       sizes: (product.variants ?? []).map((v) => ({
         size: v.size,
         price: String(v.price),
-        stock: String(v.stock),
       })),
       isAvailable: product.isAvailable,
     });
@@ -344,7 +349,7 @@ export function AdminProductManagement({
     const next = sizeCatalog.find((s) => !used.has(s.name));
     setProductForm((form) => ({
       ...form,
-      sizes: [...form.sizes, { size: next?.name ?? "", price: "", stock: "0" }],
+      sizes: [...form.sizes, { size: next?.name ?? "", price: "" }],
     }));
   }
 
@@ -402,7 +407,7 @@ export function AdminProductManagement({
       return;
     }
 
-    // Sizes: pick a size + price per row. Quantities are set on the Stock page.
+    // Sizes: pick a size + price per row. Stock is tracked per product.
     const parsedSizes = buildSizes(productForm.sizes);
     // Did the product being edited actually have sizes? Distinguishes
     // "cleared them deliberately" from "there was never a size editor".
@@ -420,14 +425,15 @@ export function AdminProductManagement({
       name: productForm.name.trim(),
       description: productForm.description.trim() || undefined,
       price: Number(productForm.price),
-      stock: Number(productForm.stock),
+      stockMode: productForm.stockMode,
+      stock:
+        productForm.stockMode === "count" ? Number(productForm.stock) : 0,
       discountPercent: Number(productForm.discountPercent || "0"),
       image: productForm.image.trim() || undefined,
       gallery: productForm.gallery.length > 0 ? productForm.gallery : null,
       // `null` means "no size rows on the form", which the backend reads as
-      // "remove every size" — it deletes the variant rows and the stock they
-      // hold. That is only ever intended when the product HAD sizes and the
-      // admin cleared them; when the form simply never showed a size editor
+      // "remove every size" — it deletes the variant rows. That is only ever
+      // intended when the product HAD sizes and the admin cleared them; when the form simply never showed a size editor
       // (an unsized product, or an empty size catalog) the field must be
       // omitted so the existing variants are left untouched.
       ...(parsedSizes !== null || hadSizes
@@ -568,6 +574,12 @@ export function AdminProductManagement({
               </div>
             )}
             </ManagementSection>
+          )}
+
+          {view === "products" && (
+            <div className="mb-6">
+              <SizesManager sizes={sizeCatalog} onChanged={reload} />
+            </div>
           )}
 
           {view === "products" && (
@@ -906,19 +918,57 @@ export function AdminProductManagement({
                 />
               </Field>
               <Field label="Stock">
-                <input
-                  type="number"
-                  min="0"
-                  value={productForm.stock}
-                  onChange={(event) =>
-                    setProductForm((form) => ({
-                      ...form,
-                      stock: event.target.value,
-                    }))
-                  }
-                  required
-                  className={INPUT_CLASS}
-                />
+                <div className="flex gap-2">
+                  <div
+                    role="radiogroup"
+                    aria-label="Stock tracking"
+                    className="flex shrink-0 items-center rounded-lg bg-stone-100 p-0.5 text-xs font-semibold dark:bg-stone-800"
+                  >
+                    {(
+                      [
+                        { id: "count", label: "Counted" },
+                        { id: "recipe", label: "Made to order" },
+                      ] as { id: StockMode; label: string }[]
+                    ).map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={productForm.stockMode === m.id}
+                        onClick={() =>
+                          setProductForm((form) => ({ ...form, stockMode: m.id }))
+                        }
+                        className={`rounded-md px-2.5 py-1.5 transition ${
+                          productForm.stockMode === m.id
+                            ? "bg-white text-stone-900 shadow-sm dark:bg-stone-900 dark:text-stone-100"
+                            : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  {productForm.stockMode === "count" ? (
+                    <input
+                      type="number"
+                      min="0"
+                      value={productForm.stock}
+                      onChange={(event) =>
+                        setProductForm((form) => ({
+                          ...form,
+                          stock: event.target.value,
+                        }))
+                      }
+                      aria-label="Units in stock"
+                      required
+                      className={INPUT_CLASS}
+                    />
+                  ) : (
+                    <span className="self-center text-xs text-stone-500 dark:text-stone-400">
+                      Recipe on the Inventory page
+                    </span>
+                  )}
+                </div>
               </Field>
             </div>
             <Field label="Discount (%)">
@@ -1072,23 +1122,16 @@ export function AdminProductManagement({
             <Field label="Sizes (optional)">
               {sizeCatalog.length === 0 ? (
                 <p className="rounded-lg bg-stone-50 px-3 py-2.5 text-xs text-stone-500 dark:bg-stone-800/60 dark:text-stone-400">
-                  No cup sizes defined yet. Add sizes on the{" "}
-                  <Link
-                    href={`${base}/stock`}
-                    className="font-medium text-pos-button underline"
-                  >
-                    Stock
-                  </Link>{" "}
-                  page first.
+                  No sizes defined yet. Add some in the Sizes section of the
+                  Products page first.
                 </p>
               ) : (
                 <div className="space-y-2">
                   {/* Column labels — aligned to the grid below. */}
                   {productForm.sizes.length > 0 && (
-                    <div className="grid grid-cols-[1fr_1fr_1fr_2rem] gap-2 px-0.5 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                    <div className="grid grid-cols-[1fr_1fr_2rem] gap-2 px-0.5 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
                       <span>Size</span>
                       <span>Price</span>
-                      <span>Qty</span>
                       <span />
                     </div>
                   )}
@@ -1105,22 +1148,20 @@ export function AdminProductManagement({
                     return (
                       <div
                         key={index}
-                        className="grid grid-cols-[1fr_1fr_1fr_2rem] items-center gap-2"
+                        className="grid grid-cols-[1fr_1fr_2rem] items-center gap-2"
                       >
-                        <select
+                        <PopSelect
+                          ariaLabel="Size"
+                          className="min-w-0"
+                          buttonClassName={INPUT_CLASS}
                           value={row.size}
-                          onChange={(e) =>
-                            updateSizeRow(index, "size", e.target.value)
-                          }
-                          className={`${INPUT_CLASS} min-w-0`}
-                        >
-                          <option value="">Select…</option>
-                          {options.map((s) => (
-                            <option key={s.id} value={s.name}>
-                              {s.name}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="Select…"
+                          onChange={(v) => updateSizeRow(index, "size", v)}
+                          options={options.map((s) => ({
+                            value: s.name,
+                            label: s.name,
+                          }))}
+                        />
                         <div className="relative min-w-0">
                           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500">
                             $
@@ -1136,21 +1177,6 @@ export function AdminProductManagement({
                             className={`${INPUT_CLASS} pl-6`}
                           />
                         </div>
-                        <input
-                          value={row.stock}
-                          onChange={(e) =>
-                            updateSizeRow(
-                              index,
-                              "stock",
-                              e.target.value.replace(/[^0-9]/g, ""),
-                            )
-                          }
-                          inputMode="numeric"
-                          placeholder="Qty"
-                          aria-label="Cups in stock for this size"
-                          title="Cups in stock for this size"
-                          className={`${INPUT_CLASS} min-w-0`}
-                        />
                         <button
                           type="button"
                           onClick={() => removeSizeRow(index)}
@@ -1173,12 +1199,13 @@ export function AdminProductManagement({
                     Add size
                   </button>
                   <p className="text-xs text-stone-400 dark:text-stone-500">
-                    Size · price · Qty (cups in stock). Restock anytime on the{" "}
+                    Each size only sets a price. Stock is tracked per product on
+                    the{" "}
                     <Link
                       href={`${base}/stock`}
                       className="underline hover:text-stone-600 dark:hover:text-stone-300"
                     >
-                      Stock
+                      Inventory
                     </Link>{" "}
                     page.
                   </p>
@@ -1508,16 +1535,15 @@ function CategoryCombobox({
   );
 }
 
-// Validate the size rows: each needs a picked size (unique), a valid price,
-// and a valid stock quantity.
+// Validate the size rows: each needs a picked size (unique) and a valid price.
 function buildSizes(
   rows: SizeRow[],
-): { size: string; price: number; stock: number }[] | null | Error {
+): { size: string; price: number }[] | null | Error {
   const filled = rows.filter((r) => r.size.trim() || r.price.trim());
   if (filled.length === 0) return null;
 
   const seen = new Set<string>();
-  const sizes: { size: string; price: number; stock: number }[] = [];
+  const sizes: { size: string; price: number }[] = [];
   for (const row of filled) {
     const size = row.size.trim();
     if (!size) return new Error("Pick a size for each row.");
@@ -1527,11 +1553,7 @@ function buildSizes(
     if (!row.price || Number.isNaN(price) || price < 0) {
       return new Error(`Enter a valid price for "${size}".`);
     }
-    const stock = Number(row.stock || "0");
-    if (Number.isNaN(stock) || stock < 0) {
-      return new Error(`Enter a valid stock for "${size}".`);
-    }
-    sizes.push({ size, price, stock });
+    sizes.push({ size, price });
   }
   return sizes;
 }
@@ -1568,10 +1590,11 @@ function stockTone(qty: number): StockTone {
 }
 
 /**
- * Stock summary for the products table: total cups on hand, with a popover
- * breaking it down per size. Sizeless products count as a single line (their
- * base stock). The menu is portalled with fixed positioning so the table's
- * `overflow-x-auto` wrapper can't clip it.
+ * Stock summary for the products table: sellable units, with a popover
+ * breaking a made-to-order product down per size (each size's recipe covers
+ * a different number of servings). A counted product is one line. The menu
+ * is portalled with fixed positioning so the table's `overflow-x-auto`
+ * wrapper can't clip it.
  */
 function StockCell({ product }: { product: Product }) {
   const [open, setOpen] = useState(false);
@@ -1624,15 +1647,22 @@ function StockCell({ product }: { product: Product }) {
     };
   }, [open, close, reposition]);
 
+  const madeToOrder = isRecipeManaged(product);
   const sized = !!product.variants && product.variants.length > 0;
-  const lines = sized
-    ? product.variants!.map((v) => ({
-        label: v.size,
-        qty: Math.max(0, v.stock),
-      }))
-    : [{ label: "Stock", qty: Math.max(0, product.stock) }];
+  const lines =
+    madeToOrder && sized
+      ? product.variants!.map((v) => ({
+          label: v.size,
+          qty: Math.max(0, sizeStock(product, v.size)),
+        }))
+      : [
+          {
+            label: madeToOrder ? "Can be made" : "In stock",
+            qty: Math.max(0, totalStock(product)),
+          },
+        ];
 
-  const total = lines.reduce((sum, l) => sum + l.qty, 0);
+  const total = totalStock(product);
   const outCount = lines.filter((l) => l.qty <= 0).length;
   const lowCount = lines.filter((l) => l.qty > 0 && l.qty <= LOW_STOCK).length;
   // Worst size drives the trigger's colour, so a single sold-out size is visible
@@ -1641,12 +1671,15 @@ function StockCell({ product }: { product: Product }) {
     total <= 0 ? "out" : outCount > 0 || lowCount > 0 ? "low" : "ok";
   const peak = Math.max(...lines.map((l) => l.qty), 1);
 
-  const summary =
-    outCount > 0
-      ? `${outCount} of ${lines.length} sold out`
+  const summary = madeToOrder
+    ? outCount > 0 && lines.length > 1
+      ? `${outCount} of ${lines.length} sizes can't be made`
+      : "made to order"
+    : outCount > 0
+      ? "sold out"
       : lowCount > 0
-        ? `${lowCount} running low`
-        : "All sizes stocked";
+        ? "running low"
+        : "in stock";
 
   return (
     <>
@@ -1656,7 +1689,7 @@ function StockCell({ product }: { product: Product }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Stock: ${total} in stock, ${summary.toLowerCase()}`}
+        aria-label={`Stock: ${total} ${madeToOrder ? "can be made" : "in stock"}, ${summary}`}
         className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/40 dark:hover:bg-stone-800"
       >
         <span className={`h-2 w-2 shrink-0 rounded-full ${STOCK_TONE[tone].dot}`} />
@@ -1695,8 +1728,8 @@ function StockCell({ product }: { product: Product }) {
                 {product.name}
               </p>
               <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">
-                <span className="font-medium tabular-nums">{total}</span> in
-                stock · {summary}
+                <span className="font-medium tabular-nums">{total}</span>{" "}
+                {madeToOrder ? "can be made" : "in stock"} · {summary}
               </p>
             </div>
 

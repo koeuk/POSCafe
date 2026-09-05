@@ -62,13 +62,13 @@ export class ProductsController {
     return this.productsService.create(dto, user?.id);
   }
 
-  // Fields the Stock page actually sends. A user holding 'stock' but not
+  // Fields the Inventory page actually sends. A user holding 'stock' but not
   // 'products' is a stock-taker, so they may only touch these — otherwise the
   // grant silently becomes full catalog control (rename, re-price, re-category).
-  private static readonly STOCK_EDITABLE_FIELDS = ['stock', 'sizes'];
+  private static readonly STOCK_EDITABLE_FIELDS = ['stock', 'stockMode'];
 
-  // Also reachable from the Stock page (quantity/size edits), so 'stock' grants
-  // it too — not just full 'products' catalog access.
+  // Also reachable from the Inventory page (stock count / mode), so 'stock'
+  // grants it too — not just full 'products' catalog access.
   @RequiresPage('products', 'stock')
   @Patch(':id')
   update(
@@ -101,7 +101,7 @@ export class ProductsController {
     return allowed.includes('products');
   }
 
-  // The Stock page can also remove a product, so 'stock' grants delete too.
+  // The Inventory page can also remove a product, so 'stock' grants delete too.
   @RequiresPage('products', 'stock')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

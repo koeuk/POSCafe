@@ -23,9 +23,9 @@ describe('probe3', () => {
   const A = (r: any) => r.set('Authorization', `Bearer ${token}`);
 
   it('PROBE G: does PATCH with sizes:null delete all variants?', async () => {
-    const p = await A(http().post('/products')).send({ name: 'Sized', price: 4, categoryId: cid, sizes: [{ size: 'S', price: 3, stock: 20 }, { size: 'L', price: 5, stock: 15 }] });
+    const p = await A(http().post('/products')).send({ name: 'Sized', price: 4, categoryId: cid, sizes: [{ size: 'S', price: 3 }, { size: 'L', price: 5 }] });
     const before = await A(http().get(`/products/${p.body.id}`));
-    console.log('variants before:', before.body.variants.map((v: any) => `${v.size}:${v.stock}`).join(','));
+    console.log('variants before:', before.body.variants.map((v: any) => `${v.size}:${v.price}`).join(','));
     // Exactly what the product drawer sends when the size editor is empty:
     const res = await A(http().patch(`/products/${p.body.id}`)).send({ name: 'Sized', price: 4, stock: 0, discountPercent: 0, gallery: null, sizes: null, categoryId: cid, isAvailable: true });
     console.log('PATCH sizes:null ->', res.status);

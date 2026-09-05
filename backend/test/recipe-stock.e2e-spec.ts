@@ -22,8 +22,8 @@ describe('Recipe stock flow (e2e)', () => {
   let app: INestApplication;
   let http: () => request.Agent;
   let token: string;
-  let latteId: number; // sized: S stock-counted, M made to order
-  let muffinId: number; // sizeless, stock-counted
+  let latteId: number; // sized, made to order (recipe for M only)
+  let muffinId: number; // sizeless, counted
   let cupId: number;
   let milkId: number;
   let beansId: number;
@@ -86,9 +86,10 @@ describe('Recipe stock flow (e2e)', () => {
           name: 'Iced Latte',
           price: 3,
           categoryId: cat.body.id,
+          stockMode: 'recipe',
           sizes: [
-            { size: 'S', price: 3, stock: 3 },
-            { size: 'M', price: 3.5, stock: 0 },
+            { size: 'S', price: 3 },
+            { size: 'M', price: 3.5 },
           ],
         })
         .expect(201)
@@ -164,14 +165,12 @@ describe('Recipe stock flow (e2e)', () => {
     expect(sources[latteId]).toBe('recipe');
     expect(sources[muffinId]).toBe('stock');
 
-    // Recipe line: consumables down, drink stock untouched.
+    // Recipe line: consumables down, the product's stock figure untouched.
     expect(await inventory(cupId)).toBe(8);
     expect(await inventory(milkId)).toBe(600);
     expect(await inventory(beansId)).toBe(64);
     const latte = await product(latteId);
-    expect(
-      latte.variants.find((v: { size: string }) => v.size === 'M').stock,
-    ).toBe(0);
+    expect(latte.stock).toBe(0);
     expect(latte.recipes).toEqual([{ size: 'M', servings: 3 }]);
     // Stock line: the muffin count went down.
     expect((await product(muffinId)).stock).toBe(3);
@@ -187,10 +186,11 @@ describe('Recipe stock flow (e2e)', () => {
     expect(forOrder[0].user?.name).toBe('Boss');
   });
 
-  it('still counts a stock-counted size from its own stock', async () => {
-    await auth(http().post('/orders'))
-      .send({ items: [{ productId: latteId, size: 'S', quantity: 4 }] })
-      .expect(400); // only 3 S in stock
+  it('refuses a made-to-order size that has no recipe', async () => {
+    const res = await auth(http().post('/orders'))
+      .send({ items: [{ productId: latteId, size: 'S', quantity: 1 }] })
+      .expect(400);
+    expect(res.body.message).toMatch(/no recipe/);
   });
 
   it('rolls the whole order back when an ingredient runs short', async () => {
@@ -267,8 +267,8 @@ describe('Recipe stock flow (e2e)', () => {
     await auth(http().patch(`/products/${latteId}`))
       .send({
         sizes: [
-          { size: 'S', price: 3, stock: 3 },
-          { size: 'Medium', price: 3.5, stock: 0 },
+          { size: 'S', price: 3 },
+          { size: 'Medium', price: 3.5 },
         ],
       })
       .expect(200);

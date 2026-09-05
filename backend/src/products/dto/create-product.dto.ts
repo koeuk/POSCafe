@@ -3,6 +3,7 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -12,6 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { STOCK_MODES, type StockMode } from '../entities/product.entity';
 
 export class ProductSizeDto {
   @IsString()
@@ -21,12 +23,6 @@ export class ProductSizeDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   price: number;
-
-  // Cups of this size in stock. Optional on update (omit to keep current).
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  stock?: number;
 }
 
 export class CreateProductDto {
@@ -71,6 +67,13 @@ export class CreateProductDto {
   @IsBoolean()
   isAvailable?: boolean;
 
+  // 'count' (default): `stock` is the units on hand. 'recipe': made to
+  // order from consumables; `stock` is ignored.
+  @IsOptional()
+  @IsIn(STOCK_MODES)
+  stockMode?: StockMode;
+
+  // Units on hand ('count' products only).
   @IsOptional()
   @IsInt()
   @Min(0)

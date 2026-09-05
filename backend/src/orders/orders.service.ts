@@ -62,8 +62,7 @@ export class OrdersService {
         }
 
         // A product is "sized" when it has variant rows — each carries its
-        // own price and stock. Sizeless products price and stock from the
-        // product row itself.
+        // own price. Sizeless products price from the product row itself.
         const hasSizes =
           (await manager.count(ProductVariant, {
             where: { productId: product.id },
@@ -78,10 +77,8 @@ export class OrdersService {
               `Size is required for "${product.name}"`,
             );
           }
-          // Lock the chosen variant row so concurrent orders can't oversell.
           variant = await manager.findOne(ProductVariant, {
             where: { productId: product.id, size: line.size },
-            lock: { mode: 'pessimistic_write' },
           });
           if (!variant) {
             throw new BadRequestException(
@@ -102,13 +99,12 @@ export class OrdersService {
         const subtotal = roundCents(unitPrice * line.quantity);
         total += subtotal;
 
-        // Take the units from exactly one place: the product's recipe
-        // (consumables) when it has one, otherwise its own stock count.
-        // Stock-counted lines are decremented here; recipe ingredients are
-        // deducted once the order row exists so the movements carry its id.
+        // Take the units from exactly one place, per the product's stock
+        // mode: counted products are decremented here; a made-to-order
+        // product's ingredients are deducted once the order row exists so the
+        // movements can carry its id.
         const stockSource = await deduction.reserveLine({
           product,
-          variant,
           size,
           quantity: line.quantity,
         });
