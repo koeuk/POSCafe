@@ -16,6 +16,12 @@ export class RecipeItemDto {
   @IsNumber()
   @Min(0.001)
   quantity: number;
+
+  // Unit the quantity is in; defaults to the inventory item's unit. Must be
+  // in the same family as the item's unit (g/kg, ml/L, pcs).
+  @IsString()
+  @IsOptional()
+  unit?: string | null;
 }
 
 export class CreateRecipeDto {

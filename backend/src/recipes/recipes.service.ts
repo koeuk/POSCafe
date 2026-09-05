@@ -4,7 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
+import { InventoryItem } from '../inventory/entities/inventory-item.entity';
+import { normalizeUnit, unitsCompatible } from '../inventory/units';
 import { Product } from '../products/entities/product.entity';
 import { StockMovement } from '../products/entities/stock-movement.entity';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
@@ -106,6 +108,32 @@ export class RecipesService {
         seen.add(item.inventoryItemId);
       }
 
+      // Every line's unit must convert into its ingredient's stock unit
+      // (kg ↔ g, L ↔ ml); the deduction relies on that at sale time.
+      const ingredients = await manager.find(InventoryItem, {
+        where: { id: In([...seen]) },
+      });
+      const byId = new Map(ingredients.map((i) => [i.id, i]));
+      const lineUnits = new Map<number, string | null>();
+      for (const item of dto.items) {
+        const ingredient = byId.get(item.inventoryItemId);
+        if (!ingredient) {
+          throw new NotFoundException(
+            `Inventory item #${item.inventoryItemId} not found`,
+          );
+        }
+        const unit = item.unit?.trim() ? normalizeUnit(item.unit) : null;
+        if (unit && !unitsCompatible(unit, ingredient.unit)) {
+          throw new BadRequestException(
+            `"${ingredient.name}" is stocked in ${ingredient.unit} — a recipe cannot take it in ${unit}`,
+          );
+        }
+        lineUnits.set(
+          item.inventoryItemId,
+          unit && unit !== normalizeUnit(ingredient.unit) ? unit : null,
+        );
+      }
+
       let recipe = await manager.findOne(Recipe, {
         where: {
           productId: dto.productId,
@@ -130,6 +158,7 @@ export class RecipesService {
           recipeId: recipe.id,
           inventoryItemId: item.inventoryItemId,
           quantity: item.quantity,
+          unit: lineUnits.get(item.inventoryItemId) ?? null,
         }),
       );
       await manager.save(RecipeItem, items);
@@ -156,7 +185,10 @@ export class RecipesService {
   ): Promise<void> {
     if (product.stockMode === 'recipe' && product.stock === 0) return;
     const stock = product.stock;
-    await manager.update(Product, product.id, { stockMode: 'recipe', stock: 0 });
+    await manager.update(Product, product.id, {
+      stockMode: 'recipe',
+      stock: 0,
+    });
     if (stock > 0) {
       await manager.save(
         manager.create(StockMovement, {

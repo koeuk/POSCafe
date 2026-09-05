@@ -30,4 +30,10 @@ export class RecipeItem {
   // Quantity of inventory item consumed per drink (e.g. 18 for g, 200 for ml, 1 for cup)
   @Column('decimal', { precision: 12, scale: 3 })
   quantity: number;
+
+  // Unit `quantity` is written in. null = the inventory item's own unit.
+  // May differ from the item's unit within the same family (item stocked in
+  // kg, recipe line in g) — see inventory/units.ts for the conversion.
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  unit: string | null;
 }

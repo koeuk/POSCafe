@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { PopSelect } from "@/components/pop-select";
 import { api } from "@/lib/api";
 import type { InventoryItem, Product, Recipe } from "@/lib/types";
+import { compatibleUnits, convertQuantity } from "@/lib/units";
 
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
@@ -11,13 +12,23 @@ const INPUT =
 interface DraftLine {
   inventoryItemId: number;
   quantity: string;
+  // Unit the quantity is written in; "" = the supply's own unit.
+  unit: string;
 }
 
 function linesFromRecipe(recipe: Recipe | null): DraftLine[] {
   return (recipe?.items ?? []).map((item) => ({
     inventoryItemId: item.inventoryItemId,
     quantity: String(item.quantity),
+    unit: item.unit ?? "",
   }));
+}
+
+/** A line's quantity in its supply's stock unit (10 g against coffee in kg → 0.01). */
+function inStockUnit(line: DraftLine, inv: InventoryItem | undefined): number {
+  const qty = Number(line.quantity);
+  if (!inv || !line.unit) return qty;
+  return convertQuantity(qty, line.unit, inv.unit);
 }
 
 /**
@@ -73,7 +84,7 @@ export function RecipeEditor({
           Math.min(
             ...filledLines.map((l) => {
               const inv = inventoryItems.find((i) => i.id === l.inventoryItemId);
-              return inv ? Number(inv.stockQuantity) / Number(l.quantity) : 0;
+              return inv ? Number(inv.stockQuantity) / inStockUnit(l, inv) : 0;
             }),
           ),
         );
@@ -86,13 +97,17 @@ export function RecipeEditor({
     const unused =
       inventoryItems.find((inv) => !lines.some((l) => l.inventoryItemId === inv.id)) ??
       inventoryItems[0];
-    setLines([...lines, { inventoryItemId: unused.id, quantity: "1" }]);
+    setLines([...lines, { inventoryItemId: unused.id, quantity: "1", unit: "" }]);
   }
 
   function payloadLines() {
     return lines
       .filter((l) => Number(l.quantity) > 0)
-      .map((l) => ({ inventoryItemId: l.inventoryItemId, quantity: Number(l.quantity) }));
+      .map((l) => ({
+        inventoryItemId: l.inventoryItemId,
+        quantity: Number(l.quantity),
+        unit: l.unit || null,
+      }));
   }
 
   async function save(targetSizes: (string | null)[]) {
@@ -186,7 +201,7 @@ export function RecipeEditor({
                   onChange={(v) =>
                     setLines(
                       lines.map((l, i) =>
-                        i === index ? { ...l, inventoryItemId: Number(v) } : l,
+                        i === index ? { ...l, inventoryItemId: Number(v), unit: "" } : l,
                       ),
                     )
                   }
@@ -211,9 +226,30 @@ export function RecipeEditor({
                   aria-label="Quantity per serving"
                   className={`${INPUT} w-24 text-right`}
                 />
-                <span className="w-8 text-xs text-stone-500 dark:text-stone-400">
-                  {inv?.unit ?? ""}
-                </span>
+                {(() => {
+                  const units = inv ? compatibleUnits(inv.unit) : [];
+                  const unit = line.unit || units[0] || "";
+                  return units.length > 1 ? (
+                    <PopSelect
+                      ariaLabel="Unit"
+                      className="w-20"
+                      buttonClassName={INPUT}
+                      value={unit}
+                      onChange={(v) =>
+                        setLines(
+                          lines.map((l, i) =>
+                            i === index ? { ...l, unit: v === units[0] ? "" : v } : l,
+                          ),
+                        )
+                      }
+                      options={units.map((u) => ({ value: u, label: u }))}
+                    />
+                  ) : (
+                    <span className="w-8 text-xs text-stone-500 dark:text-stone-400">
+                      {unit}
+                    </span>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={() => setLines(lines.filter((_, i) => i !== index))}

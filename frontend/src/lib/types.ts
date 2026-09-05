@@ -130,6 +130,7 @@ export interface RecipeItem {
   inventoryItemId: number;
   inventoryItem?: InventoryItem;
   quantity: string; // DECIMAL-as-string
+  unit: string | null; // null = the inventory item's unit; else same family (g/kg, ml/L)
 }
 
 export interface Recipe {

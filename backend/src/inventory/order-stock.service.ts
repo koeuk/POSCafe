@@ -3,8 +3,10 @@ import { EntityManager, IsNull } from 'typeorm';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Product } from '../products/entities/product.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
+import { lineQuantityInStockUnit } from '../recipes/recipe-servings';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { InventoryMovement } from './entities/inventory-movement.entity';
+import { formatQuantity } from './units';
 
 /**
  * Where an order line's units came from, recorded on the order item so a
@@ -42,7 +44,9 @@ export async function findRecipe(
   productId: number,
   size: string | null,
 ): Promise<Recipe | null> {
-  const relations = { items: true } as const;
+  // Ingredients come along so recipe amounts can be converted into each
+  // item's stock unit (a 10 g line against coffee kept in kg).
+  const relations = { items: { inventoryItem: true } } as const;
   let recipe: Recipe | null = null;
   if (size) {
     recipe = await manager.findOne(Recipe, {
@@ -92,7 +96,7 @@ export class OrderStockDeduction {
           quantity: 0,
           products: new Set<string>(),
         };
-        need.quantity += Number(item.quantity) * quantity;
+        need.quantity += lineQuantityInStockUnit(item) * quantity;
         need.products.add(label);
         this.needs.set(item.inventoryItemId, need);
       }
@@ -127,17 +131,18 @@ export class OrderStockDeduction {
         );
       }
       const have = Number(item.stockQuantity);
-      if (have < need.quantity) {
+      const required = round3(need.quantity);
+      if (have < required) {
         throw new BadRequestException(
-          `Insufficient ${item.name} for ${[...need.products].join(', ')}: have ${have} ${item.unit}, need ${need.quantity} ${item.unit}`,
+          `Insufficient stock: ${item.name} — required ${formatQuantity(required, item.unit)}, available ${formatQuantity(have, item.unit)} (for ${[...need.products].join(', ')})`,
         );
       }
-      item.stockQuantity = round3(have - need.quantity);
+      item.stockQuantity = round3(have - required);
       await this.manager.save(item);
       await this.manager.save(
         this.manager.create(InventoryMovement, {
           inventoryItemId: item.id,
-          delta: -need.quantity,
+          delta: -required,
           stockAfter: item.stockQuantity,
           reason: MOVEMENT_ORDER_DEDUCTION,
           orderId,

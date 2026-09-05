@@ -263,6 +263,7 @@ export class ProductsService {
         items: source.items.map((i) => ({
           inventoryItemId: i.inventoryItemId,
           quantity: i.quantity,
+          unit: i.unit,
         })),
       });
       await this.recipeRepo.save(copy);
