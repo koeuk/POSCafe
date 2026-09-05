@@ -103,9 +103,14 @@ export class ProductsController {
 
   // The Inventory page can also remove a product, so 'stock' grants delete too.
   @RequiresPage('products', 'stock')
+  // `?force=true` archives a product that has sales history instead of
+  // refusing (see ProductsService.remove).
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('force') force?: string,
+  ) {
+    return this.productsService.remove(id, force === 'true');
   }
 }

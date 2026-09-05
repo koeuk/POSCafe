@@ -233,21 +233,22 @@ function ProductRow({
   const units = totalStock(product);
   const sizes = product.variants ?? [];
 
-  const [adjusting, setAdjusting] = useState(false);
-  const [draft, setDraft] = useState("");
+  // Stock stepper buffer, reseeded from the server figure after every save
+  // or refetch (keyed on it) so a stale draft never overwrites a sale.
+  const [draft, setDraft] = useState({ base: product.stock, value: String(product.stock) });
+  const draftValue = draft.base === product.stock ? draft.value : String(product.stock);
+  const dirty = Number(draftValue || "0") !== product.stock;
+  function setStock(next: number) {
+    setDraft({ base: product.stock, value: String(Math.max(0, next)) });
+  }
   const [editingRecipe, setEditingRecipe] = useState(false);
   const [pendingMode, setPendingMode] = useState<StockMode | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function startAdjust() {
-    setDraft(String(product.stock));
-    setError(null);
-    setAdjusting(true);
-  }
-
   async function saveStock() {
-    const next = Math.max(0, Number(draft || "0"));
+    if (!dirty) return;
+    const next = Math.max(0, Number(draftValue || "0"));
     setBusy(true);
     setError(null);
     try {
@@ -255,7 +256,6 @@ function ProductRow({
         method: "PATCH",
         body: { stock: next },
       });
-      setAdjusting(false);
       await onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -274,7 +274,6 @@ function ProductRow({
         body: { stockMode: pendingMode },
       });
       setPendingMode(null);
-      setAdjusting(false);
       // Straight into the one thing the new mode needs.
       setEditingRecipe(pendingMode === "recipe");
       await onChanged();
@@ -331,68 +330,75 @@ function ProductRow({
           </span>
         </span>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           {madeToOrder ? (
             <button
               type="button"
               onClick={() => setEditingRecipe((v) => !v)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition ${
                 editingRecipe
                   ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
-                  : "border border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+                  : "bg-pos-button text-pos-button-fg hover:opacity-90"
               }`}
             >
               {editingRecipe ? "Close recipe" : "Edit recipe"}
             </button>
-          ) : adjusting ? (
-            <>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setStock(Number(draftValue || "0") - 1)}
+                disabled={busy || Number(draftValue || "0") <= 0}
+                aria-label={`Remove one ${product.name}`}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-stone-200 text-lg leading-none text-stone-600 transition hover:bg-stone-50 disabled:opacity-40 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+              >
+                −
+              </button>
               <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+                value={draftValue}
+                onChange={(e) =>
+                  setDraft({
+                    base: product.stock,
+                    value: e.target.value.replace(/[^0-9]/g, ""),
+                  })
+                }
                 onKeyDown={(e) => e.key === "Enter" && saveStock()}
+                onFocus={(e) => e.target.select()}
                 inputMode="numeric"
-                autoFocus
                 aria-label={`Stock for ${product.name}`}
-                className={`${INPUT} w-24 text-right`}
+                className={`${INPUT} h-9 w-20 text-center text-base font-semibold ${
+                  dirty ? "border-pos-button ring-2 ring-pos-button/15" : ""
+                }`}
               />
               <button
                 type="button"
-                onClick={() => setAdjusting(false)}
+                onClick={() => setStock(Number(draftValue || "0") + 1)}
                 disabled={busy}
-                className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+                aria-label={`Add one ${product.name}`}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-stone-200 text-lg leading-none text-stone-600 transition hover:bg-stone-50 disabled:opacity-40 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
               >
-                Cancel
+                +
               </button>
               <button
                 type="button"
                 onClick={saveStock}
-                disabled={busy || Number(draft || "0") === product.stock}
-                className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={busy || !dirty}
+                className={`h-9 rounded-lg px-3.5 text-sm font-semibold transition ${
+                  dirty
+                    ? "bg-pos-button text-pos-button-fg hover:opacity-90"
+                    : "bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500"
+                }`}
               >
                 {busy ? "Saving…" : "Save"}
               </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={startAdjust}
-              className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
-            >
-              Adjust stock
-            </button>
+            </div>
           )}
-          <button
-            type="button"
-            onClick={() => setPendingMode(madeToOrder ? "count" : "recipe")}
-            title={
-              madeToOrder
-                ? "Track this product by a stock count instead"
-                : "Make this product to order from a recipe instead"
-            }
-            className="rounded-lg px-2 py-2 text-xs font-medium text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
-          >
-            {madeToOrder ? "→ Counted" : "→ Made to order"}
-          </button>
+
+          <ModeSwitch
+            mode={product.stockMode}
+            disabled={busy}
+            onSwitch={(next) => setPendingMode(next)}
+          />
         </div>
       </div>
 
@@ -459,6 +465,56 @@ function ProductRow({
         />
       )}
     </li>
+  );
+}
+
+/**
+ * The product's tracking mode as a two-option switch. The active option is
+ * filled; tapping the other asks for confirmation (see ProductRow).
+ */
+function ModeSwitch({
+  mode,
+  disabled,
+  onSwitch,
+}: {
+  mode: StockMode;
+  disabled?: boolean;
+  onSwitch: (next: StockMode) => void;
+}) {
+  const options: { id: StockMode; label: string; hint: string }[] = [
+    { id: "count", label: "Counted", hint: "Track a stock number" },
+    { id: "recipe", label: "Made to order", hint: "Deduct supplies from a recipe" },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Stock tracking"
+      className="flex items-center rounded-xl bg-stone-100 p-1 text-xs font-semibold dark:bg-stone-800"
+    >
+      {options.map((o) => {
+        const active = o.id === mode;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            title={o.hint}
+            disabled={disabled}
+            onClick={() => !active && onSwitch(o.id)}
+            className={`rounded-lg px-3 py-2 transition ${
+              active
+                ? o.id === "recipe"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-white text-stone-900 shadow-sm dark:bg-stone-900 dark:text-stone-100"
+                : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

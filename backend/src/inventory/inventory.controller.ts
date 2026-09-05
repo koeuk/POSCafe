@@ -58,9 +58,13 @@ export class InventoryController {
     return this.inventoryService.update(id, dto, user.id);
   }
 
+  // `?force=true` also strips the item out of any recipe that uses it.
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.inventoryService.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('force') force?: string,
+  ) {
+    return this.inventoryService.remove(id, force === 'true');
   }
 
   @Post(':id/restock')

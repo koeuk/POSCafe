@@ -58,6 +58,9 @@ export interface Product {
   // 'recipe' products only: servings per size (null size = every size).
   // Read through recipeAvailability()/sizeStock()/totalStock() in pricing.ts.
   recipes?: RecipeAvailability[];
+  // Set once a product with sales history was deleted (archived): such
+  // products never appear in catalog lists, only inside past orders.
+  archivedAt?: string | null;
   categoryId: number;
   category?: Category;
 }
@@ -99,7 +102,7 @@ export interface StockMovement {
 export interface InventoryItem {
   id: number;
   name: string;
-  category: string; // free-form grouping, e.g. 'Packaging', 'Ingredient'
+  category: string; // 'Raw Materials' | 'Packaging' | 'Operating Supplies' | custom
   unit: string; // 'pcs', 'g', 'ml', 'kg', 'L'
   stockQuantity: string; // DECIMAL-as-string
   minThreshold: string; // DECIMAL-as-string

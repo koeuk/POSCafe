@@ -5,6 +5,7 @@ import {
   Repository,
   type ObjectLiteral,
   type SelectQueryBuilder,
+  IsNull,
 } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
@@ -71,6 +72,7 @@ export class ReportsService {
    */
   async stock() {
     const products = await this.productRepo.find({
+      where: { archivedAt: IsNull() },
       relations: { variants: true },
       order: { name: 'ASC', variants: { sortOrder: 'ASC' } },
     });
@@ -308,10 +310,13 @@ export class ReportsService {
       if (from > to) {
         throw new BadRequestException('from must not be after to');
       }
-      qb.andWhere("DATE_FORMAT(o.createdAt, '%Y-%m-%d') BETWEEN :from AND :to", {
-        from,
-        to,
-      });
+      qb.andWhere(
+        "DATE_FORMAT(o.createdAt, '%Y-%m-%d') BETWEEN :from AND :to",
+        {
+          from,
+          to,
+        },
+      );
     } else {
       days = Math.min(Math.max(Math.trunc(days), 1), 365);
       const since = new Date();

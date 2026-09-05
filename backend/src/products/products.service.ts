@@ -3,8 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { countOrderLines, removeProduct } from './product-removal';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, QueryFailedError, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { CategoriesService } from '../categories/categories.service';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { toNumber } from '../common/money';
@@ -123,7 +124,7 @@ export class ProductsService {
 
   async findAll(categoryId?: number): Promise<ProductWithAvailability[]> {
     const products = await this.repo.find({
-      where: categoryId ? { categoryId } : {},
+      where: { ...(categoryId ? { categoryId } : {}), archivedAt: IsNull() },
       relations: { category: true, variants: true },
       order: { name: 'ASC', variants: { sortOrder: 'ASC' } },
     });
@@ -209,27 +210,23 @@ export class ProductsService {
     return this.findOne(id);
   }
 
-  async remove(id: number): Promise<void> {
+  /**
+   * Deletes a product. One that appears in past orders can't simply vanish
+   * (order lines reference it), so without `force` that is refused with a
+   * 409; with `force` it is archived instead — see product-removal.ts.
+   */
+  async remove(id: number, force = false): Promise<void> {
     const product = await this.findOne(id);
-    try {
-      await this.repo.remove(product); // variants cascade-delete
-    } catch (err) {
-      // order_items.product is ON DELETE RESTRICT, so a product that appears in
-      // any past order can't be deleted. Surface a clear 409 instead of a raw
-      // 500 from the FK violation.
-      const driver = (
-        err as { driverError?: { errno?: number; code?: string } }
-      ).driverError;
-      if (
-        err instanceof QueryFailedError &&
-        (driver?.errno === 1451 || driver?.code === 'ER_ROW_IS_REFERENCED_2')
-      ) {
-        throw new ConflictException(
-          `"${product.name}" can't be deleted because it appears in past orders. Mark it unavailable instead.`,
-        );
-      }
-      throw err;
+    if (product.archivedAt) return; // already out of the catalog
+    const lines = await countOrderLines(this.repo.manager, id);
+    if (lines > 0 && !force) {
+      throw new ConflictException(
+        `"${product.name}" appears in ${lines} past order line${lines === 1 ? '' : 's'}, so it can't be deleted outright. Deleting anyway archives it: it disappears from the menu, POS and stock reports, while order history keeps it.`,
+      );
     }
+    await this.repo.manager.transaction((manager) =>
+      removeProduct(manager, product),
+    );
   }
 
   /**

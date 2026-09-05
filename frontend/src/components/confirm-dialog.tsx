@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
 /**
  * Small centered confirmation modal. Closes on Escape or backdrop click.
@@ -11,6 +11,8 @@ export function ConfirmDialog({
   message,
   confirmLabel = "Delete",
   busy = false,
+  confirmDisabled = false,
+  children,
   onCancel,
   onConfirm,
 }: {
@@ -18,6 +20,10 @@ export function ConfirmDialog({
   message: string;
   confirmLabel?: string;
   busy?: boolean;
+  /** Keep the confirm button off until the user has acknowledged something. */
+  confirmDisabled?: boolean;
+  /** Extra content between the message and the buttons (details, a checkbox). */
+  children?: ReactNode;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -55,6 +61,7 @@ export function ConfirmDialog({
         <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
           {message}
         </p>
+        {children}
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
@@ -67,7 +74,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || confirmDisabled}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
           >
             {busy ? "Deleting…" : confirmLabel}

@@ -10,7 +10,7 @@ export class AddConsumableInventoryAndRecipes1787000000000
       `CREATE TABLE IF NOT EXISTS \`inventory_items\` (
         \`id\` int NOT NULL AUTO_INCREMENT,
         \`name\` varchar(255) NOT NULL,
-        \`category\` varchar(100) NOT NULL DEFAULT 'packaging',
+        \`category\` varchar(100) NOT NULL DEFAULT 'Packaging',
         \`unit\` varchar(50) NOT NULL DEFAULT 'pcs',
         \`stockQuantity\` decimal(12,3) NOT NULL DEFAULT '0.000',
         \`minThreshold\` decimal(12,3) NOT NULL DEFAULT '0.000',

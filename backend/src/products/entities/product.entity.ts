@@ -56,19 +56,27 @@ export class Product {
   @Column({ default: 0 })
   stock: number;
 
+  // Set when a product with sales history is "deleted": it leaves the menu,
+  // POS, catalog and stock reports, but stays for order history and reports.
+  // See product-removal.ts.
+  @Column({ type: 'datetime', precision: 6, nullable: true })
+  archivedAt: Date | null;
+
   @OneToMany(() => ProductVariant, (variant) => variant.product, {
     cascade: true,
   })
   variants: ProductVariant[];
 
-  @Column()
-  categoryId: number;
+  // null only for an archived product whose category was force-deleted.
+  @Column({ type: 'int', nullable: true })
+  categoryId: number | null;
 
   @ManyToOne(() => Category, (category) => category.products, {
+    nullable: true,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'categoryId' })
-  category: Category;
+  category: Category | null;
 
   @CreateDateColumn()
   createdAt: Date;

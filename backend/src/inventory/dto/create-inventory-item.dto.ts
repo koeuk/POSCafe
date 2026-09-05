@@ -13,7 +13,7 @@ export class CreateInventoryItemDto {
 
   @IsString()
   @IsNotEmpty()
-  category: string; // free-form grouping, e.g. 'Packaging', 'Ingredient'
+  category: string; // 'Raw Materials' | 'Packaging' | 'Operating Supplies' | custom
 
   @IsString()
   @IsNotEmpty()

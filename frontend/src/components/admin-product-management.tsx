@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { PopSelect } from "@/components/pop-select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useClickOutside } from "@/lib/use-click-outside";
@@ -104,6 +104,17 @@ export function AdminProductManagement({
   const [error, setError] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  // Second step of a delete the server refused (409): its explanation and
+  // whether the user has ticked the acknowledgement for "Delete anyway".
+  const [forceDelete, setForceDelete] = useState<{
+    message: string;
+    ack: boolean;
+  } | null>(null);
+
+  function requestDelete(target: DeleteTarget) {
+    setForceDelete(null);
+    setDeleteTarget(target);
+  }
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(EMPTY_CATEGORY_FORM);
   const [productForm, setProductForm] = useState<ProductForm>(EMPTY_PRODUCT_FORM);
   const [busy, setBusy] = useState(false);
@@ -464,13 +475,20 @@ export function AdminProductManagement({
     setBusy(true);
     setError(null);
     try {
-      await api(`/${deleteTarget.type === "category" ? "categories" : "products"}/${deleteTarget.id}`, {
-        method: "DELETE",
-      });
+      const base = deleteTarget.type === "category" ? "categories" : "products";
+      const force = forceDelete !== null ? "?force=true" : "";
+      await api(`/${base}/${deleteTarget.id}${force}`, { method: "DELETE" });
       await reload();
       setDeleteTarget(null);
+      setForceDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to delete ${deleteTarget.type}`);
+      // The server refuses deletes that would lose history and explains what
+      // "Delete anyway" would do instead — show that and ask to confirm.
+      if (err instanceof ApiError && err.status === 409 && forceDelete === null) {
+        setForceDelete({ message: err.message, ack: false });
+      } else {
+        setError(err instanceof Error ? err.message : `Failed to delete ${deleteTarget.type}`);
+      }
     } finally {
       setBusy(false);
     }
@@ -559,7 +577,7 @@ export function AdminProductManagement({
                             viewHref={`${base}/categories/${category.id}`}
                             onEdit={() => openCategoryEdit(category)}
                             onDelete={() =>
-                              setDeleteTarget({
+                              requestDelete({
                                 type: "category",
                                 id: category.id,
                                 name: category.name,
@@ -724,7 +742,7 @@ export function AdminProductManagement({
                             viewHref={`${base}/products/${product.id}`}
                             onEdit={() => openProductEdit(product)}
                             onDelete={() =>
-                              setDeleteTarget({
+                              requestDelete({
                                 type: "product",
                                 id: product.id,
                                 name: product.name,
@@ -1238,11 +1256,31 @@ export function AdminProductManagement({
       {deleteTarget && (
         <ConfirmDialog
           title={`Delete ${deleteTarget.type}`}
-          message={`Delete "${deleteTarget.name}"? This action cannot be undone.`}
+          message={
+            forceDelete
+              ? forceDelete.message
+              : `Delete "${deleteTarget.name}"? This action cannot be undone.`
+          }
+          confirmLabel={forceDelete ? "Delete anyway" : "Delete"}
+          confirmDisabled={forceDelete !== null && !forceDelete.ack}
           busy={busy}
-          onCancel={() => setDeleteTarget(null)}
+          onCancel={() => requestDelete(null)}
           onConfirm={confirmDelete}
-        />
+        >
+          {forceDelete && (
+            <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-stone-700 dark:text-stone-300">
+              <input
+                type="checkbox"
+                checked={forceDelete.ack}
+                onChange={(e) =>
+                  setForceDelete({ ...forceDelete, ack: e.target.checked })
+                }
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-red-600 dark:border-stone-600"
+              />
+              <span>I understand — go ahead and delete &ldquo;{deleteTarget.name}&rdquo;.</span>
+            </label>
+          )}
+        </ConfirmDialog>
       )}
     </main>
   );

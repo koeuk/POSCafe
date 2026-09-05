@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Category } from '../categories/entities/category.entity';
 import { Product } from '../products/entities/product.entity';
 
@@ -23,9 +23,12 @@ export class MenuService {
     // everything ordered in SQL — no JS post-filtering/sorting.
     const categories = await this.categoryRepo
       .createQueryBuilder('c')
-      .innerJoinAndSelect('c.products', 'p', 'p.isAvailable = :available', {
-        available: true,
-      })
+      .innerJoinAndSelect(
+        'c.products',
+        'p',
+        'p.isAvailable = :available AND p.archivedAt IS NULL',
+        { available: true },
+      )
       .leftJoinAndSelect('p.variants', 'v')
       .where('c.isActive = :active', { active: true })
       .orderBy('c.name', 'ASC')
@@ -45,7 +48,7 @@ export class MenuService {
   /** A single available product with its category, for the detail page. */
   async getProduct(id: number): Promise<Product> {
     const product = await this.productRepo.findOne({
-      where: { id, isAvailable: true },
+      where: { id, isAvailable: true, archivedAt: IsNull() },
       relations: { category: true, variants: true },
       order: { variants: { sortOrder: 'ASC' } },
     });

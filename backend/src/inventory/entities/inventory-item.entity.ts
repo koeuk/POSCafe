@@ -14,9 +14,10 @@ export class InventoryItem {
   @Column()
   name: string;
 
-  // Free-form grouping for the Inventory page, e.g. 'Packaging' (cups, lids,
-  // straws) or 'Ingredient' (beans, milk, syrups).
-  @Column({ type: 'varchar', length: 100, default: 'packaging' })
+  // Supply group: 'Raw Materials' (beans, milk, syrups, ice), 'Packaging'
+  // (cups, lids, straws, bags) or 'Operating Supplies' (gloves, cleaning),
+  // or any custom name typed on the Inventory page.
+  @Column({ type: 'varchar', length: 100, default: 'Packaging' })
   category: string;
 
   // Unit of measure: 'pcs', 'g', 'ml', 'kg', 'L', etc.

@@ -263,6 +263,62 @@ describe('Recipe stock flow (e2e)', () => {
     expect(res.body.message).toMatch(/Iced Latte \(M\)/);
   });
 
+  it('force-deletes by stripping the item from recipes, dropping empty ones', async () => {
+    // A second product whose only ingredient is the cup: its recipe must
+    // vanish entirely and the product fall back to counted stock.
+    const cat = (await auth(http().get('/categories')).expect(200)).body[0];
+    const cookie = (
+      await auth(http().post('/products'))
+        .send({ name: 'Cookie', price: 1, categoryId: cat.id, stock: 9 })
+        .expect(201)
+    ).body;
+    const cupOnlyId = (
+      await auth(http().post('/inventory'))
+        .send({
+          name: 'Cookie Bag',
+          category: 'Packaging',
+          unit: 'pcs',
+          stockQuantity: 5,
+        })
+        .expect(201)
+    ).body.id;
+    await auth(http().post('/recipes'))
+      .send({
+        productId: cookie.id,
+        size: null,
+        items: [{ inventoryItemId: cupOnlyId, quantity: 1 }],
+      })
+      .expect(201);
+    // Also add it to the latte recipe next to the other ingredients.
+    await auth(http().post('/recipes'))
+      .send({
+        productId: latteId,
+        size: 'M',
+        items: [
+          { inventoryItemId: cupId, quantity: 1 },
+          { inventoryItemId: milkId, quantity: 500 },
+          { inventoryItemId: cupOnlyId, quantity: 1 },
+        ],
+      })
+      .expect(201);
+
+    await auth(http().delete(`/inventory/${cupOnlyId}`)).expect(409);
+    await auth(http().delete(`/inventory/${cupOnlyId}?force=true`)).expect(200);
+
+    const latte = (await auth(http().get(`/recipes/product/${latteId}`))).body;
+    expect(
+      latte[0].items
+        .map((i: { inventoryItemId: number }) => i.inventoryItemId)
+        .sort(),
+    ).toEqual([cupId, milkId].sort());
+    const cookieRecipes = (
+      await auth(http().get(`/recipes/product/${cookie.id}`))
+    ).body;
+    expect(cookieRecipes).toEqual([]);
+    expect((await product(cookie.id)).recipes).toEqual([]);
+    await auth(http().get(`/inventory/${cupOnlyId}`)).expect(404);
+  });
+
   it('keeps the recipe when its size is renamed, drops it when removed', async () => {
     await auth(http().patch(`/products/${latteId}`))
       .send({

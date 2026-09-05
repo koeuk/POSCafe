@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import { CategoriesService } from './categories.service';
@@ -47,9 +48,13 @@ export class CategoriesController {
   }
 
   @RequiresPage('categories')
+  // `?force=true` also removes the category's products (see the service).
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.categoriesService.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('force') force?: string,
+  ) {
+    return this.categoriesService.remove(id, force === 'true');
   }
 }

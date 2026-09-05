@@ -5,7 +5,6 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PopSelect } from "@/components/pop-select";
 import { api } from "@/lib/api";
 import {
-  type Category,
   type InventoryItem,
   type InventoryMovement,
   type Recipe,
@@ -14,8 +13,11 @@ import {
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
 
-// Sentinel option in the unit picker that reveals a free-text input.
+// Sentinel option in the unit / group pickers that reveals a free-text input.
 const NEW_UNIT = "__new__";
+const NEW_GROUP = "__new_group__";
+// The three kinds of supplies a café keeps. Anything else can be typed in.
+const SUPPLY_GROUPS = ["Raw Materials", "Packaging", "Operating Supplies"];
 // Common units of measure; anything else can be typed in.
 const DEFAULT_UNITS = ["pcs", "g", "kg", "ml", "L"];
 
@@ -29,9 +31,6 @@ const REASON_LABELS: Record<string, string> = {
 
 export function ConsumablesManager() {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  // The shop's menu categories (managed on the Categories page). Consumables
-  // are filed under them so the supplies list mirrors the menu's sections.
-  const [categories, setCategories] = useState<Category[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +43,7 @@ export function ConsumablesManager() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    category: "packaging",
+    category: SUPPLY_GROUPS[0],
     unit: "pcs",
     stockQuantity: "0",
     minThreshold: "10",
@@ -59,20 +58,19 @@ export function ConsumablesManager() {
 
   // Delete confirm modal
   const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null);
+  // Force-delete guard: the user must tick the checkbox when recipes use the item.
+  const [forceAck, setForceAck] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [itemList, categoryList, recipeList, movementList] =
-        await Promise.all([
-          api<InventoryItem[]>("/inventory"),
-          api<Category[]>("/categories"),
-          api<Recipe[]>("/recipes"),
-          api<InventoryMovement[]>("/inventory/movements?limit=30"),
-        ]);
+      const [itemList, recipeList, movementList] = await Promise.all([
+        api<InventoryItem[]>("/inventory"),
+        api<Recipe[]>("/recipes"),
+        api<InventoryMovement[]>("/inventory/movements?limit=30"),
+      ]);
       setItems(itemList);
-      setCategories(categoryList);
       setRecipes(recipeList);
       setMovements(movementList);
     } catch (err) {
@@ -108,11 +106,10 @@ export function ConsumablesManager() {
     return items.filter((i) => Number(i.stockQuantity) <= Number(i.minThreshold)).length;
   }, [items]);
 
-  // Category names for the filter tabs: the menu categories, plus any name an
-  // existing item still carries that is no longer a category (so it stays
-  // reachable and can be re-filed).
+  // Group names for the filter tabs and the picker: the three standard
+  // groups, plus any custom name an existing item carries.
   const categoryNames = useMemo(() => {
-    const names = categories.map((c) => c.name);
+    const names = [...SUPPLY_GROUPS];
     const known = new Set(names.map((n) => n.toLowerCase()));
     for (const item of items) {
       const name = (item.category || "").trim();
@@ -122,7 +119,7 @@ export function ConsumablesManager() {
       }
     }
     return names;
-  }, [categories, items]);
+  }, [items]);
 
   // Which drinks (and sizes) consume each item — the real link between a
   // consumable and the menu, straight from the recipes.
@@ -145,7 +142,7 @@ export function ConsumablesManager() {
     setEditingItem(null);
     setFormData({
       name: "",
-      category: categories[0]?.name ?? "",
+      category: SUPPLY_GROUPS[0],
       unit: "pcs",
       stockQuantity: "100",
       minThreshold: "20",
@@ -173,7 +170,7 @@ export function ConsumablesManager() {
     try {
       const payload = {
         name: formData.name.trim(),
-        category: formData.category.trim() || categories[0]?.name || "General",
+        category: formData.category.trim() || SUPPLY_GROUPS[0],
         unit: formData.unit.trim(),
         stockQuantity: Number(formData.stockQuantity) || 0,
         minThreshold: Number(formData.minThreshold) || 0,
@@ -228,7 +225,12 @@ export function ConsumablesManager() {
     setDeleting(true);
     setError(null);
     try {
-      await api(`/inventory/${pendingDelete.id}`, { method: "DELETE" });
+      // An item still used by recipes is deleted with force: the backend
+      // strips it from those recipes (and drops any recipe left empty).
+      const inUse = (usedIn.get(pendingDelete.id) ?? []).length > 0;
+      await api(`/inventory/${pendingDelete.id}${inUse ? "?force=true" : ""}`, {
+        method: "DELETE",
+      });
       setPendingDelete(null);
       await loadData();
     } catch (err) {
@@ -405,7 +407,10 @@ export function ConsumablesManager() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPendingDelete(item)}
+                      onClick={() => {
+                        setForceAck(false);
+                        setPendingDelete(item);
+                      }}
                       className="rounded-lg p-2 text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:text-stone-500 dark:hover:bg-red-500/20 dark:hover:text-red-400"
                       title="Delete Item"
                     >
@@ -500,51 +505,58 @@ export function ConsumablesManager() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                    Category
+                    Group
                   </label>
                   {(() => {
                     const counts = new Map<string, number>();
                     for (const i of items) {
                       counts.set(i.category, (counts.get(i.category) ?? 0) + 1);
                     }
-                    const options = categories.map((c) => ({
-                      value: c.name,
-                      label: c.name,
-                      hint: counts.get(c.name)
-                        ? `${counts.get(c.name)} item${counts.get(c.name) === 1 ? "" : "s"}`
-                        : undefined,
-                    }));
-                    // An item filed under a name that is no longer a category
-                    // keeps it selectable until it is re-filed.
-                    if (
-                      formData.category &&
-                      !categories.some((c) => c.name === formData.category)
-                    ) {
-                      options.push({
-                        value: formData.category,
-                        label: `${formData.category} (not a category)`,
-                        hint: undefined,
-                      });
-                    }
+                    const custom =
+                      formData.category !== "" &&
+                      !categoryNames.some(
+                        (c) => c.toLowerCase() === formData.category.toLowerCase(),
+                      );
+                    const options = [
+                      ...categoryNames.map((c) => ({
+                        value: c,
+                        label: c,
+                        hint: counts.get(c)
+                          ? `${counts.get(c)} item${counts.get(c) === 1 ? "" : "s"}`
+                          : undefined,
+                      })),
+                      { value: NEW_GROUP, label: "Other…", hint: undefined },
+                    ];
                     return (
                       <>
                         <PopSelect
-                          ariaLabel="Category"
+                          ariaLabel="Group"
                           className="mt-1"
                           buttonClassName={INPUT}
-                          value={formData.category}
-                          placeholder={
-                            categories.length === 0
-                              ? "No categories yet"
-                              : "Select a category"
-                          }
+                          value={custom ? NEW_GROUP : formData.category}
+                          placeholder="Select a group"
                           onChange={(v) =>
-                            setFormData({ ...formData, category: v })
+                            setFormData({
+                              ...formData,
+                              category: v === NEW_GROUP ? "" : v,
+                            })
                           }
                           options={options}
                         />
+                        {(custom || formData.category === "") && (
+                          <input
+                            value={formData.category}
+                            onChange={(e) =>
+                              setFormData({ ...formData, category: e.target.value })
+                            }
+                            placeholder="Group name"
+                            aria-label="Custom group name"
+                            className={`${INPUT} mt-2 w-full`}
+                          />
+                        )}
                         <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
-                          Same categories as the menu — add more on the Categories page.
+                          Raw materials go into drinks, packaging leaves with
+                          the order, operating supplies are used in the shop.
                         </p>
                       </>
                     );
@@ -716,13 +728,50 @@ export function ConsumablesManager() {
 
       {/* Delete Confirmation */}
       {pendingDelete && (
-        <ConfirmDialog
-          title="Delete Item"
-          message={`Are you sure you want to delete "${pendingDelete.name}"? This action cannot be undone.`}
-          busy={deleting}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={handleDelete}
-        />
+        (() => {
+          const uses = usedIn.get(pendingDelete.id) ?? [];
+          const inUse = uses.length > 0;
+          return (
+            <ConfirmDialog
+              title="Delete Item"
+              message={
+                inUse
+                  ? `"${pendingDelete.name}" is still used by ${uses.length === 1 ? "a recipe" : `${uses.length} recipes`}. Deleting it removes it from ${uses.length === 1 ? "that recipe" : "them"} too; a recipe left with no ingredients is dropped and its product goes back to counted stock. This cannot be undone.`
+                  : `Are you sure you want to delete "${pendingDelete.name}"? This action cannot be undone.`
+              }
+              confirmLabel={inUse ? "Delete anyway" : "Delete"}
+              confirmDisabled={inUse && !forceAck}
+              busy={deleting}
+              onCancel={() => setPendingDelete(null)}
+              onConfirm={handleDelete}
+            >
+              {inUse && (
+                <div className="mt-4 space-y-3">
+                  <ul className="max-h-32 space-y-1 overflow-y-auto rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+                    {uses.map((u) => (
+                      <li key={u} className="flex items-center gap-2">
+                        <span aria-hidden="true">📜</span>
+                        <span className="truncate">{u}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <label className="flex cursor-pointer items-start gap-2 text-sm text-stone-700 dark:text-stone-300">
+                    <input
+                      type="checkbox"
+                      checked={forceAck}
+                      onChange={(e) => setForceAck(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-red-600 dark:border-stone-600"
+                    />
+                    <span>
+                      I understand — remove it from{" "}
+                      {uses.length === 1 ? "this recipe" : "these recipes"} and delete the item.
+                    </span>
+                  </label>
+                </div>
+              )}
+            </ConfirmDialog>
+          );
+        })()
       )}
     </div>
   );
