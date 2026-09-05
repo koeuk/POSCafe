@@ -32,8 +32,9 @@ export class AddConsumableInventoryAndRecipes1787000000000
         \`userId\` int NULL,
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`),
-        CONSTRAINT \`FK_inv_mov_item\` FOREIGN KEY (\`inventoryItemId\`) REFERENCES \`inventory_items\`(\`id\`) ON DELETE CASCADE,
-        CONSTRAINT \`FK_inv_mov_user\` FOREIGN KEY (\`userId\`) REFERENCES \`users\`(\`id\`) ON DELETE SET NULL
+        INDEX \`IDX_b20552db2cfc7954122da9c496\` (\`orderId\`, \`reason\`),
+        CONSTRAINT \`FK_f9a6cc64fcb1e9a48f60980610b\` FOREIGN KEY (\`inventoryItemId\`) REFERENCES \`inventory_items\`(\`id\`) ON DELETE CASCADE,
+        CONSTRAINT \`FK_7fd6b141c027be66629d76f26b7\` FOREIGN KEY (\`userId\`) REFERENCES \`users\`(\`id\`) ON DELETE SET NULL
       ) ENGINE=InnoDB`,
     );
 
@@ -45,8 +46,8 @@ export class AddConsumableInventoryAndRecipes1787000000000
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`),
-        UNIQUE INDEX \`IDX_recipe_prod_size\` (\`productId\`, \`size\`),
-        CONSTRAINT \`FK_recipe_product\` FOREIGN KEY (\`productId\`) REFERENCES \`products\`(\`id\`) ON DELETE CASCADE
+        UNIQUE INDEX \`IDX_e855894da1c93cc2f18b50b4dc\` (\`productId\`, \`size\`),
+        CONSTRAINT \`FK_67c6c6236c69cf0173a89083485\` FOREIGN KEY (\`productId\`) REFERENCES \`products\`(\`id\`) ON DELETE CASCADE
       ) ENGINE=InnoDB`,
     );
 
@@ -57,8 +58,8 @@ export class AddConsumableInventoryAndRecipes1787000000000
         \`inventoryItemId\` int NOT NULL,
         \`quantity\` decimal(12,3) NOT NULL,
         PRIMARY KEY (\`id\`),
-        CONSTRAINT \`FK_recitem_recipe\` FOREIGN KEY (\`recipeId\`) REFERENCES \`recipes\`(\`id\`) ON DELETE CASCADE,
-        CONSTRAINT \`FK_recitem_invitem\` FOREIGN KEY (\`inventoryItemId\`) REFERENCES \`inventory_items\`(\`id\`) ON DELETE CASCADE
+        CONSTRAINT \`FK_2c44770a9565be7ea9327b1a2ab\` FOREIGN KEY (\`recipeId\`) REFERENCES \`recipes\`(\`id\`) ON DELETE CASCADE,
+        CONSTRAINT \`FK_c8b241ae134f772a6f0bf38a96b\` FOREIGN KEY (\`inventoryItemId\`) REFERENCES \`inventory_items\`(\`id\`) ON DELETE CASCADE
       ) ENGINE=InnoDB`,
     );
   }

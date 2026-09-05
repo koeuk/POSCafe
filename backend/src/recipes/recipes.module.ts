@@ -7,10 +7,7 @@ import { RecipesController } from './recipes.controller';
 import { RecipesService } from './recipes.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Recipe, RecipeItem]),
-    InventoryModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Recipe, RecipeItem]), InventoryModule],
   controllers: [RecipesController],
   providers: [RecipesService],
   exports: [RecipesService, TypeOrmModule],

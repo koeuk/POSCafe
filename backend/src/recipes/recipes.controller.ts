@@ -7,11 +7,12 @@ import {
   ParseIntPipe,
   Post,
 } from '@nestjs/common';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
+import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { RecipesService } from './recipes.service';
 
+// Recipes live on the Inventory page alongside the consumables they consume.
+@RequiresPage('stock')
 @Controller('recipes')
 export class RecipesController {
   constructor(private readonly recipesService: RecipesService) {}
@@ -32,13 +33,11 @@ export class RecipesController {
   }
 
   @Post()
-  @Roles(Role.ADMIN)
   createOrUpdate(@Body() dto: CreateRecipeDto) {
     return this.recipesService.createOrUpdate(dto);
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.recipesService.remove(id);
   }

@@ -10,14 +10,16 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
+import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import { User } from '../users/entities/user.entity';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { RestockInventoryItemDto } from './dto/restock-inventory-item.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import { InventoryService } from './inventory.service';
 
+// Consumables are managed from the Inventory page, so — like product stock —
+// a cashier granted that page may count, restock and edit them.
+@RequiresPage('stock')
 @Controller('inventory')
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
@@ -43,22 +45,20 @@ export class InventoryController {
   }
 
   @Post()
-  @Roles(Role.ADMIN)
   create(@Body() dto: CreateInventoryItemDto) {
     return this.inventoryService.create(dto);
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN)
   update(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: User,
     @Body() dto: UpdateInventoryItemDto,
   ) {
-    return this.inventoryService.update(id, dto);
+    return this.inventoryService.update(id, dto, user.id);
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.inventoryService.remove(id);
   }

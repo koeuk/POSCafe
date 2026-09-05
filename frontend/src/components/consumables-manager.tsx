@@ -2,15 +2,32 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PopSelect } from "@/components/pop-select";
 import { api } from "@/lib/api";
-import { type Category, type InventoryItem, type InventoryMovement } from "@/lib/types";
+import { type InventoryItem, type InventoryMovement, type Recipe } from "@/lib/types";
 
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
 
+// Suggested groupings for new items; any other name is fine too.
+const DEFAULT_CATEGORIES = ["Packaging", "Ingredient", "Other"];
+// Sentinel option in the pickers that reveals a free-text input.
+const NEW_CATEGORY = "__new__";
+const NEW_UNIT = "__new__";
+// Common units of measure; anything else can be typed in.
+const DEFAULT_UNITS = ["pcs", "g", "kg", "ml", "L"];
+
+// Human labels for the journal reasons written by the backend.
+const REASON_LABELS: Record<string, string> = {
+  restock: "restock",
+  correction: "correction",
+  order_deduction: "sold",
+  order_refund: "returned (cancel/refund)",
+};
+
 export function ConsumablesManager() {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [menuCategories, setMenuCategories] = useState<Category[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +59,13 @@ export function ConsumablesManager() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [itemList, categoryList, movementList] = await Promise.all([
+      const [itemList, recipeList, movementList] = await Promise.all([
         api<InventoryItem[]>("/inventory"),
-        api<Category[]>("/categories"),
+        api<Recipe[]>("/recipes"),
         api<InventoryMovement[]>("/inventory/movements?limit=30"),
       ]);
       setItems(itemList);
-      setMenuCategories(categoryList);
+      setRecipes(recipeList);
       setMovements(movementList);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load inventory");
@@ -69,7 +86,12 @@ export function ConsumablesManager() {
         (item.category || "").toLowerCase() !== categoryFilter.toLowerCase()
       )
         return false;
-      if (q && !item.name.toLowerCase().includes(q)) return false;
+      if (q) {
+        const matchName = item.name.toLowerCase().includes(q);
+        const matchCat = (item.category || "").toLowerCase().includes(q);
+        const matchUnit = (item.unit || "").toLowerCase().includes(q);
+        if (!matchName && !matchCat && !matchUnit) return false;
+      }
       return true;
     });
   }, [items, query, categoryFilter]);
@@ -78,11 +100,38 @@ export function ConsumablesManager() {
     return items.filter((i) => Number(i.stockQuantity) <= Number(i.minThreshold)).length;
   }, [items]);
 
+  // Groupings actually in use, for the filter tabs and the form suggestions.
+  const categories = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const item of items) {
+      const name = (item.category || "").trim();
+      if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }, [items]);
+
+  // Which drinks (and sizes) consume each item — the real link between a
+  // consumable and the menu, straight from the recipes.
+  const usedIn = useMemo(() => {
+    const map = new Map<number, string[]>();
+    for (const recipe of recipes) {
+      const label = recipe.size
+        ? `${recipe.product?.name ?? `#${recipe.productId}`} (${recipe.size})`
+        : recipe.product?.name ?? `#${recipe.productId}`;
+      for (const line of recipe.items ?? []) {
+        const list = map.get(line.inventoryItemId) ?? [];
+        list.push(label);
+        map.set(line.inventoryItemId, list);
+      }
+    }
+    return map;
+  }, [recipes]);
+
   function openAddModal() {
     setEditingItem(null);
     setFormData({
       name: "",
-      category: menuCategories[0]?.name || "General",
+      category: categories[0] ?? DEFAULT_CATEGORIES[0],
       unit: "pcs",
       stockQuantity: "100",
       minThreshold: "20",
@@ -110,7 +159,7 @@ export function ConsumablesManager() {
     try {
       const payload = {
         name: formData.name.trim(),
-        category: formData.category || "packaging",
+        category: formData.category.trim() || DEFAULT_CATEGORIES[0],
         unit: formData.unit.trim(),
         stockQuantity: Number(formData.stockQuantity) || 0,
         minThreshold: Number(formData.minThreshold) || 0,
@@ -207,10 +256,7 @@ export function ConsumablesManager() {
         <div className="flex flex-wrap items-center rounded-xl border border-stone-200 bg-stone-50 p-1 dark:border-stone-800 dark:bg-stone-900">
           {[
             { id: "all", label: "All Items" },
-            ...menuCategories.map((c) => ({
-              id: c.name.toLowerCase(),
-              label: c.name,
-            })),
+            ...categories.map((c) => ({ id: c.toLowerCase(), label: c })),
           ].map((cat) => (
             <button
               key={cat.id}
@@ -268,12 +314,29 @@ export function ConsumablesManager() {
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span className="inline-block rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium uppercase text-stone-600 dark:bg-stone-800 dark:text-stone-400">
-                        {item.category}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-block rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium uppercase text-stone-600 dark:bg-stone-800 dark:text-stone-400">
+                          {item.category}
+                        </span>
+                      </div>
                       <h3 className="mt-1 font-semibold text-stone-900 dark:text-stone-100">
                         {item.name}
                       </h3>
+                      {(() => {
+                        const uses = usedIn.get(item.id) ?? [];
+                        return uses.length > 0 ? (
+                          <p
+                            className="mt-0.5 line-clamp-1 text-[11px] text-stone-500 dark:text-stone-400"
+                            title={uses.join(", ")}
+                          >
+                            📜 Used by {uses.length === 1 ? uses[0] : `${uses.length} recipes`}
+                          </p>
+                        ) : (
+                          <p className="mt-0.5 text-[11px] text-stone-400 dark:text-stone-500">
+                            Not used by any recipe yet
+                          </p>
+                        );
+                      })()}
                     </div>
                     {isLow && (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-500/20 dark:text-red-400">
@@ -380,7 +443,7 @@ export function ConsumablesManager() {
                     <span className="font-medium text-stone-900 dark:text-stone-100">
                       {m.inventoryItem?.name ?? `Item #${m.inventoryItemId}`}
                     </span>
-                    <span className="text-stone-400">({m.reason})</span>
+                    <span className="text-stone-400">({REASON_LABELS[m.reason] ?? m.reason})</span>
                   </div>
                   <div className="text-stone-400">
                     {new Date(m.createdAt).toLocaleString([], {
@@ -425,37 +488,99 @@ export function ConsumablesManager() {
                   <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
                     Category
                   </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
+                  {(() => {
+                    const options = [
+                      ...new Set([...categories, ...DEFAULT_CATEGORIES]),
+                    ];
+                    const isKnown = options.includes(formData.category);
+                    const counts = new Map<string, number>();
+                    for (const i of items) {
+                      counts.set(i.category, (counts.get(i.category) ?? 0) + 1);
                     }
-                    className={`${INPUT} mt-1 w-full`}
-                  >
-                    {menuCategories.length > 0 ? (
-                      menuCategories.map((cat) => (
-                        <option key={cat.id} value={cat.name}>
-                          {cat.name}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="General">General</option>
-                    )}
-                  </select>
+                    return (
+                      <>
+                        <PopSelect
+                          ariaLabel="Category"
+                          className="mt-1"
+                          buttonClassName={INPUT}
+                          value={isKnown ? formData.category : NEW_CATEGORY}
+                          onChange={(v) =>
+                            setFormData({
+                              ...formData,
+                              category: v === NEW_CATEGORY ? "" : v,
+                            })
+                          }
+                          options={[
+                            ...options.map((c) => ({
+                              value: c,
+                              label: c,
+                              hint: counts.get(c)
+                                ? `${counts.get(c)} item${counts.get(c) === 1 ? "" : "s"}`
+                                : undefined,
+                            })),
+                            { value: NEW_CATEGORY, label: "+ New category…" },
+                          ]}
+                        />
+                        {!isKnown && (
+                          <input
+                            type="text"
+                            autoFocus
+                            value={formData.category}
+                            onChange={(e) =>
+                              setFormData({ ...formData, category: e.target.value })
+                            }
+                            placeholder="Type the new category name"
+                            className={`${INPUT} mt-2 w-full`}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
                     Unit of Measure
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    placeholder="pcs, g, ml, L, kg"
-                    className={`${INPUT} mt-1 w-full`}
-                  />
+                  {(() => {
+                    const units = [
+                      ...new Set([
+                        ...DEFAULT_UNITS,
+                        ...items.map((i) => i.unit).filter(Boolean),
+                      ]),
+                    ];
+                    const isKnown = units.includes(formData.unit);
+                    return (
+                      <>
+                        <PopSelect
+                          ariaLabel="Unit of measure"
+                          className="mt-1"
+                          buttonClassName={INPUT}
+                          value={isKnown ? formData.unit : NEW_UNIT}
+                          onChange={(v) =>
+                            setFormData({ ...formData, unit: v === NEW_UNIT ? "" : v })
+                          }
+                          options={[
+                            ...units.map((u) => ({ value: u, label: u })),
+                            { value: NEW_UNIT, label: "+ Other unit…" },
+                          ]}
+                        />
+                        {!isKnown && (
+                          <input
+                            type="text"
+                            autoFocus
+                            required
+                            value={formData.unit}
+                            onChange={(e) =>
+                              setFormData({ ...formData, unit: e.target.value })
+                            }
+                            placeholder="e.g. box, bottle"
+                            className={`${INPUT} mt-2 w-full`}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

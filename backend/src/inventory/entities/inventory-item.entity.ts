@@ -14,12 +14,13 @@ export class InventoryItem {
   @Column()
   name: string;
 
-  // 'packaging' (cups, lids, straws) or 'ingredient' (beans, milk, sugar, syrups)
-  @Column({ default: 'packaging' })
+  // Free-form grouping for the Inventory page, e.g. 'Packaging' (cups, lids,
+  // straws) or 'Ingredient' (beans, milk, syrups).
+  @Column({ type: 'varchar', length: 100, default: 'packaging' })
   category: string;
 
   // Unit of measure: 'pcs', 'g', 'ml', 'kg', 'L', etc.
-  @Column({ default: 'pcs' })
+  @Column({ type: 'varchar', length: 50, default: 'pcs' })
   unit: string;
 
   @Column('decimal', { precision: 12, scale: 3, default: 0 })

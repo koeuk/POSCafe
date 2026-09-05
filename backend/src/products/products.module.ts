@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CategoriesModule } from '../categories/categories.module';
 import { OrderItem } from '../orders/entities/order-item.entity';
+import { Recipe } from '../recipes/entities/recipe.entity';
 import { Product } from './entities/product.entity';
 import { ProductVariant } from './entities/product-variant.entity';
 import { StockMovement } from './entities/stock-movement.entity';
@@ -15,6 +16,7 @@ import { ProductsService } from './products.service';
       ProductVariant,
       StockMovement,
       OrderItem,
+      Recipe,
     ]),
     CategoriesModule,
   ],

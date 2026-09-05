@@ -38,6 +38,12 @@ export class OrderItem {
   @Column({ type: 'varchar', length: 255, nullable: true })
   note: string | null;
 
+  // Where the units came from at sale time: 'recipe' (consumables were
+  // deducted via the product's recipe) or 'stock' (the product's own stock
+  // count). Cancel/refund reverses exactly this — see order-stock.service.
+  @Column({ type: 'varchar', length: 10, default: 'stock' })
+  stockSource: 'recipe' | 'stock';
+
   // Price snapshot at order time (product price may change later).
   @Column('decimal', { precision: 10, scale: 2 })
   unitPrice: number;

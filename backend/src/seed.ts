@@ -13,7 +13,7 @@
  */
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DataSource } from 'typeorm';
+
 import { AppModule } from './app.module';
 import { CategoriesService } from './categories/categories.service';
 import { ProductsService } from './products/products.service';
@@ -387,28 +387,132 @@ const PRODUCTS: SeedProduct[] = [
 import { InventoryService } from './inventory/inventory.service';
 import { RecipesService } from './recipes/recipes.service';
 
+// Consumables are grouped by what they are, not by which drinks use them —
+// a straw is packaging whether it goes in a coffee or a tea.
 const DEMO_INVENTORY_ITEMS = [
-  // 🥤 Cups & Packaging
-  { name: 'Plastic Cup 12oz', category: 'Espresso', unit: 'pcs', stockQuantity: 500, minThreshold: 50 },
-  { name: 'Plastic Cup 16oz', category: 'Espresso', unit: 'pcs', stockQuantity: 800, minThreshold: 100 },
-  { name: 'Plastic Cup 22oz', category: 'Espresso', unit: 'pcs', stockQuantity: 300, minThreshold: 30 },
-  { name: 'Paper Cup 12oz', category: 'Espresso', unit: 'pcs', stockQuantity: 200, minThreshold: 30 },
-  { name: 'Paper Cup 16oz', category: 'Espresso', unit: 'pcs', stockQuantity: 350, minThreshold: 50 },
+  // 🥤 Cups
+  {
+    name: 'Plastic Cup 12oz',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 500,
+    minThreshold: 50,
+  },
+  {
+    name: 'Plastic Cup 16oz',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 800,
+    minThreshold: 100,
+  },
+  {
+    name: 'Plastic Cup 22oz',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 300,
+    minThreshold: 30,
+  },
+  {
+    name: 'Paper Cup 12oz',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 200,
+    minThreshold: 30,
+  },
+  {
+    name: 'Paper Cup 16oz',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 350,
+    minThreshold: 50,
+  },
   // 🥤 Lids
-  { name: '12oz Lid', category: 'Espresso', unit: 'pcs', stockQuantity: 500, minThreshold: 50 },
-  { name: '16oz Lid', category: 'Espresso', unit: 'pcs', stockQuantity: 800, minThreshold: 100 },
-  { name: '22oz Lid', category: 'Espresso', unit: 'pcs', stockQuantity: 300, minThreshold: 30 },
+  {
+    name: '12oz Lid',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 500,
+    minThreshold: 50,
+  },
+  {
+    name: '16oz Lid',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 800,
+    minThreshold: 100,
+  },
+  {
+    name: '22oz Lid',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 300,
+    minThreshold: 30,
+  },
   // 🥤 Straws
-  { name: 'Regular Straw', category: 'Espresso', unit: 'pcs', stockQuantity: 1000, minThreshold: 100 },
-  { name: 'Big Straw', category: 'Espresso', unit: 'pcs', stockQuantity: 500, minThreshold: 50 },
-  { name: 'Paper Straw', category: 'Espresso', unit: 'pcs', stockQuantity: 500, minThreshold: 50 },
-  { name: 'Bubble Tea Straw', category: 'Tea', unit: 'pcs', stockQuantity: 300, minThreshold: 30 },
-  // ☕ Ingredients
-  { name: 'Coffee Beans', category: 'Espresso', unit: 'g', stockQuantity: 10000, minThreshold: 1000 },
-  { name: 'Fresh Milk', category: 'Espresso', unit: 'ml', stockQuantity: 20000, minThreshold: 2000 },
-  { name: 'Sugar Syrup', category: 'Espresso', unit: 'ml', stockQuantity: 8000, minThreshold: 1000 },
-  { name: 'Vanilla Syrup', category: 'Espresso', unit: 'ml', stockQuantity: 3000, minThreshold: 500 },
-  { name: 'Caramel Drizzle', category: 'Espresso', unit: 'ml', stockQuantity: 2000, minThreshold: 300 },
+  {
+    name: 'Regular Straw',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 1000,
+    minThreshold: 100,
+  },
+  {
+    name: 'Big Straw',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 500,
+    minThreshold: 50,
+  },
+  {
+    name: 'Paper Straw',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 500,
+    minThreshold: 50,
+  },
+  {
+    name: 'Bubble Tea Straw',
+    category: 'Packaging',
+    unit: 'pcs',
+    stockQuantity: 300,
+    minThreshold: 30,
+  },
+  // ☕ Raw ingredients
+  {
+    name: 'Coffee Beans',
+    category: 'Ingredient',
+    unit: 'g',
+    stockQuantity: 10000,
+    minThreshold: 1000,
+  },
+  {
+    name: 'Fresh Milk',
+    category: 'Ingredient',
+    unit: 'ml',
+    stockQuantity: 20000,
+    minThreshold: 2000,
+  },
+  {
+    name: 'Sugar Syrup',
+    category: 'Ingredient',
+    unit: 'ml',
+    stockQuantity: 8000,
+    minThreshold: 1000,
+  },
+  {
+    name: 'Vanilla Syrup',
+    category: 'Ingredient',
+    unit: 'ml',
+    stockQuantity: 3000,
+    minThreshold: 500,
+  },
+  {
+    name: 'Caramel Drizzle',
+    category: 'Ingredient',
+    unit: 'ml',
+    stockQuantity: 2000,
+    minThreshold: 300,
+  },
 ];
 
 async function seed() {
@@ -424,6 +528,11 @@ async function seed() {
     const recipesService = app.get(RecipesService);
     const usersService = app.get(UsersService);
 
+    // `npm run seed -- --only=categories` (or SEED_ONLY=categories)
+    const categoriesOnly =
+      process.argv.includes('--only=categories') ||
+      process.env.SEED_ONLY === 'categories';
+
     // 0. Seed or Reset Default Users (admin & cashier)
     let adminUser = await usersService.findByUsername('admin');
     if (!adminUser) {
@@ -433,7 +542,9 @@ async function seed() {
         password: '12345678',
         role: Role.ADMIN,
       });
-      console.log('  + Admin user created (username: admin, password: 12345678)');
+      console.log(
+        '  + Admin user created (username: admin, password: 12345678)',
+      );
     } else {
       await usersService.setPassword(adminUser.id, '12345678');
       console.log('  + Admin password updated to: 12345678');
@@ -447,35 +558,17 @@ async function seed() {
         password: '12345678',
         role: Role.CASHIER,
       });
-      console.log('  + Cashier user created (username: cashier, password: 12345678)');
+      console.log(
+        '  + Cashier user created (username: cashier, password: 12345678)',
+      );
     } else {
       await usersService.setPassword(cashierUser.id, '12345678');
       console.log('  + Cashier password updated to: 12345678');
     }
 
-    // 1. Seed & Update Inventory Items (Cups, Lids, Straws, Raw ingredients)
-    const existingInventory = await inventoryService.findAll();
-    const inventoryMap = new Map<string, number>();
-    for (const item of existingInventory) {
-      inventoryMap.set(item.name.toLowerCase(), item.id);
-      // Migrate old packaging/ingredient categories to Espresso / Tea
-      if (item.category === 'packaging' || item.category === 'ingredient') {
-        const targetCat = item.name.toLowerCase().includes('bubble') ? 'Tea' : 'Espresso';
-        await inventoryService.update(item.id, { category: targetCat });
-      }
-    }
-
-    let invCreated = 0;
-    for (const item of DEMO_INVENTORY_ITEMS) {
-      if (!inventoryMap.has(item.name.toLowerCase())) {
-        const created = await inventoryService.create(item);
-        inventoryMap.set(item.name.toLowerCase(), created.id);
-        invCreated++;
-      }
-    }
-    console.log(`  + Inventory items seeded (${invCreated} created, categories updated)`);
-
-    // 2. Seed Product Categories & Products
+    // 1. Seed product categories (the menu's top-level groups). With
+    //    `--only=categories` the script stops here — useful after a reset when
+    //    the shop will enter its own products and supplies.
     const categories = await categoriesService.findAll();
     const categoryIds = new Map<string, number>(
       categories.map((c) => [c.name.toLowerCase(), c.id]),
@@ -489,15 +582,91 @@ async function seed() {
       }
     }
 
+    if (categoriesOnly) {
+      console.log(
+        `Seed complete — categories only (${categoryIds.size} present).`,
+      );
+      return;
+    }
+
+    // 2. Seed inventory items (cups, lids, straws, raw ingredients)
+    const existingInventory = await inventoryService.findAll();
+    const inventoryMap = new Map<string, number>();
+    for (const item of existingInventory) {
+      inventoryMap.set(item.name.toLowerCase(), item.id);
+    }
+
+    // Existing demo items that sit at zero (fresh reset, or emptied by tests)
+    // get their demo quantity back as a journaled restock, so re-running the
+    // seed always leaves the demo recipes sellable.
+    let invCreated = 0;
+    let invRestocked = 0;
+    for (const item of DEMO_INVENTORY_ITEMS) {
+      const existingId = inventoryMap.get(item.name.toLowerCase());
+      if (existingId === undefined) {
+        const created = await inventoryService.create(item);
+        inventoryMap.set(item.name.toLowerCase(), created.id);
+        invCreated++;
+        continue;
+      }
+      const existing = existingInventory.find((i) => i.id === existingId)!;
+      if (Number(existing.stockQuantity) <= 0 && item.stockQuantity > 0) {
+        await inventoryService.restock(existingId, adminUser.id, {
+          delta: item.stockQuantity,
+          reason: 'seed',
+        });
+        invRestocked++;
+      }
+    }
+    console.log(
+      `  + Inventory items seeded (${invCreated} created, ${invRestocked} restocked)`,
+    );
+
+    // 3. Seed Products
     const existingProducts = await productsService.findAll();
-    const existingNames = new Set(existingProducts.map((p) => p.name.toLowerCase()));
 
     let created = 0;
     let skipped = 0;
+    let restocked = 0;
 
     for (const item of PRODUCTS) {
-      if (existingNames.has(item.name.toLowerCase())) {
+      const existing = existingProducts.find(
+        (p) => p.name.toLowerCase() === item.name.toLowerCase(),
+      );
+      if (existing) {
         skipped++;
+        // Put the demo stock back on a product that has none left at all
+        // (recipe products don't need it — they sell from consumables).
+        const hasRecipe = existing.recipes.length > 0;
+        const onHand =
+          existing.variants.length > 0
+            ? existing.variants.reduce((sum, v) => sum + v.stock, 0)
+            : existing.stock;
+        if (!hasRecipe && onHand <= 0) {
+          if (item.sizes && existing.variants.length > 0) {
+            await productsService.update(
+              existing.id,
+              {
+                sizes: existing.variants.map((v) => ({
+                  size: v.size,
+                  price: Number(v.price),
+                  stock:
+                    item.sizes!.find((s) => s.size === v.size)?.stock ??
+                    item.sizes![0].stock,
+                })),
+              },
+              adminUser.id,
+            );
+            restocked++;
+          } else if (!item.sizes && existing.variants.length === 0) {
+            await productsService.update(
+              existing.id,
+              { stock: item.stock ?? 0 },
+              adminUser.id,
+            );
+            restocked++;
+          }
+        }
         continue;
       }
 
@@ -521,10 +690,14 @@ async function seed() {
       created++;
     }
 
-    // 3. Seed Demo Recipes for Iced Latte and Espresso drinks
+    // 4. Seed Demo Recipes for Iced Latte and Espresso drinks
     const allProducts = await productsService.findAll();
-    const icedLatte = allProducts.find((p) => p.name.toLowerCase() === 'iced latte');
-    const espresso = allProducts.find((p) => p.name.toLowerCase() === 'espresso');
+    const icedLatte = allProducts.find(
+      (p) => p.name.toLowerCase() === 'iced latte',
+    );
+    const espresso = allProducts.find(
+      (p) => p.name.toLowerCase() === 'espresso',
+    );
 
     if (icedLatte) {
       const beansId = inventoryMap.get('coffee beans');
@@ -540,45 +713,51 @@ async function seed() {
       if (beansId && milkId && strawId) {
         // Size S (12oz)
         if (cup12Id && lid12Id) {
-          await recipesService.createOrUpdate({
-            productId: icedLatte.id,
-            size: 'S',
-            items: [
-              { inventoryItemId: beansId, quantity: 15 },
-              { inventoryItemId: milkId, quantity: 150 },
-              { inventoryItemId: cup12Id, quantity: 1 },
-              { inventoryItemId: lid12Id, quantity: 1 },
-              { inventoryItemId: strawId, quantity: 1 },
-            ],
-          }).catch(() => null);
+          await recipesService
+            .createOrUpdate({
+              productId: icedLatte.id,
+              size: 'S',
+              items: [
+                { inventoryItemId: beansId, quantity: 15 },
+                { inventoryItemId: milkId, quantity: 150 },
+                { inventoryItemId: cup12Id, quantity: 1 },
+                { inventoryItemId: lid12Id, quantity: 1 },
+                { inventoryItemId: strawId, quantity: 1 },
+              ],
+            })
+            .catch(() => null);
         }
         // Size M (16oz)
         if (cup16Id && lid16Id) {
-          await recipesService.createOrUpdate({
-            productId: icedLatte.id,
-            size: 'M',
-            items: [
-              { inventoryItemId: beansId, quantity: 18 },
-              { inventoryItemId: milkId, quantity: 200 },
-              { inventoryItemId: cup16Id, quantity: 1 },
-              { inventoryItemId: lid16Id, quantity: 1 },
-              { inventoryItemId: strawId, quantity: 1 },
-            ],
-          }).catch(() => null);
+          await recipesService
+            .createOrUpdate({
+              productId: icedLatte.id,
+              size: 'M',
+              items: [
+                { inventoryItemId: beansId, quantity: 18 },
+                { inventoryItemId: milkId, quantity: 200 },
+                { inventoryItemId: cup16Id, quantity: 1 },
+                { inventoryItemId: lid16Id, quantity: 1 },
+                { inventoryItemId: strawId, quantity: 1 },
+              ],
+            })
+            .catch(() => null);
         }
         // Size L (22oz)
         if (cup22Id && lid22Id) {
-          await recipesService.createOrUpdate({
-            productId: icedLatte.id,
-            size: 'L',
-            items: [
-              { inventoryItemId: beansId, quantity: 22 },
-              { inventoryItemId: milkId, quantity: 280 },
-              { inventoryItemId: cup22Id, quantity: 1 },
-              { inventoryItemId: lid22Id, quantity: 1 },
-              { inventoryItemId: strawId, quantity: 1 },
-            ],
-          }).catch(() => null);
+          await recipesService
+            .createOrUpdate({
+              productId: icedLatte.id,
+              size: 'L',
+              items: [
+                { inventoryItemId: beansId, quantity: 22 },
+                { inventoryItemId: milkId, quantity: 280 },
+                { inventoryItemId: cup22Id, quantity: 1 },
+                { inventoryItemId: lid22Id, quantity: 1 },
+                { inventoryItemId: strawId, quantity: 1 },
+              ],
+            })
+            .catch(() => null);
         }
         console.log('  + Recipes seeded for Iced Latte (S/M/L)');
       }
@@ -588,21 +767,23 @@ async function seed() {
       const beansId = inventoryMap.get('coffee beans');
       const cup12Id = inventoryMap.get('paper cup 12oz');
       if (beansId && cup12Id) {
-        await recipesService.createOrUpdate({
-          productId: espresso.id,
-          size: null,
-          items: [
-            { inventoryItemId: beansId, quantity: 14 },
-            { inventoryItemId: cup12Id, quantity: 1 },
-          ],
-        }).catch(() => null);
+        await recipesService
+          .createOrUpdate({
+            productId: espresso.id,
+            size: null,
+            items: [
+              { inventoryItemId: beansId, quantity: 14 },
+              { inventoryItemId: cup12Id, quantity: 1 },
+            ],
+          })
+          .catch(() => null);
         console.log('  + Recipe seeded for Espresso');
       }
     }
 
     console.log(
-      `Seed complete — ${created} created, ${skipped} already present ` +
-        `(${PRODUCTS.length} defined).`,
+      `Seed complete — ${created} created, ${skipped} already present, ` +
+        `${restocked} restocked (${PRODUCTS.length} defined).`,
     );
   } finally {
     await app.close();

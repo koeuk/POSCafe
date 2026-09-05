@@ -18,6 +18,7 @@ async function resetClean() {
     await dataSource.query('SET FOREIGN_KEY_CHECKS = 0');
     const tables = [
       'inventory_movements',
+      'stock_movements',
       'recipe_items',
       'recipes',
       'inventory_items',
@@ -34,7 +35,9 @@ async function resetClean() {
       await dataSource.query(`TRUNCATE TABLE \`${table}\``);
     }
     await dataSource.query('SET FOREIGN_KEY_CHECKS = 1');
-    console.log('  + All product, order, category, and inventory tables cleared!');
+    console.log(
+      '  + All product, order, category, and inventory tables cleared!',
+    );
 
     // Re-create default Admin and Cashier accounts
     await usersService.createUser({
@@ -53,7 +56,9 @@ async function resetClean() {
     });
     console.log('  + Default Cashier user created (cashier / 12345678)');
 
-    console.log('\n✨ Database reset complete! Clean slate with default login accounts.');
+    console.log(
+      '\n✨ Database reset complete! Clean slate with default login accounts.',
+    );
   } catch (err) {
     console.error('Failed to reset database:', err);
   } finally {

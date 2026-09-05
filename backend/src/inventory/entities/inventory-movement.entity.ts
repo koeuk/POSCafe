@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -10,6 +11,7 @@ import { User } from '../../users/entities/user.entity';
 import { InventoryItem } from './inventory-item.entity';
 
 @Entity('inventory_movements')
+@Index(['orderId', 'reason'])
 export class InventoryMovement {
   @PrimaryGeneratedColumn()
   id: number;

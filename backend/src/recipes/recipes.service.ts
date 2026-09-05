@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
+import { Product } from '../products/entities/product.entity';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { RecipeItem } from './entities/recipe-item.entity';
 import { Recipe } from './entities/recipe.entity';
@@ -56,16 +61,47 @@ export class RecipesService {
   }
 
   /**
-   * Create or update recipe for a product + size combination.
+   * Create or update the recipe for a product + size combination. The size
+   * must be one the product actually sells (or none for a sizeless product)
+   * so every recipe is reachable from the POS and visible in the editor.
    */
   async createOrUpdate(dto: CreateRecipeDto): Promise<Recipe> {
     return this.dataSource.transaction(async (manager) => {
-      const sizeParam = dto.size ? dto.size.trim() : null;
+      const sizeParam = dto.size?.trim() || null;
+
+      const product = await manager.findOne(Product, {
+        where: { id: dto.productId },
+        relations: { variants: true },
+      });
+      if (!product) {
+        throw new NotFoundException(`Product #${dto.productId} not found`);
+      }
+      const sizes = product.variants.map((v) => v.size);
+      if (sizes.length > 0 && (!sizeParam || !sizes.includes(sizeParam))) {
+        throw new BadRequestException(
+          `"${product.name}" is sold in sizes ${sizes.join(', ')} — pick one of them for the recipe`,
+        );
+      }
+      if (sizes.length === 0 && sizeParam) {
+        throw new BadRequestException(
+          `"${product.name}" has no sizes — save the recipe without a size`,
+        );
+      }
+
+      const seen = new Set<number>();
+      for (const item of dto.items) {
+        if (seen.has(item.inventoryItemId)) {
+          throw new BadRequestException(
+            'Each ingredient can appear only once in a recipe',
+          );
+        }
+        seen.add(item.inventoryItemId);
+      }
 
       let recipe = await manager.findOne(Recipe, {
         where: {
           productId: dto.productId,
-          size: sizeParam === null ? (null as any) : sizeParam,
+          size: sizeParam === null ? IsNull() : sizeParam,
         },
         relations: { items: true },
       });

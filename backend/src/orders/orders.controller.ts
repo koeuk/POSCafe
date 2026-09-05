@@ -60,8 +60,9 @@ export class OrdersController {
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderStatusDto,
+    @CurrentUser('id') userId: number,
   ) {
-    return this.ordersService.updateStatus(id, dto.status);
+    return this.ordersService.updateStatus(id, dto.status, userId);
   }
 
   // Refunding reverses money already taken, so it stays admin-only.

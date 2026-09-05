@@ -4,11 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { In, QueryFailedError, Repository } from 'typeorm';
 import { CategoriesService } from '../categories/categories.service';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { toNumber } from '../common/money';
 import { OrderItem } from '../orders/entities/order-item.entity';
+import { Recipe } from '../recipes/entities/recipe.entity';
 import { CreateProductDto, ProductSizeDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductVariant } from './entities/product-variant.entity';
@@ -21,6 +22,21 @@ export interface SoldCount {
   sold: number;
 }
 
+/**
+ * How many servings of a product (size) its recipe can currently make: the
+ * tightest ingredient decides. Returned on every product so the POS and the
+ * Inventory page can treat recipe products as "made to order" and never look
+ * at the finished-drink stock count for them.
+ */
+export interface RecipeAvailability {
+  size: string | null;
+  servings: number;
+}
+
+export type ProductWithAvailability = Product & {
+  recipes: RecipeAvailability[];
+};
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -32,8 +48,43 @@ export class ProductsService {
     private readonly movementRepo: Repository<StockMovement>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepo: Repository<OrderItem>,
+    @InjectRepository(Recipe)
+    private readonly recipeRepo: Repository<Recipe>,
     private readonly categoriesService: CategoriesService,
   ) {}
+
+  /** Attaches recipe availability (see RecipeAvailability) to each product. */
+  private async withAvailability(
+    products: Product[],
+  ): Promise<ProductWithAvailability[]> {
+    if (products.length === 0) return [];
+    const recipes = await this.recipeRepo.find({
+      where: { productId: In(products.map((p) => p.id)) },
+      relations: { items: { inventoryItem: true } },
+    });
+    const byProduct = new Map<number, RecipeAvailability[]>();
+    for (const recipe of recipes) {
+      if (recipe.items.length === 0) continue; // empty recipe = stock-counted
+      const servings = Math.floor(
+        Math.min(
+          ...recipe.items.map((item) => {
+            const per = toNumber(item.quantity);
+            if (per <= 0) return Infinity;
+            return toNumber(item.inventoryItem?.stockQuantity ?? 0) / per;
+          }),
+        ),
+      );
+      const list = byProduct.get(recipe.productId) ?? [];
+      list.push({
+        size: recipe.size,
+        servings: Number.isFinite(servings) ? Math.max(0, servings) : 0,
+      });
+      byProduct.set(recipe.productId, list);
+    }
+    return products.map((p) =>
+      Object.assign(p, { recipes: byProduct.get(p.id) ?? [] }),
+    );
+  }
 
   /**
    * Units sold per product, straight from order_items (excluding cancelled
@@ -79,15 +130,16 @@ export class ProductsService {
     );
   }
 
-  findAll(categoryId?: number): Promise<Product[]> {
-    return this.repo.find({
+  async findAll(categoryId?: number): Promise<ProductWithAvailability[]> {
+    const products = await this.repo.find({
       where: categoryId ? { categoryId } : {},
       relations: { category: true, variants: true },
       order: { name: 'ASC', variants: { sortOrder: 'ASC' } },
     });
+    return this.withAvailability(products);
   }
 
-  async findOne(id: number): Promise<Product> {
+  async findOne(id: number): Promise<ProductWithAvailability> {
     const product = await this.repo.findOne({
       where: { id },
       relations: { category: true, variants: true },
@@ -96,7 +148,8 @@ export class ProductsService {
     if (!product) {
       throw new NotFoundException(`Product #${id} not found`);
     }
-    return product;
+    const [withAvailability] = await this.withAvailability([product]);
+    return withAvailability;
   }
 
   async create(dto: CreateProductDto, userId?: number): Promise<Product> {
@@ -157,13 +210,7 @@ export class ProductsService {
       // products.stock to report cups that don't exist. Journal the drop so
       // the correction is visible rather than silent.
       if (sizes !== null && sizes.length > 0 && product.stock !== 0) {
-        await this.recordMovement(
-          id,
-          null,
-          -product.stock,
-          0,
-          userId ?? null,
-        );
+        await this.recordMovement(id, null, -product.stock, 0, userId ?? null);
         await this.repo.update(id, { stock: 0 });
       }
     }
@@ -194,6 +241,85 @@ export class ProductsService {
   }
 
   /**
+   * Keeps recipes attached to the sizes a product actually sells, so a size
+   * change never leaves a recipe the POS can't reach or the editor can't show:
+   *
+   *  - renamed size (a removed variant whose position now holds a new name):
+   *    the recipe follows the new name;
+   *  - removed size: its recipe goes too;
+   *  - sizeless → sized: the sizeless recipe is copied to every new size as a
+   *    starting point;
+   *  - sized → sizeless: the first size's recipe becomes the sizeless one.
+   */
+  private async syncRecipes(
+    productId: number,
+    existing: ProductVariant[],
+    wanted: ProductSizeDto[],
+    removed: ProductVariant[],
+  ): Promise<void> {
+    const recipes = await this.recipeRepo.find({
+      where: { productId },
+      relations: { items: true },
+    });
+    if (recipes.length === 0) return;
+
+    const existingSizes = new Set(existing.map((v) => v.size));
+    const added = wanted.filter((s) => !existingSizes.has(s.size));
+    const recipeFor = (size: string | null) =>
+      recipes.find((r) => r.size === size) ?? null;
+    const cloneTo = async (source: Recipe, size: string | null) => {
+      const copy = this.recipeRepo.create({
+        productId,
+        size,
+        items: source.items.map((i) => ({
+          inventoryItemId: i.inventoryItemId,
+          quantity: i.quantity,
+        })),
+      });
+      await this.recipeRepo.save(copy);
+    };
+
+    // sized → sizeless
+    if (wanted.length === 0 && existing.length > 0) {
+      const first = [...existing].sort((a, b) => a.sortOrder - b.sortOrder);
+      const keep = first.map((v) => recipeFor(v.size)).find(Boolean) ?? null;
+      const sizeless = recipeFor(null);
+      if (keep && !sizeless) await cloneTo(keep, null);
+      await this.recipeRepo.remove(recipes.filter((r) => r.size !== null));
+      return;
+    }
+
+    // sizeless → sized
+    if (existing.length === 0 && wanted.length > 0) {
+      const sizeless = recipeFor(null);
+      if (sizeless) {
+        for (const s of wanted) {
+          if (!recipeFor(s.size)) await cloneTo(sizeless, s.size);
+        }
+        await this.recipeRepo.remove(sizeless);
+      }
+      return;
+    }
+
+    // Renames and removals among an already-sized product.
+    for (const variant of removed) {
+      const recipe = recipeFor(variant.size);
+      if (!recipe) continue;
+      const replacement = wanted[variant.sortOrder];
+      const isRename =
+        replacement !== undefined &&
+        added.some((s) => s.size === replacement.size) &&
+        !recipeFor(replacement.size);
+      if (isRename) {
+        recipe.size = replacement.size;
+        await this.recipeRepo.save(recipe);
+      } else {
+        await this.recipeRepo.remove(recipe);
+      }
+    }
+  }
+
+  /**
    * Reconciles the variant rows (the single source of size name, price and
    * stock) to match the submitted size options: upserts each size in order
    * (preserving existing stock when the DTO omits it) and removes variants
@@ -210,6 +336,7 @@ export class ProductsService {
 
     // Delete variants whose size was removed (or all, if sizes cleared).
     const toRemove = existing.filter((v) => !wantedSizes.has(v.size));
+    await this.syncRecipes(productId, existing, wanted, toRemove);
     if (toRemove.length) {
       await this.variantRepo.remove(toRemove);
     }

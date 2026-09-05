@@ -6,7 +6,6 @@ import {
   type InventoryItem,
   type Product,
   type Recipe,
-  type RecipeItem,
 } from "@/lib/types";
 
 const INPUT =
@@ -15,6 +14,13 @@ const INPUT =
 interface RecipeDraftLine {
   inventoryItemId: number;
   quantity: string;
+}
+
+function linesFromRecipe(recipe: Recipe | null): RecipeDraftLine[] {
+  return (recipe?.items ?? []).map((item) => ({
+    inventoryItemId: item.inventoryItemId,
+    quantity: String(item.quantity),
+  }));
 }
 
 export function RecipesManager() {
@@ -29,8 +35,11 @@ export function RecipesManager() {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  // Draft Recipe Lines
-  const [draftLines, setDraftLines] = useState<RecipeDraftLine[]>([]);
+  // Draft recipe lines, tagged with the product/size/recipe they were seeded
+  // from so switching selection (or saving) reseeds them — see draftKey.
+  const [draft, setDraft] = useState<{ key: string; lines: RecipeDraftLine[] }>(
+    { key: "", lines: [] },
+  );
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -44,16 +53,15 @@ export function RecipesManager() {
       setProducts(productList);
       setInventoryItems(inventoryList);
       setRecipes(recipeList);
-
-      if (productList.length > 0 && selectedProductId === null) {
-        setSelectedProductId(productList[0].id);
-      }
+      // Select the first product on first load only — picking a product must
+      // not refetch everything.
+      setSelectedProductId((current) => current ?? productList[0]?.id ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load recipe data");
     } finally {
       setLoading(false);
     }
-  }, [selectedProductId]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -64,45 +72,61 @@ export function RecipesManager() {
   }, [products, selectedProductId]);
 
   // Available sizes for selected product
-  const sizeOptions = useMemo(() => {
+  const sizeOptions = useMemo<(string | null)[]>(() => {
     if (!selectedProduct || !selectedProduct.variants || selectedProduct.variants.length === 0) {
       return [null];
     }
     return selectedProduct.variants.map((v) => v.size);
   }, [selectedProduct]);
 
-  // Sync selected size when selected product changes
-  useEffect(() => {
-    if (sizeOptions.length > 0 && !sizeOptions.includes(selectedSize)) {
-      setSelectedSize(sizeOptions[0]);
-    }
-  }, [sizeOptions, selectedSize]);
+  // The size actually being edited: the user's pick if the product sells it,
+  // otherwise the product's first size (or none for a sizeless product).
+  const effectiveSize = sizeOptions.includes(selectedSize)
+    ? selectedSize
+    : sizeOptions[0];
 
   // Find existing recipe for selected product + size
   const currentRecipe = useMemo(() => {
     if (!selectedProductId) return null;
     return (
-      recipes.find((r) => {
-        if (r.productId !== selectedProductId) return false;
-        if (selectedSize === null) return r.size === null;
-        return r.size === selectedSize;
-      }) || null
+      recipes.find(
+        (r) => r.productId === selectedProductId && r.size === effectiveSize,
+      ) || null
     );
-  }, [recipes, selectedProductId, selectedSize]);
+  }, [recipes, selectedProductId, effectiveSize]);
 
-  // Populate draft lines whenever selected product/size or recipes update
-  useEffect(() => {
-    if (currentRecipe && currentRecipe.items) {
-      setDraftLines(
-        currentRecipe.items.map((item) => ({
-          inventoryItemId: item.inventoryItemId,
-          quantity: String(item.quantity),
-        })),
-      );
-    } else {
-      setDraftLines([]);
-    }
-  }, [currentRecipe]);
+  // Reseed the draft whenever the selection or the saved recipe changes.
+  const draftKey = `${selectedProductId ?? ""}|${effectiveSize ?? ""}|${currentRecipe?.id ?? ""}|${currentRecipe?.updatedAt ?? ""}`;
+  if (draft.key !== draftKey) {
+    setDraft({ key: draftKey, lines: linesFromRecipe(currentRecipe) });
+  }
+  const draftLines =
+    draft.key === draftKey ? draft.lines : linesFromRecipe(currentRecipe);
+  function setDraftLines(
+    update: RecipeDraftLine[] | ((lines: RecipeDraftLine[]) => RecipeDraftLine[]),
+  ) {
+    setDraft((d) => {
+      const base = d.key === draftKey ? d.lines : linesFromRecipe(currentRecipe);
+      return {
+        key: draftKey,
+        lines: typeof update === "function" ? update(base) : update,
+      };
+    });
+  }
+
+  // Servings the current draft could make right now: the tightest line wins.
+  const draftServings = useMemo(() => {
+    const lines = draftLines.filter((l) => Number(l.quantity) > 0);
+    if (lines.length === 0) return null;
+    return Math.floor(
+      Math.min(
+        ...lines.map((l) => {
+          const inv = inventoryItems.find((i) => i.id === Number(l.inventoryItemId));
+          return inv ? Number(inv.stockQuantity) / Number(l.quantity) : 0;
+        }),
+      ),
+    );
+  }, [draftLines, inventoryItems]);
 
   function addDraftLine() {
     if (inventoryItems.length === 0) return;
@@ -149,13 +173,17 @@ export function RecipesManager() {
           method: "POST",
           body: {
             productId: selectedProductId,
-            size: selectedSize,
+            size: effectiveSize,
             items: itemsPayload,
           },
         });
       }
 
-      setSuccessMsg("Recipe saved successfully!");
+      setSuccessMsg(
+        itemsPayload.length === 0
+          ? "Recipe removed — this item is now counted from Product Stock."
+          : "Recipe saved — this item is now made to order from Consumable Supplies.",
+      );
       const updatedRecipes = await api<Recipe[]>("/recipes");
       setRecipes(updatedRecipes);
     } catch (err) {
@@ -258,7 +286,7 @@ export function RecipesManager() {
                             setSuccessMsg(null);
                           }}
                           className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                            selectedSize === v.size
+                            effectiveSize === v.size
                               ? "bg-white text-stone-900 shadow-sm dark:bg-stone-900 dark:text-stone-100"
                               : "text-stone-500 hover:text-stone-800 dark:text-stone-400"
                           }`}
@@ -286,7 +314,7 @@ export function RecipesManager() {
 
                   {draftLines.length === 0 ? (
                     <div className="mt-4 rounded-xl border border-dashed border-stone-200 p-6 text-center text-xs text-stone-400 dark:border-stone-800">
-                      No ingredients/packaging added for this drink yet. Click "+ Add Ingredient / Packaging" to define a recipe.
+                      No ingredients/packaging added for this drink yet. Click &ldquo;+ Add Ingredient / Packaging&rdquo; to define a recipe.
                     </div>
                   ) : (
                     <div className="mt-4 space-y-3">
@@ -358,7 +386,12 @@ export function RecipesManager() {
                     </div>
                   )}
 
-                  <div className="mt-8 flex justify-end">
+                  <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                      {draftServings === null
+                        ? "Without a recipe, sales draw from Product Stock instead."
+                        : `Ingredients on hand cover ${draftServings} serving${draftServings === 1 ? "" : "s"} right now.`}
+                    </p>
                     <button
                       type="button"
                       onClick={handleSaveRecipe}

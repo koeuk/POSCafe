@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from "./types";
+import type { Product, ProductVariant, RecipeAvailability } from "./types";
 
 type PriceOption = ProductVariant | string | number | null | undefined;
 
@@ -45,21 +45,54 @@ export function hasSizes(product: Product): boolean {
 }
 
 /**
- * Units in stock for one size of a sized product (0 if no variant row yet).
+ * The recipe that governs a product + size, if any — same rule as the
+ * backend: an exact size match wins, a size-less recipe is the default for
+ * every size. null = the product is stock-counted for that size.
+ */
+export function recipeAvailability(
+  product: Product,
+  size: string | null,
+): RecipeAvailability | null {
+  const recipes = product.recipes ?? [];
+  if (size) {
+    const exact = recipes.find((r) => r.size === size);
+    if (exact) return exact;
+  }
+  return recipes.find((r) => r.size === null) ?? null;
+}
+
+/** Whether any of the product's sizes is made to order from a recipe. */
+export function isRecipeManaged(product: Product): boolean {
+  return (product.recipes?.length ?? 0) > 0;
+}
+
+/**
+ * Sellable units of one size: recipe servings when the size has a recipe,
+ * otherwise the variant's stock count (0 if no variant row yet).
  */
 export function sizeStock(product: Product, size: string): number {
+  const recipe = recipeAvailability(product, size);
+  if (recipe) return recipe.servings;
   return product.variants?.find((variant) => variant.size === size)?.stock ?? 0;
 }
 
 /**
- * Total units available. Sized products sum their per-size variants;
- * unsized products use the base `stock`.
+ * Sellable units of the product as a whole. Stock-counted sizes add up (each
+ * size is its own pile of cups); recipe sizes share ingredients, so only the
+ * best of them counts. Unsized products use recipe servings or base `stock`.
  */
 export function totalStock(product: Product): number {
   if (product.variants && product.variants.length > 0) {
-    return product.variants.reduce((sum, v) => sum + v.stock, 0);
+    let counted = 0;
+    let bestRecipe = 0;
+    for (const v of product.variants) {
+      const recipe = recipeAvailability(product, v.size);
+      if (recipe) bestRecipe = Math.max(bestRecipe, recipe.servings);
+      else counted += v.stock;
+    }
+    return counted + bestRecipe;
   }
-  return product.stock;
+  return recipeAvailability(product, null)?.servings ?? product.stock;
 }
 
 /** Format a numeric/string amount as USD (e.g. 3.5 -> "$3.50"). */

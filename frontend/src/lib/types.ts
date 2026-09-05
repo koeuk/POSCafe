@@ -50,8 +50,18 @@ export interface Product {
   // Size options (S/M/L): the single source of size name, price and stock.
   // Empty/absent = the product has no sizes.
   variants?: ProductVariant[];
+  // Recipe availability per size (null size = the whole product / default).
+  // A product with a recipe is "made to order": its sellable count is the
+  // servings its ingredients cover, and `stock` / variant stock are ignored.
+  // Read through recipeAvailability()/sizeStock()/totalStock() in pricing.ts.
+  recipes?: RecipeAvailability[];
   categoryId: number;
   category?: Category;
+}
+
+export interface RecipeAvailability {
+  size: string | null;
+  servings: number;
 }
 
 export interface ProductVariant {
@@ -88,7 +98,7 @@ export interface StockMovement {
 export interface InventoryItem {
   id: number;
   name: string;
-  category: string; // 'packaging' | 'ingredient' | 'other'
+  category: string; // free-form grouping, e.g. 'Packaging', 'Ingredient'
   unit: string; // 'pcs', 'g', 'ml', 'kg', 'L'
   stockQuantity: string; // DECIMAL-as-string
   minThreshold: string; // DECIMAL-as-string
@@ -173,6 +183,8 @@ export interface OrderItem {
   size: string | null;
   // Preparation note from the cashier ("less sugar, no ice").
   note: string | null;
+  // What the sale consumed: recipe ingredients or the product's stock count.
+  stockSource?: "recipe" | "stock";
   unitPrice: string;
   subtotal: string;
 }

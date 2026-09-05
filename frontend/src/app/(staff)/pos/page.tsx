@@ -14,6 +14,7 @@ import {
   formatKhr,
   formatPrice,
   hasDiscount,
+  isRecipeManaged,
   sizeStock,
   totalStock,
 } from "@/lib/pricing";
@@ -553,6 +554,7 @@ function ProductCard({
 }) {
   const sizes = product.variants ?? [];
   const stock = totalStock(product);
+  const madeToOrder = isRecipeManaged(product);
   const priceLabel = sizes.length > 0
     ? `from ${formatPrice(effectivePrice(product))}`
     : formatPrice(effectivePrice(product));
@@ -636,7 +638,13 @@ function ProductCard({
                 : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
           }`}
         >
-          {soldOut ? "Out of stock" : `${stock} left`}
+          {soldOut
+            ? madeToOrder
+              ? "Out of ingredients"
+              : "Out of stock"
+            : madeToOrder
+              ? `${stock} can be made`
+              : `${stock} left`}
         </span>
       </div>
 

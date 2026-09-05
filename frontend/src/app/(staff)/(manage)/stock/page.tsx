@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api } from "@/lib/api";
-import { sizeStock, totalStock } from "@/lib/pricing";
+import { recipeAvailability, sizeStock, totalStock } from "@/lib/pricing";
 import {
   type Product,
   type Size,
@@ -115,7 +115,7 @@ function Stock() {
           {[
             { id: "consumables", label: "🥤 Consumable Supplies (កែវ/ទុយយោ/គ្រឿងផ្សំ)" },
             { id: "recipes", label: "📜 Drink Recipes (រូបមន្តផ្សំ)" },
-            { id: "products", label: "☕ Drink Stock (ចំនួនកែវសម្រេច)" },
+            { id: "products", label: "☕ Product Stock (ចំនួនកែវសម្រេច)" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -147,7 +147,7 @@ function Stock() {
         <>
       <div className="mb-6 grid grid-cols-3 gap-3">
         <SummaryCard
-          label="Items in stock"
+          label="Sellable units (stock + recipe servings)"
           value={summary.cups}
           tone="neutral"
         />
@@ -870,7 +870,13 @@ function ProductStock({
       ) : (
         <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 dark:border-stone-800 sm:grid-cols-2">
           {activeLines.map((l) => {
-            const inCups = Math.max(0, Number(values[l.key] || "0"));
+            // A size with a recipe is made to order: its sellable count is
+            // whatever the ingredients cover, and the stock count here is
+            // ignored by checkout — so show the servings instead of an input.
+            const recipe = recipeAvailability(product, l.size);
+            const inCups = recipe
+              ? recipe.servings
+              : Math.max(0, Number(values[l.key] || "0"));
             const out = inCups <= 0;
             return (
               <div
@@ -885,6 +891,14 @@ function ProductStock({
                     {l.size ?? "Stock"}
                   </span>
                 </span>
+                {recipe ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                    title="Made to order — the count comes from the recipe's ingredients in Consumable Supplies"
+                  >
+                    📜 {inCups} from recipe
+                  </span>
+                ) : (
                 <input
                   // Outside edit mode always show the server's number: the
                   // buffer is only authoritative while an edit is in progress.
@@ -898,6 +912,7 @@ function ProductStock({
                   disabled={!editing}
                   className={`${INPUT} w-20 text-right disabled:cursor-not-allowed disabled:opacity-60`}
                 />
+                )}
               </div>
             );
           })}

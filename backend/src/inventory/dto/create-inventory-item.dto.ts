@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class CreateInventoryItemDto {
   @IsString()
@@ -7,7 +13,7 @@ export class CreateInventoryItemDto {
 
   @IsString()
   @IsNotEmpty()
-  category: string; // 'packaging' | 'ingredient' | 'other'
+  category: string; // free-form grouping, e.g. 'Packaging', 'Ingredient'
 
   @IsString()
   @IsNotEmpty()

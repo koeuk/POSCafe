@@ -6,6 +6,7 @@ import {
   formatPrice,
   hasDiscount,
   hasSizes,
+  isRecipeManaged,
   sizeStock,
   totalStock,
 } from "@/lib/pricing";
@@ -163,7 +164,13 @@ export function ProductDetailDrawer({
           </div>
 
           <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-            {soldOut ? "Out of stock" : `${stock} in stock`}
+            {soldOut
+              ? isRecipeManaged(product)
+                ? "Out of ingredients"
+                : "Out of stock"
+              : isRecipeManaged(product)
+                ? `${stock} can be made from ingredients`
+                : `${stock} in stock`}
           </p>
 
           {/* Sizes */}

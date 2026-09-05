@@ -4,16 +4,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { roundCents, toNumber } from '../common/money';
 import { Payment } from '../payments/entities/payment.entity';
 import { Product } from '../products/entities/product.entity';
 import { ProductVariant } from '../products/entities/product-variant.entity';
-import { InventoryItem } from '../inventory/entities/inventory-item.entity';
-import { InventoryMovement } from '../inventory/entities/inventory-movement.entity';
-import { Recipe } from '../recipes/entities/recipe.entity';
+import {
+  OrderStockDeduction,
+  reverseOrderStock,
+} from '../inventory/order-stock.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
@@ -44,6 +45,7 @@ export class OrdersService {
     const orderId = await this.dataSource.transaction(async (manager) => {
       let total = 0;
       const items: OrderItem[] = [];
+      const deduction = new OrderStockDeduction(manager);
 
       for (const line of dto.items) {
         // Lock the product row for the duration of the transaction so two
@@ -100,68 +102,16 @@ export class OrdersService {
         const subtotal = roundCents(unitPrice * line.quantity);
         total += subtotal;
 
-        // Decrement stock: sized items draw from their variant, sizeless
-        // products from the whole-product stock.
-        if (variant) {
-          if (variant.stock < line.quantity) {
-            throw new BadRequestException(
-              `Insufficient stock for "${product.name}" (${size}): have ${variant.stock}, need ${line.quantity}`,
-            );
-          }
-          variant.stock -= line.quantity;
-          await manager.save(variant);
-        } else {
-          if (product.stock < line.quantity) {
-            throw new BadRequestException(
-              `Insufficient stock for "${product.name}" (have ${product.stock}, need ${line.quantity})`,
-            );
-          }
-          product.stock -= line.quantity;
-          await manager.save(product);
-        }
-
-        // Deduct consumable/packaging inventory based on Recipe (if defined)
-        let recipe = await manager.findOne(Recipe, {
-          where: { productId: product.id, size: size ?? (null as any) },
-          relations: { items: true },
+        // Take the units from exactly one place: the product's recipe
+        // (consumables) when it has one, otherwise its own stock count.
+        // Stock-counted lines are decremented here; recipe ingredients are
+        // deducted once the order row exists so the movements carry its id.
+        const stockSource = await deduction.reserveLine({
+          product,
+          variant,
+          size,
+          quantity: line.quantity,
         });
-        if (!recipe && size) {
-          recipe = await manager.findOne(Recipe, {
-            where: { productId: product.id, size: null as any },
-            relations: { items: true },
-          });
-        }
-
-        if (recipe && recipe.items && recipe.items.length > 0) {
-          for (const rItem of recipe.items) {
-            const requiredQty = Number(rItem.quantity) * line.quantity;
-            const invItem = await manager.findOne(InventoryItem, {
-              where: { id: rItem.inventoryItemId },
-              lock: { mode: 'pessimistic_write' },
-            });
-
-            if (invItem) {
-              const currentStock = Number(invItem.stockQuantity);
-              if (currentStock < requiredQty) {
-                throw new BadRequestException(
-                  `Insufficient ${invItem.name} in inventory for "${product.name}": have ${currentStock} ${invItem.unit}, need ${requiredQty} ${invItem.unit}`,
-                );
-              }
-
-              invItem.stockQuantity = currentStock - requiredQty;
-              await manager.save(invItem);
-
-              const movement = manager.create(InventoryMovement, {
-                inventoryItemId: invItem.id,
-                delta: -requiredQty,
-                stockAfter: invItem.stockQuantity,
-                reason: 'order_deduction',
-                userId,
-              });
-              await manager.save(movement);
-            }
-          }
-        }
 
         items.push(
           manager.create(OrderItem, {
@@ -171,6 +121,7 @@ export class OrdersService {
             note: line.note?.trim() || null,
             unitPrice,
             subtotal,
+            stockSource,
           }),
         );
       }
@@ -189,6 +140,9 @@ export class OrdersService {
       const saved = await manager.save(order);
       saved.orderNumber = `ORD-${String(saved.id).padStart(6, '0')}`;
       await manager.save(saved);
+
+      // Consumables last: any shortfall throws and rolls the whole order back.
+      await deduction.commitIngredients(saved.id, userId);
       return saved.id;
     });
 
@@ -273,7 +227,11 @@ export class OrdersService {
     [OrderStatus.CANCELLED]: [],
   };
 
-  async updateStatus(id: number, status: OrderStatus): Promise<Order> {
+  async updateStatus(
+    id: number,
+    status: OrderStatus,
+    userId: number | null = null,
+  ): Promise<Order> {
     await this.dataSource.transaction(async (manager) => {
       // Lock the order row for the whole transaction. Without this, a status
       // change racing a payment does a read-modify-write over the payment's
@@ -324,13 +282,11 @@ export class OrdersService {
         );
       }
 
-      // Cancelling returns the reserved cups to inventory. `create()` decrements
-      // stock up front, so without this the units are lost for good.
+      // Cancelling returns everything the sale took: stock-counted units and
+      // recipe consumables alike. `create()` deducts up front, so without
+      // this the units are lost for good.
       if (status === OrderStatus.CANCELLED) {
-        const items = await manager.find(OrderItem, {
-          where: { orderId: order.id },
-        });
-        await this.restockItems(manager, items);
+        await reverseOrderStock(manager, order.id, userId);
       }
 
       order.status = status;
@@ -379,10 +335,7 @@ export class OrdersService {
       // (not reachable today — cancel blocks paid orders — but kept as a
       // guard against double restock).
       if (order.status !== OrderStatus.CANCELLED) {
-        const items = await manager.find(OrderItem, {
-          where: { orderId: order.id },
-        });
-        await this.restockItems(manager, items);
+        await reverseOrderStock(manager, order.id, adminUserId);
       }
 
       order.paymentStatus = PaymentStatus.REFUNDED;
@@ -393,75 +346,6 @@ export class OrdersService {
     const updated = await this.findOne(id);
     this.gateway.emitOrderUpdated(updated);
     return updated;
-  }
-
-  /**
-   * Returns an order's items to stock, mirroring the decrement in `create()`:
-   * sized items go back to their per-size variant, everything else to the
-   * whole-product stock. Runs inside the caller's transaction.
-   */
-  private async restockItems(
-    manager: EntityManager,
-    items: OrderItem[],
-  ): Promise<void> {
-    for (const item of items) {
-      const variant = item.size
-        ? await manager.findOne(ProductVariant, {
-            where: { productId: item.productId, size: item.size },
-            lock: { mode: 'pessimistic_write' },
-          })
-        : null;
-
-      if (variant) {
-        variant.stock += item.quantity;
-        await manager.save(variant);
-      } else {
-        const product = await manager.findOne(Product, {
-          where: { id: item.productId },
-          lock: { mode: 'pessimistic_write' },
-        });
-        // The product may have been deleted since the order was placed — there
-        // is nothing to restock, and that shouldn't block the cancellation.
-        if (product) {
-          product.stock += item.quantity;
-          await manager.save(product);
-        }
-      }
-
-      // Restock Recipe inventory items if applicable
-      let recipe = await manager.findOne(Recipe, {
-        where: { productId: item.productId, size: item.size ?? (null as any) },
-        relations: { items: true },
-      });
-      if (!recipe && item.size) {
-        recipe = await manager.findOne(Recipe, {
-          where: { productId: item.productId, size: null as any },
-          relations: { items: true },
-        });
-      }
-
-      if (recipe && recipe.items && recipe.items.length > 0) {
-        for (const rItem of recipe.items) {
-          const refundQty = Number(rItem.quantity) * item.quantity;
-          const invItem = await manager.findOne(InventoryItem, {
-            where: { id: rItem.inventoryItemId },
-            lock: { mode: 'pessimistic_write' },
-          });
-          if (invItem) {
-            invItem.stockQuantity = Number(invItem.stockQuantity) + refundQty;
-            await manager.save(invItem);
-
-            const movement = manager.create(InventoryMovement, {
-              inventoryItemId: invItem.id,
-              delta: refundQty,
-              stockAfter: invItem.stockQuantity,
-              reason: 'order_refund',
-            });
-            await manager.save(movement);
-          }
-        }
-      }
-    }
   }
 
   /**
