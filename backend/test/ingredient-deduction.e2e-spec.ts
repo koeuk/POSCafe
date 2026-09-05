@@ -108,7 +108,13 @@ describe('Ingredient deduction — Iced Latte M (e2e)', () => {
     const packaging = (
       await auth(http().get('/inventory?category=Packaging')).expect(200)
     ).body.map((i: { name: string }) => i.name);
-    expect(packaging.sort()).toEqual(['Cup L', 'Cup M', 'Lid L', 'Lid M', 'Straw']);
+    expect(packaging.sort()).toEqual([
+      'Cup L',
+      'Cup M',
+      'Lid L',
+      'Lid M',
+      'Straw',
+    ]);
     expect(ids['Cup M']).not.toBe(ids['Cup L']);
   });
 
@@ -144,12 +150,13 @@ describe('Ingredient deduction — Iced Latte M (e2e)', () => {
 
     const p = (await auth(http().get(`/products/${latteId}`))).body;
     // Tightest ingredient decides: fresh milk 2000 ml / 120 ml = 16 drinks.
-    expect(p.recipes).toEqual([{ size: 'M', servings: 16 }]);
+    expect(p.recipes).toEqual([{ size: 'M', servings: 16, options: [] }]);
   });
 
   it('selling one Iced Latte M deducts exactly the recipe amounts', async () => {
     const before: Record<string, number> = {};
-    for (const name of Object.keys(SUPPLIES)) before[name] = await stockOf(name);
+    for (const name of Object.keys(SUPPLIES))
+      before[name] = await stockOf(name);
 
     await auth(http().post('/orders'))
       .send({ items: [{ productId: latteId, size: 'M', quantity: 1 }] })
@@ -168,7 +175,8 @@ describe('Ingredient deduction — Iced Latte M (e2e)', () => {
 
   it('selling three multiplies every line, and a cancel returns it all', async () => {
     const before: Record<string, number> = {};
-    for (const name of Object.keys(RECIPE_M)) before[name] = await stockOf(name);
+    for (const name of Object.keys(RECIPE_M))
+      before[name] = await stockOf(name);
 
     const order = await auth(http().post('/orders'))
       .send({ items: [{ productId: latteId, size: 'M', quantity: 3 }] })

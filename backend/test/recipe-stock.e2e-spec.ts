@@ -143,7 +143,7 @@ describe('Recipe stock flow (e2e)', () => {
   it('reports servings the ingredients cover, per recipe size', async () => {
     const p = await product(latteId);
     // cup 10, milk 1000/200 = 5, beans 100/18 = 5.5 → 5
-    expect(p.recipes).toEqual([{ size: 'M', servings: 5 }]);
+    expect(p.recipes).toEqual([{ size: 'M', servings: 5, options: [] }]);
   });
 
   it('sells a recipe size from consumables even with zero drink stock', async () => {
@@ -171,7 +171,7 @@ describe('Recipe stock flow (e2e)', () => {
     expect(await inventory(beansId)).toBe(64);
     const latte = await product(latteId);
     expect(latte.stock).toBe(0);
-    expect(latte.recipes).toEqual([{ size: 'M', servings: 3 }]);
+    expect(latte.recipes).toEqual([{ size: 'M', servings: 3, options: [] }]);
     // Stock line: the muffin count went down.
     expect((await product(muffinId)).stock).toBe(3);
 
@@ -338,7 +338,7 @@ describe('Recipe stock flow (e2e)', () => {
     recipes = (await auth(http().get(`/recipes/product/${latteId}`))).body;
     expect(recipes.map((r: { size: string | null }) => r.size)).toEqual([null]);
     expect((await product(latteId)).recipes).toEqual([
-      { size: null, servings: 2 }, // milk 1000 / 500
+      { size: null, servings: 2, options: [] }, // milk 1000 / 500
     ]);
 
     // Sizeless → sized: the default recipe seeds every new size.

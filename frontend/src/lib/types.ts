@@ -68,6 +68,16 @@ export interface Product {
 export interface RecipeAvailability {
   size: string | null;
   servings: number;
+  // Customer's-choice lines (sugar, straw…) offered at checkout.
+  options: RecipeOption[];
+}
+
+export interface RecipeOption {
+  inventoryItemId: number;
+  name: string;
+  // Per portion, in `unit` (10 g, 1 pcs).
+  quantity: number;
+  unit: string;
 }
 
 export interface ProductVariant {
@@ -131,6 +141,8 @@ export interface RecipeItem {
   inventoryItem?: InventoryItem;
   quantity: string; // DECIMAL-as-string
   unit: string | null; // null = the inventory item's unit; else same family (g/kg, ml/L)
+  // Customer's choice: offered at checkout instead of always deducted.
+  optional: boolean;
 }
 
 export interface Recipe {
@@ -180,6 +192,14 @@ export enum PaymentMethod {
   CARD = "card",
 }
 
+export interface OrderItemExtra {
+  inventoryItemId: number;
+  name: string;
+  // Amount per drink, in `unit` (15 g of sugar).
+  quantity: number;
+  unit: string;
+}
+
 export interface OrderItem {
   id: number;
   productId: number;
@@ -188,6 +208,8 @@ export interface OrderItem {
   size: string | null;
   // Preparation note from the cashier ("less sugar, no ice").
   note: string | null;
+  // Customer's-choice add-ons typed at checkout (sugar 15 g). null = none.
+  extras: OrderItemExtra[] | null;
   // What the sale consumed: recipe ingredients or the product's stock count.
   stockSource?: "recipe" | "stock";
   unitPrice: string;

@@ -199,6 +199,11 @@ export function OrderHistoryView() {
                         </span>
                         <span>${Number(item.subtotal).toFixed(2)}</span>
                       </span>
+                      {item.extras && item.extras.length > 0 && (
+                        <span className="block text-xs text-stone-500 dark:text-stone-400">
+                          + {item.extras.map((e) => `${e.name} ${e.quantity} ${e.unit}`).join(", ")}
+                        </span>
+                      )}
                       {item.note && (
                         <span className="block text-xs font-medium text-amber-700 dark:text-amber-300">
                           ✎ {item.note}

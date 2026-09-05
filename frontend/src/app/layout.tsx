@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { BrandingProvider } from "@/lib/branding-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { I18nProvider } from "@/lib/i18n";
 import { InlineScript } from "@/components/inline-script";
 
 // Runs before paint to set the .dark class, preventing a light-mode flash.
@@ -48,9 +49,11 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider>
-          <BrandingProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </BrandingProvider>
+          <I18nProvider>
+            <BrandingProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </BrandingProvider>
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

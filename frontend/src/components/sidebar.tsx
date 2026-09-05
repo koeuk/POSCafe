@@ -6,14 +6,28 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
 import { useTheme, type Theme } from "@/lib/theme-context";
+import { LOCALES, useT, type TranslationKey } from "@/lib/i18n";
 import { resolveCashierPages } from "@/lib/permissions";
 import { useClickOutside } from "@/lib/use-click-outside";
+
+type NavGroup = "overview" | "sales" | "catalog" | "insights" | "customer";
+
+/** Section order and headings; a group with no visible links is skipped. */
+const NAV_GROUPS: { id: NavGroup; label: TranslationKey }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "sales", label: "Sales" },
+  { id: "catalog", label: "Catalog" },
+  { id: "insights", label: "Insights" },
+  { id: "customer", label: "Customer" },
+];
 
 interface NavItem {
   /** Stable id; cashier-assignable keys live in lib/permissions. */
   key: string;
+  group: NavGroup;
   href: string | { staff: string; admin: string };
-  label: string;
+  /** Translation key for the visible label. */
+  label: TranslationKey;
   icon: ReactNode;
   /** Match this exact path only (e.g. /admin shouldn't stay active on /admin/orders). */
   exact?: boolean;
@@ -32,6 +46,7 @@ const sw = {
 const NAV: NavItem[] = [
   {
     key: "dashboard",
+    group: "overview",
     href: "/dashboard",
     label: "Dashboard",
     exact: true,
@@ -46,6 +61,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "pos",
+    group: "sales",
     href: { staff: "/cashier/pos", admin: "/pos" },
     label: "Point of Sale",
     icon: (
@@ -58,6 +74,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "orders",
+    group: "sales",
     href: { staff: "/cashier/orders", admin: "/orders" },
     label: "Orders",
     icon: (
@@ -69,6 +86,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "payments",
+    group: "sales",
     href: "/pay",
     label: "Payments",
     icon: (
@@ -80,6 +98,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "categories",
+    group: "catalog",
     href: { staff: "/cashier/categories", admin: "/categories" },
     label: "Categories",
     icon: (
@@ -91,6 +110,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "products",
+    group: "catalog",
     href: { staff: "/cashier/products", admin: "/products" },
     label: "Products",
     icon: (
@@ -102,6 +122,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "stock",
+    group: "catalog",
     href: { staff: "/cashier/stock", admin: "/stock" },
     label: "Inventory",
     icon: (
@@ -113,6 +134,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "order-history",
+    group: "insights",
     href: { staff: "/cashier/order-history", admin: "/manage-orders" },
     label: "Order History",
     icon: (
@@ -124,6 +146,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "reports",
+    group: "insights",
     href: { staff: "/cashier/reports", admin: "/reports" },
     label: "Reports",
     icon: (
@@ -138,6 +161,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "menu",
+    group: "customer",
     href: "/menu",
     label: "View Menu",
     newTab: true,
@@ -150,6 +174,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "qr",
+    group: "customer",
     href: "/qr",
     label: "QR Code",
     icon: (
@@ -176,6 +201,7 @@ function NavLinks({
   onNavigate?: () => void;
   collapsed?: boolean;
 }) {
+  const { t } = useT();
   const navRef = useRef<HTMLElement>(null);
   // The active "pill" position — slides between links as the route changes.
   const [pill, setPill] = useState<{ top: number; height: number } | null>(null);
@@ -195,6 +221,10 @@ function NavLinks({
         : item.href[isAdmin ? "admin" : "staff"];
     return { item, href, active: matchesPath(href, item.exact) };
   });
+  const sections = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: items.filter(({ item }) => item.group === group.id),
+  })).filter((group) => group.items.length > 0);
 
   // Measure the active link and move the pill to it (re-runs on route change
   // and window resize so it always lines up).
@@ -208,10 +238,10 @@ function NavLinks({
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
-  }, [pathname, isAdmin]);
+  }, [pathname, isAdmin, collapsed]);
 
   return (
-    <nav ref={navRef} className="relative flex flex-col gap-1">
+    <nav ref={navRef} className="relative flex flex-col gap-4">
       {/* Sliding active highlight (sits behind the links). */}
       {pill && (
         <span
@@ -220,35 +250,55 @@ function NavLinks({
           style={{ transform: `translateY(${pill.top}px)`, height: pill.height }}
         />
       )}
-      {items.map(({ item, href, active }) => (
-        <Link
-          key={item.label}
-          href={href}
-          data-active={active}
-          onClick={onNavigate}
-          aria-label={item.label}
-          target={item.newTab ? "_blank" : undefined}
-          rel={item.newTab ? "noopener" : undefined}
-          className={`group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300 ${
-            collapsed ? "lg:justify-center" : ""
-          } ${
-            active
-              ? "text-pos-active-fg"
-              : "text-pos-sidebar-fg/70 hover:bg-pos-sidebar-fg/5 hover:text-pos-sidebar-fg"
-          }`}
-        >
-          <span className="shrink-0">{item.icon}</span>
-          <span className={collapsed ? "lg:hidden" : ""}>{item.label}</span>
-          {/* Hover tooltip — only when the sidebar is collapsed (desktop). */}
-          {collapsed && (
+      {sections.map((section, index) => (
+        <div key={section.id} className="flex flex-col gap-1">
+          {/* Section heading; a thin rule stands in for it when collapsed. */}
+          <p
+            className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-pos-sidebar-fg/40 ${
+              collapsed ? "lg:hidden" : ""
+            }`}
+          >
+            {t(section.label)}
+          </p>
+          {collapsed && index > 0 && (
             <span
-              role="tooltip"
-              className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-stone-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 dark:bg-stone-700"
-            >
-              {item.label}
-            </span>
+              aria-hidden
+              className="mx-3 mb-1 hidden border-t border-pos-sidebar-fg/10 lg:block"
+            />
           )}
-        </Link>
+          {section.items.map(({ item, href, active }) => (
+            <Link
+              key={item.key}
+              href={href}
+              data-active={active}
+              onClick={onNavigate}
+              aria-label={t(item.label)}
+              target={item.newTab ? "_blank" : undefined}
+              rel={item.newTab ? "noopener" : undefined}
+              className={`group relative z-10 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300 ${
+                collapsed ? "lg:justify-center" : ""
+              } ${
+                active
+                  ? "text-pos-active-fg"
+                  : "text-pos-sidebar-fg/70 hover:bg-pos-sidebar-fg/5 hover:text-pos-sidebar-fg"
+              }`}
+            >
+              <span className="shrink-0">{item.icon}</span>
+              <span className={collapsed ? "lg:hidden" : ""}>
+                {t(item.label)}
+              </span>
+              {/* Hover tooltip — only when the sidebar is collapsed (desktop). */}
+              {collapsed && (
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-stone-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 dark:bg-stone-700"
+                >
+                  {t(item.label)}
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
       ))}
     </nav>
   );
@@ -288,10 +338,11 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
 // Three-way theme control: Light / System / Dark.
 function ThemeSwitch() {
   const { theme, setTheme } = useTheme();
+  const { t } = useT();
   const options: { value: Theme; label: string; icon: ReactNode }[] = [
     {
       value: "light",
-      label: "Light",
+      label: t("Light"),
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
           <circle cx="12" cy="12" r="4" />
@@ -301,7 +352,7 @@ function ThemeSwitch() {
     },
     {
       value: "system",
-      label: "System",
+      label: t("System"),
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
           <rect x="3" y="4" width="18" height="12" rx="2" />
@@ -311,7 +362,7 @@ function ThemeSwitch() {
     },
     {
       value: "dark",
-      label: "Dark",
+      label: t("Dark"),
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
@@ -329,7 +380,7 @@ function ThemeSwitch() {
             key={o.value}
             type="button"
             onClick={() => setTheme(o.value)}
-            aria-label={`${o.label} theme`}
+            aria-label={o.label}
             aria-pressed={active}
             title={o.label}
             className={`grid h-7 w-7 place-items-center rounded-full transition ${
@@ -346,10 +397,45 @@ function ThemeSwitch() {
   );
 }
 
+// Two-way language control: EN / ខ្មែរ.
+function LanguageSwitch() {
+  const { locale, setLocale } = useT();
+  return (
+    <div className="flex items-center gap-0.5 rounded-full border border-stone-200 bg-white p-0.5 dark:border-stone-700 dark:bg-stone-800">
+      {LOCALES.map((o) => {
+        const active = locale === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => setLocale(o.value)}
+            lang={o.value}
+            aria-pressed={active}
+            className={`h-7 rounded-full px-2.5 text-xs font-semibold transition ${
+              active
+                ? "bg-pos-button text-pos-button-fg"
+                : "text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function UserBlock({ collapsed }: { collapsed?: boolean }) {
   const { user, logout, isAdmin } = useAuth();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const roleLabel =
+    user?.role === "admin"
+      ? t("Admin")
+      : user?.role === "cashier"
+        ? t("Cashier")
+        : (user?.role ?? "");
   const initial = (user?.name ?? "?").charAt(0).toUpperCase();
 
   useClickOutside(ref, () => setOpen(false), open);
@@ -386,7 +472,7 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
             {user?.name}
           </p>
           <p className="text-xs uppercase tracking-wide text-pos-sidebar-fg/50">
-            {user?.role}
+            {roleLabel}
           </p>
         </div>
         <svg
@@ -407,9 +493,15 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
         >
           <div className="flex items-center justify-between gap-2 px-2.5 py-2">
             <span className="text-xs font-medium text-stone-500 dark:text-stone-400">
-              Appearance
+              {t("Appearance")}
             </span>
             <ThemeSwitch />
+          </div>
+          <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+            <span className="text-xs font-medium text-stone-500 dark:text-stone-400">
+              {t("Language")}
+            </span>
+            <LanguageSwitch />
           </div>
           <div className="my-1 border-t border-stone-100 dark:border-stone-800" />
           {isAdmin && (
@@ -423,7 +515,7 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
               </svg>
-              Settings
+              {t("Settings")}
             </Link>
           )}
           <button
@@ -435,7 +527,7 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
             <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
             </svg>
-            Log out
+            {t("Log out")}
           </button>
         </div>
       )}
@@ -452,6 +544,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { isAdmin, user } = useAuth();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const allowedPages = user?.allowedPages;
 
@@ -467,8 +560,8 @@ export function Sidebar({
         <button
           type="button"
           onClick={onToggleCollapse}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand" : "Collapse"}
+          aria-label={collapsed ? t("Expand sidebar") : t("Collapse sidebar")}
+          title={collapsed ? t("Expand sidebar") : t("Collapse sidebar")}
           className="absolute -right-3 top-7 z-40 hidden h-6 w-6 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 shadow-sm transition hover:text-stone-800 lg:grid dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
         >
           <svg
@@ -498,7 +591,7 @@ export function Sidebar({
           <ThemeSwitch />
           <button
             onClick={() => setOpen(true)}
-            aria-label="Open menu"
+            aria-label={t("Open menu")}
             className="grid h-9 w-9 place-items-center rounded-lg border border-stone-200 bg-white text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
           >
             ☰

@@ -14,6 +14,8 @@ interface DraftLine {
   quantity: string;
   // Unit the quantity is written in; "" = the supply's own unit.
   unit: string;
+  // Customer's choice (sugar, straw…): offered at checkout, not always used.
+  optional: boolean;
 }
 
 function linesFromRecipe(recipe: Recipe | null): DraftLine[] {
@@ -21,6 +23,7 @@ function linesFromRecipe(recipe: Recipe | null): DraftLine[] {
     inventoryItemId: item.inventoryItemId,
     quantity: String(item.quantity),
     unit: item.unit ?? "",
+    optional: item.optional ?? false,
   }));
 }
 
@@ -75,8 +78,9 @@ export function RecipeEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Servings the draft could make right now: the tightest line wins.
-  const filledLines = lines.filter((l) => Number(l.quantity) > 0);
+  // Servings the draft could make right now: the tightest base line wins
+  // (customer's-choice lines are add-ons, not part of a serving).
+  const filledLines = lines.filter((l) => Number(l.quantity) > 0 && !l.optional);
   const servings =
     filledLines.length === 0
       ? null
@@ -97,7 +101,10 @@ export function RecipeEditor({
     const unused =
       inventoryItems.find((inv) => !lines.some((l) => l.inventoryItemId === inv.id)) ??
       inventoryItems[0];
-    setLines([...lines, { inventoryItemId: unused.id, quantity: "1", unit: "" }]);
+    setLines([
+      ...lines,
+      { inventoryItemId: unused.id, quantity: "1", unit: "", optional: false },
+    ]);
   }
 
   function payloadLines() {
@@ -107,6 +114,7 @@ export function RecipeEditor({
         inventoryItemId: l.inventoryItemId,
         quantity: Number(l.quantity),
         unit: l.unit || null,
+        optional: l.optional,
       }));
   }
 
@@ -250,6 +258,24 @@ export function RecipeEditor({
                     </span>
                   );
                 })()}
+                <label
+                  className="flex cursor-pointer items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300"
+                  title="Customer's choice: asked at checkout instead of always deducted (sugar, straw…)"
+                >
+                  <input
+                    type="checkbox"
+                    checked={line.optional}
+                    onChange={(e) =>
+                      setLines(
+                        lines.map((l, i) =>
+                          i === index ? { ...l, optional: e.target.checked } : l,
+                        ),
+                      )
+                    }
+                    className="h-3.5 w-3.5 accent-pos-button"
+                  />
+                  Optional
+                </label>
                 <button
                   type="button"
                   onClick={() => setLines(lines.filter((_, i) => i !== index))}
@@ -279,7 +305,11 @@ export function RecipeEditor({
             ? "Add cups and ingredients under Supplies first."
             : servings === null
               ? "Nothing to deduct yet."
-              : `Supplies on hand cover ${servings} serving${servings === 1 ? "" : "s"}.`}
+              : `Supplies on hand cover ${servings} serving${servings === 1 ? "" : "s"}.${
+                  lines.some((l) => l.optional)
+                    ? " Optional lines are offered at checkout."
+                    : ""
+                }`}
         </p>
         <div className="flex items-center gap-2">
           {sizes.length > 1 && lines.length > 0 && (

@@ -68,7 +68,12 @@ describe('Stock mode (e2e)', () => {
     const cup = await http()
       .post('/inventory')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Cup', category: 'Packaging', unit: 'pcs', stockQuantity: 7 })
+      .send({
+        name: 'Cup',
+        category: 'Packaging',
+        unit: 'pcs',
+        stockQuantity: 7,
+      })
       .expect(201);
     cupId = cup.body.id;
   });
@@ -81,9 +86,9 @@ describe('Stock mode (e2e)', () => {
   const product = async (id: number) =>
     (await auth(http().get(`/products/${id}`)).expect(200)).body;
   const movementsFor = async (id: number) =>
-    (await auth(http().get('/products/movements?limit=50')).expect(200)).body.filter(
-      (m: any) => m.productId === id,
-    );
+    (
+      await auth(http().get('/products/movements?limit=50')).expect(200)
+    ).body.filter((m: any) => m.productId === id);
 
   const createCounted = async (name: string, stock: number) => {
     const res = await auth(http().post('/products'))
@@ -130,7 +135,9 @@ describe('Stock mode (e2e)', () => {
       .expect(200);
     expect((await product(id)).stock).toBe(40);
 
-    await auth(http().patch(`/products/${id}`)).send({ sizes: [] }).expect(200);
+    await auth(http().patch(`/products/${id}`))
+      .send({ sizes: [] })
+      .expect(200);
     expect((await product(id)).stock).toBe(40);
     // Only the creation is journaled: nothing about the stock changed.
     expect(await movementsFor(id)).toEqual([
@@ -140,7 +147,9 @@ describe('Stock mode (e2e)', () => {
 
   it('journals a manual stock change', async () => {
     const id = await createCounted('Drip', 25);
-    await auth(http().patch(`/products/${id}`)).send({ stock: 30 }).expect(200);
+    await auth(http().patch(`/products/${id}`))
+      .send({ stock: 30 })
+      .expect(200);
     expect((await product(id)).stock).toBe(30);
     expect((await movementsFor(id))[0]).toEqual(
       expect.objectContaining({ delta: 5, stockAfter: 30 }),
@@ -161,7 +170,13 @@ describe('Stock mode (e2e)', () => {
 
   it('ignores a stock figure sent for a made-to-order product', async () => {
     const res = await auth(http().post('/products'))
-      .send({ name: 'Cortado', price: 3, categoryId, stockMode: 'recipe', stock: 9 })
+      .send({
+        name: 'Cortado',
+        price: 3,
+        categoryId,
+        stockMode: 'recipe',
+        stock: 9,
+      })
       .expect(201);
     expect(res.body.stock).toBe(0);
     expect(await movementsFor(res.body.id)).toEqual([]);
@@ -175,7 +190,7 @@ describe('Stock mode (e2e)', () => {
     const p = await product(id);
     expect(p.stockMode).toBe('recipe');
     expect(p.stock).toBe(0);
-    expect(p.recipes).toEqual([{ size: null, servings: 7 }]);
+    expect(p.recipes).toEqual([{ size: null, servings: 7, options: [] }]);
     expect((await movementsFor(id))[0]).toEqual(
       expect.objectContaining({ delta: -8, stockAfter: 0 }),
     );

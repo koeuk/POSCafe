@@ -6,6 +6,10 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { ProductDetailDrawer } from "@/components/product-detail-drawer";
+import {
+  CheckoutExtrasDialog,
+  type ExtrasLine,
+} from "@/components/checkout-extras-dialog";
 import { rolePathBase } from "@/lib/permissions";
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
@@ -15,6 +19,7 @@ import {
   formatPrice,
   hasDiscount,
   isRecipeManaged,
+  recipeAvailability,
   sizeStock,
   totalStock,
 } from "@/lib/pricing";
@@ -30,6 +35,14 @@ interface CartLine {
   size: ProductVariant | null;
   // Preparation note ("less sugar, no ice"), sent with the order line.
   note: string;
+  // Customer's-choice add-ons: inventoryItemId → amount per drink as typed
+  // (in the option's unit), from the checkout dialog. "" = none.
+  extras: Record<number, string>;
+}
+
+/** The optional recipe lines (sugar, straw…) a cart line can add. */
+function optionsFor(line: CartLine) {
+  return recipeAvailability(line.product, line.size?.size ?? null)?.options ?? [];
 }
 
 function cartKey(productId: number, sizeName: string | null | undefined) {
@@ -143,7 +156,7 @@ function POSScreen() {
             : l,
         );
       }
-      return [...prev, { product, quantity: 1, size, note: "" }];
+      return [...prev, { product, quantity: 1, size, note: "", extras: {} }];
     });
   }, []);
 
@@ -189,6 +202,45 @@ function POSScreen() {
     [],
   );
 
+  const setExtra = useCallback(
+    (key: string, inventoryItemId: number, amount: string) => {
+      setCart((prev) =>
+        prev.map((l) =>
+          cartKey(l.product.id, l.size?.size) === key
+            ? { ...l, extras: { ...l.extras, [inventoryItemId]: amount } }
+            : l,
+        ),
+      );
+    },
+    [],
+  );
+
+  // Checkout pauses on an add-ons dialog when any line offers extras.
+  const [choosingExtras, setChoosingExtras] = useState(false);
+  const extrasLines = useMemo<ExtrasLine[]>(
+    () =>
+      cart
+        .filter((l) => optionsFor(l).length > 0)
+        .map((l) => ({
+          key: cartKey(l.product.id, l.size?.size),
+          title: l.size ? `${l.product.name} (${l.size.size})` : l.product.name,
+          quantity: l.quantity,
+          options: optionsFor(l),
+          chosen: l.extras,
+        })),
+    [cart],
+  );
+
+  function startCheckout() {
+    if (cart.length === 0 || placing) return;
+    if (extrasLines.length > 0) {
+      setCheckoutError(null);
+      setChoosingExtras(true);
+      return;
+    }
+    void handleCheckout();
+  }
+
   // Synchronous double-submit guard — see handleCheckout.
   const placingRef = useRef(false);
 
@@ -210,16 +262,26 @@ function POSScreen() {
       const order = await api<Order>("/orders", {
         method: "POST",
         body: {
-          items: cart.map((l) => ({
-            productId: l.product.id,
-            quantity: l.quantity,
-            ...(l.size ? { size: l.size.size } : {}),
-            ...(l.note.trim() ? { note: l.note.trim() } : {}),
-          })),
+          items: cart.map((l) => {
+            const extras = optionsFor(l)
+              .map((o) => ({
+                inventoryItemId: o.inventoryItemId,
+                quantity: Number(l.extras[o.inventoryItemId] ?? 0),
+              }))
+              .filter((e) => Number.isFinite(e.quantity) && e.quantity > 0);
+            return {
+              productId: l.product.id,
+              quantity: l.quantity,
+              ...(l.size ? { size: l.size.size } : {}),
+              ...(l.note.trim() ? { note: l.note.trim() } : {}),
+              ...(extras.length > 0 ? { extras } : {}),
+            };
+          }),
         },
       });
       setLastOrder(order);
       setCart([]);
+      setChoosingExtras(false);
       // Refresh products so stock numbers stay accurate. The order itself is
       // already placed, so a failure here isn't fatal — but it must not pass
       // silently either: the cashier would keep building orders against
@@ -233,6 +295,7 @@ function POSScreen() {
       }
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Checkout failed");
+      setChoosingExtras(false);
     } finally {
       placingRef.current = false;
       setPlacing(false);
@@ -511,7 +574,7 @@ function POSScreen() {
               </span>
             </div>
             <button
-              onClick={handleCheckout}
+              onClick={startCheckout}
               disabled={cart.length === 0 || placing}
               className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-pos-button py-3.5 font-semibold text-pos-button-fg shadow-lg shadow-amber-900/10 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
             >
@@ -535,6 +598,16 @@ function POSScreen() {
         onClose={() => setViewProduct(null)}
         onAdd={addToCart}
       />
+
+      {choosingExtras && (
+        <CheckoutExtrasDialog
+          lines={extrasLines}
+          busy={placing}
+          onChange={setExtra}
+          onCancel={() => setChoosingExtras(false)}
+          onConfirm={() => void handleCheckout()}
+        />
+      )}
     </div>
   );
 }

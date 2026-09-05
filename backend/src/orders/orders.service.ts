@@ -103,10 +103,11 @@ export class OrdersService {
         // mode: counted products are decremented here; a made-to-order
         // product's ingredients are deducted once the order row exists so the
         // movements can carry its id.
-        const stockSource = await deduction.reserveLine({
+        const { stockSource, extras } = await deduction.reserveLine({
           product,
           size,
           quantity: line.quantity,
+          extras: line.extras,
         });
 
         items.push(
@@ -115,6 +116,7 @@ export class OrdersService {
             quantity: line.quantity,
             size,
             note: line.note?.trim() || null,
+            extras,
             unitPrice,
             subtotal,
             stockSource,

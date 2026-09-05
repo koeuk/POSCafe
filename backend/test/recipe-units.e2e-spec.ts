@@ -174,8 +174,8 @@ describe('Recipe deduction with unit conversion — Iced Coffee (e2e)', () => {
     // 2000 / 150 = 13 L drinks; the tightest line decides.
     const p = (await auth(http().get(`/products/${icedCoffeeId}`))).body;
     expect(p.recipes).toEqual([
-      { size: 'L', servings: 13 },
-      { size: 'M', servings: 20 },
+      { size: 'L', servings: 13, options: [] },
+      { size: 'M', servings: 20, options: [] },
     ]);
   });
 
@@ -294,6 +294,108 @@ describe('Recipe deduction with unit conversion — Iced Coffee (e2e)', () => {
       .send({ status: 'cancelled' })
       .expect(200);
     expect(await snapshot()).toEqual(before);
+  });
+
+  // ---- Customer's-choice add-ons (sugar, straw) picked at checkout ----
+
+  it('marks sugar and straw as optional; they leave servings and stock alone', async () => {
+    const items = lines(RECIPE_M).map((l) =>
+      l.inventoryItemId === ids.Sugar || l.inventoryItemId === ids.Straw
+        ? { ...l, optional: true }
+        : l,
+    );
+    const saved = await auth(http().post('/recipes'))
+      .send({ productId: icedCoffeeId, size: 'M', items })
+      .expect(201);
+    expect(
+      saved.body.items.filter((i: { optional: boolean }) => i.optional).length,
+    ).toBe(2);
+
+    // The POS learns the add-ons from the product's availability.
+    await setStock('Sugar', 15); // enough for one portion, not two
+    const p = (await auth(http().get(`/products/${icedCoffeeId}`))).body;
+    const m = p.recipes.find((r: { size: string }) => r.size === 'M');
+    expect(m.options).toEqual(
+      expect.arrayContaining([
+        { inventoryItemId: ids.Sugar, name: 'Sugar', quantity: 10, unit: 'g' },
+        { inventoryItemId: ids.Straw, name: 'Straw', quantity: 1, unit: 'pcs' },
+      ]),
+    );
+    // 15 g sugar would cap a base recipe at 1 serving; as an add-on it doesn't.
+    expect(m.servings).toBeGreaterThan(1);
+
+    const before = await snapshot();
+    await sell('M', 1).expect(201);
+    expect(await stockOf('Sugar')).toBe(before.Sugar);
+    expect(await stockOf('Straw')).toBe(before.Straw);
+    expect(await stockOf('Coffee')).toBe(round3(before.Coffee - 0.01));
+  });
+
+  it('deducts the typed add-on amount × drinks and snapshots it on the line', async () => {
+    await setStock('Sugar', 300);
+    const before = await snapshot();
+    const order = await auth(http().post('/orders'))
+      .send({
+        items: [
+          {
+            productId: icedCoffeeId,
+            size: 'M',
+            quantity: 2,
+            extras: [
+              { inventoryItemId: ids.Sugar, quantity: 20 }, // 20 g per drink
+              { inventoryItemId: ids.Straw, quantity: 1 },
+            ],
+          },
+        ],
+      })
+      .expect(201);
+    expect(await stockOf('Sugar')).toBe(before.Sugar - 20 * 2);
+    expect(await stockOf('Straw')).toBe(before.Straw - 1 * 2);
+    expect(await stockOf('Coffee')).toBe(round3(before.Coffee - 0.02));
+    expect(order.body.items[0].extras).toEqual([
+      { inventoryItemId: ids.Sugar, name: 'Sugar', quantity: 20, unit: 'g' },
+      { inventoryItemId: ids.Straw, name: 'Straw', quantity: 1, unit: 'pcs' },
+    ]);
+
+    await auth(http().patch(`/orders/${order.body.id}/status`))
+      .send({ status: 'cancelled' })
+      .expect(200);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it('refuses an add-on the recipe does not offer, and blocks when it runs short', async () => {
+    const before = await snapshot();
+    const bad = await auth(http().post('/orders'))
+      .send({
+        items: [
+          {
+            productId: icedCoffeeId,
+            size: 'M',
+            quantity: 1,
+            extras: [{ inventoryItemId: ids.Coffee, quantity: 1 }],
+          },
+        ],
+      })
+      .expect(400);
+    expect(bad.body.message).toContain('no optional add-on');
+
+    await setStock('Sugar', 15);
+    const short = await auth(http().post('/orders'))
+      .send({
+        items: [
+          {
+            productId: icedCoffeeId,
+            size: 'M',
+            quantity: 1,
+            extras: [{ inventoryItemId: ids.Sugar, quantity: 20 }],
+          },
+        ],
+      })
+      .expect(400);
+    expect(short.body.message).toContain('Insufficient stock: Sugar');
+    expect(short.body.message).toContain('required 20 g');
+    expect(short.body.message).toContain('available 15 g');
+    expect(await snapshot()).toEqual({ ...before, Sugar: 15 });
   });
 });
 

@@ -8,6 +8,14 @@ import {
 import { Product } from '../../products/entities/product.entity';
 import { Order } from './order.entity';
 
+export interface OrderItemExtra {
+  inventoryItemId: number;
+  name: string;
+  // Amount per drink, in `unit` (15 g of sugar, 1 pcs straw).
+  quantity: number;
+  unit: string;
+}
+
 @Entity('order_items')
 export class OrderItem {
   @PrimaryGeneratedColumn()
@@ -37,6 +45,13 @@ export class OrderItem {
   // Free-text preparation note from the cashier ("less sugar, no ice").
   @Column({ type: 'varchar', length: 255, nullable: true })
   note: string | null;
+
+  // Customer's-choice add-ons typed at checkout (sugar 15 g, straw 1 pcs),
+  // a snapshot for the receipt/kitchen. `quantity` is the amount per drink;
+  // the ingredient deduction already happened via the recipe's optional
+  // lines. null = none.
+  @Column({ type: 'json', nullable: true })
+  extras: OrderItemExtra[] | null;
 
   // Where the units came from at sale time: 'recipe' (consumables were
   // deducted via the product's recipe) or 'stock' (the product's own stock

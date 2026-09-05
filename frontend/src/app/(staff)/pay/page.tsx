@@ -278,6 +278,14 @@ function PayScreen() {
               <li key={it.id} className="flex justify-between text-stone-600 dark:text-stone-400">
                 <span>
                   {it.quantity}× {it.product?.name ?? `#${it.productId}`}
+                  {it.size && (
+                    <span className="text-stone-400 dark:text-stone-500"> ({it.size})</span>
+                  )}
+                  {it.extras && it.extras.length > 0 && (
+                    <span className="block text-xs text-stone-500 dark:text-stone-400">
+                      + {it.extras.map((e) => `${e.name} ${e.quantity} ${e.unit}`).join(", ")}
+                    </span>
+                  )}
                 </span>
                 <span>{formatPrice(it.subtotal)}</span>
               </li>

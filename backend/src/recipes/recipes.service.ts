@@ -159,6 +159,7 @@ export class RecipesService {
           inventoryItemId: item.inventoryItemId,
           quantity: item.quantity,
           unit: lineUnits.get(item.inventoryItemId) ?? null,
+          optional: item.optional ?? false,
         }),
       );
       await manager.save(RecipeItem, items);

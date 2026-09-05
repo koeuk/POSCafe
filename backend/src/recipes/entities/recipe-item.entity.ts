@@ -36,4 +36,10 @@ export class RecipeItem {
   // kg, recipe line in g) — see inventory/units.ts for the conversion.
   @Column({ type: 'varchar', length: 50, nullable: true })
   unit: string | null;
+
+  // Customer's choice (sugar, straw…): not part of the base drink. Only
+  // deducted when the cashier adds it to the order line at checkout, as
+  // many times as chosen.
+  @Column({ type: 'boolean', default: false })
+  optional: boolean;
 }

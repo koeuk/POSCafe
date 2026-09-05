@@ -3,12 +3,23 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
+
+export class OrderItemExtraDto {
+  @IsInt()
+  inventoryItemId: number;
+
+  // Amount per drink, in the recipe line's unit (15 for "15 g" of sugar).
+  @IsNumber()
+  @Min(0.001)
+  quantity: number;
+}
 
 export class CreateOrderItemDto {
   @IsInt()
@@ -28,6 +39,13 @@ export class CreateOrderItemDto {
   @IsString()
   @MaxLength(255)
   note?: string;
+
+  // Customer's-choice add-ons from the product's recipe (optional lines).
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemExtraDto)
+  extras?: OrderItemExtraDto[];
 }
 
 export class CreateOrderDto {

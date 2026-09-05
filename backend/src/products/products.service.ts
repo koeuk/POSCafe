@@ -32,6 +32,16 @@ export interface SoldCount {
 export interface RecipeAvailability {
   size: string | null;
   servings: number;
+  // Customer's-choice lines (sugar, straw…) the POS offers at checkout.
+  options: RecipeOption[];
+}
+
+export interface RecipeOption {
+  inventoryItemId: number;
+  name: string;
+  // Per portion, in the line's unit (10 g, 1 pcs).
+  quantity: number;
+  unit: string;
 }
 
 export type ProductWithAvailability = Product & {
@@ -70,7 +80,18 @@ export class ProductsService {
       });
       for (const recipe of recipes) {
         const list = byProduct.get(recipe.productId) ?? [];
-        list.push({ size: recipe.size, servings: recipeServings(recipe) });
+        list.push({
+          size: recipe.size,
+          servings: recipeServings(recipe),
+          options: recipe.items
+            .filter((i) => i.optional && i.inventoryItem)
+            .map((i) => ({
+              inventoryItemId: i.inventoryItemId,
+              name: i.inventoryItem.name,
+              quantity: Number(i.quantity),
+              unit: i.unit ?? i.inventoryItem.unit,
+            })),
+        });
         byProduct.set(recipe.productId, list);
       }
     }
@@ -264,6 +285,7 @@ export class ProductsService {
           inventoryItemId: i.inventoryItemId,
           quantity: i.quantity,
           unit: i.unit,
+          optional: i.optional,
         })),
       });
       await this.recipeRepo.save(copy);

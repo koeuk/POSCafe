@@ -58,6 +58,7 @@ export class AddConsumableInventoryAndRecipes1787000000000
         \`inventoryItemId\` int NOT NULL,
         \`quantity\` decimal(12,3) NOT NULL,
         \`unit\` varchar(50) NULL,
+        \`optional\` tinyint NOT NULL DEFAULT 0,
         PRIMARY KEY (\`id\`),
         CONSTRAINT \`FK_2c44770a9565be7ea9327b1a2ab\` FOREIGN KEY (\`recipeId\`) REFERENCES \`recipes\`(\`id\`) ON DELETE CASCADE,
         CONSTRAINT \`FK_c8b241ae134f772a6f0bf38a96b\` FOREIGN KEY (\`inventoryItemId\`) REFERENCES \`inventory_items\`(\`id\`) ON DELETE CASCADE

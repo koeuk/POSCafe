@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -22,6 +23,11 @@ export class RecipeItemDto {
   @IsString()
   @IsOptional()
   unit?: string | null;
+
+  // Customer's choice: offered at checkout instead of always deducted.
+  @IsBoolean()
+  @IsOptional()
+  optional?: boolean;
 }
 
 export class CreateRecipeDto {

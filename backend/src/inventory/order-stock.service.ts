@@ -1,12 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
 import { EntityManager, IsNull } from 'typeorm';
-import { OrderItem } from '../orders/entities/order-item.entity';
+import {
+  OrderItem,
+  OrderItemExtra,
+} from '../orders/entities/order-item.entity';
 import { Product } from '../products/entities/product.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
 import { lineQuantityInStockUnit } from '../recipes/recipe-servings';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { InventoryMovement } from './entities/inventory-movement.entity';
-import { formatQuantity } from './units';
+import { convertQuantity, formatQuantity } from './units';
 
 /**
  * Where an order line's units came from, recorded on the order item so a
@@ -27,6 +30,15 @@ export interface OrderLine {
   product: Product;
   size: string | null;
   quantity: number;
+  /** Customer's-choice add-ons: amount per drink of an optional line, in
+   *  that line's unit (15 for "15 g" of sugar). */
+  extras?: { inventoryItemId: number; quantity: number }[];
+}
+
+export interface ReservedLine {
+  stockSource: StockSource;
+  /** The add-ons actually applied, with names for the order snapshot. */
+  extras: OrderItemExtra[] | null;
 }
 
 interface IngredientNeed {
@@ -80,9 +92,10 @@ export class OrderStockDeduction {
 
   constructor(private readonly manager: EntityManager) {}
 
-  async reserveLine(line: OrderLine): Promise<StockSource> {
+  async reserveLine(line: OrderLine): Promise<ReservedLine> {
     const { product, size, quantity } = line;
     const label = size ? `${product.name} (${size})` : product.name;
+    const extras = line.extras ?? [];
 
     if (product.stockMode === 'recipe') {
       const recipe = await findRecipe(this.manager, product.id, size);
@@ -91,16 +104,56 @@ export class OrderStockDeduction {
           `"${label}" is made to order but has no recipe yet — add one on the Inventory page`,
         );
       }
+      // Add-ons may only name the recipe's customer's-choice lines.
+      const optional = new Map(
+        recipe.items
+          .filter((i) => i.optional)
+          .map((i) => [i.inventoryItemId, i]),
+      );
+      const applied: OrderItemExtra[] = [];
+      for (const extra of extras) {
+        const item = optional.get(extra.inventoryItemId);
+        if (!item) {
+          throw new BadRequestException(
+            `"${label}" has no optional add-on #${extra.inventoryItemId}`,
+          );
+        }
+        applied.push({
+          inventoryItemId: item.inventoryItemId,
+          name: item.inventoryItem?.name ?? `#${item.inventoryItemId}`,
+          quantity: extra.quantity,
+          unit: item.unit ?? item.inventoryItem?.unit ?? '',
+        });
+      }
       for (const item of recipe.items) {
+        // Base lines take the recipe amount every time; optional lines take
+        // the amount typed at checkout (in the line's unit), or nothing.
+        let perDrink: number;
+        if (item.optional) {
+          const chosen = applied.find(
+            (e) => e.inventoryItemId === item.inventoryItemId,
+          );
+          if (!chosen) continue;
+          const stockUnit = item.inventoryItem?.unit ?? chosen.unit;
+          perDrink = convertQuantity(chosen.quantity, chosen.unit, stockUnit);
+        } else {
+          perDrink = lineQuantityInStockUnit(item);
+        }
         const need = this.needs.get(item.inventoryItemId) ?? {
           quantity: 0,
           products: new Set<string>(),
         };
-        need.quantity += lineQuantityInStockUnit(item) * quantity;
+        need.quantity += perDrink * quantity;
         need.products.add(label);
         this.needs.set(item.inventoryItemId, need);
       }
-      return 'recipe';
+      return { stockSource: 'recipe', extras: applied.length ? applied : null };
+    }
+
+    if (extras.length > 0) {
+      throw new BadRequestException(
+        `"${label}" is counted stock and has no add-ons`,
+      );
     }
 
     if (product.stock < quantity) {
@@ -110,7 +163,7 @@ export class OrderStockDeduction {
     }
     product.stock -= quantity;
     await this.manager.save(product);
-    return 'stock';
+    return { stockSource: 'stock', extras: null };
   }
 
   /** Deducts every accumulated ingredient and journals it against the order. */
