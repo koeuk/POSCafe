@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { AdminCategoryDetail } from "@/components/admin-category-detail";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { type Category, type Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 function CategoryView({ id }: { id: string }) {
+  const { t } = useT();
   const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ function CategoryView({ id }: { id: string }) {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Failed to load category",
+            err instanceof Error ? err.message : t("Failed to load category"),
           );
         }
       } finally {
@@ -37,7 +39,7 @@ function CategoryView({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   if (loading) {
     return (
@@ -53,7 +55,7 @@ function CategoryView({ id }: { id: string }) {
       <main className="mx-auto max-w-7xl">
         <div className={`rounded-2xl p-6 ${GLASS}`}>
           <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-            {error ?? "Category not found."}
+            {error ?? t("Category not found.")}
           </p>
         </div>
       </main>

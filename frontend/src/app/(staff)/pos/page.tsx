@@ -13,6 +13,7 @@ import {
 import { rolePathBase } from "@/lib/permissions";
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
+import { useT } from "@/lib/i18n";
 import {
   effectivePrice,
   formatKhr,
@@ -23,7 +24,13 @@ import {
   sizeStock,
   totalStock,
 } from "@/lib/pricing";
-import type { Category, Order, Product, ProductVariant } from "@/lib/types";
+import type {
+  Category,
+  InventoryItem,
+  Order,
+  Product,
+  ProductVariant,
+} from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 // Distinctive warm display serif for the brand & headings.
@@ -40,9 +47,9 @@ interface CartLine {
   extras: Record<number, string>;
 }
 
-/** The optional recipe lines (sugar, straw…) a cart line can add. */
-function optionsFor(line: CartLine) {
-  return recipeAvailability(line.product, line.size?.size ?? null)?.options ?? [];
+/** The recipe covering a cart line, or null when the product is counted. */
+function availabilityFor(line: CartLine) {
+  return recipeAvailability(line.product, line.size?.size ?? null);
 }
 
 function cartKey(productId: number, sizeName: string | null | undefined) {
@@ -52,12 +59,16 @@ function cartKey(productId: number, sizeName: string | null | undefined) {
 function POSScreen() {
   const pathname = usePathname();
   const { khrPerUsd } = useBranding();
+  const { t } = useT();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
+  // Supplies offered as checkout add-ons. Empty when this cashier may not
+  // read the Inventory page — the recipe's own optional lines still show.
+  const [supplies, setSupplies] = useState<InventoryItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -83,11 +94,19 @@ function POSScreen() {
           setCategories(cats);
           setProducts(prods);
         }
+        // Supplies power the checkout add-ons picker. A cashier without the
+        // Inventory page gets a 403 here — the menu still loads, and the
+        // dialog falls back to the recipes' own optional lines.
+        try {
+          const items = await api<InventoryItem[]>("/inventory");
+          if (!cancelled) setSupplies(items);
+        } catch {
+          if (!cancelled) setSupplies([]);
+        }
       } catch (err) {
         if (!cancelled) {
-          setLoadError(
-            err instanceof Error ? err.message : "Failed to load menu",
-          );
+          // "" = no message from the server; the fallback is translated at render.
+          setLoadError(err instanceof Error ? err.message : "");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -215,25 +234,39 @@ function POSScreen() {
     [],
   );
 
+  const removeExtra = useCallback((key: string, inventoryItemId: number) => {
+    setCart((prev) =>
+      prev.map((l) => {
+        if (cartKey(l.product.id, l.size?.size) !== key) return l;
+        const next = { ...l.extras };
+        delete next[inventoryItemId];
+        return { ...l, extras: next };
+      }),
+    );
+  }, []);
+
   // Checkout pauses on an add-ons dialog when any line offers extras.
   const [choosingExtras, setChoosingExtras] = useState(false);
   const extrasLines = useMemo<ExtrasLine[]>(
     () =>
       cart
-        .filter((l) => optionsFor(l).length > 0)
+        .filter((l) => availabilityFor(l) !== null)
         .map((l) => ({
           key: cartKey(l.product.id, l.size?.size),
           title: l.size ? `${l.product.name} (${l.size.size})` : l.product.name,
           quantity: l.quantity,
-          options: optionsFor(l),
+          options: availabilityFor(l)?.options ?? [],
           chosen: l.extras,
         })),
     [cart],
   );
 
+  // Nothing to ask when there are neither supplies to offer nor suggestions.
+  const hasSuggestions = extrasLines.some((l) => l.options.length > 0);
+
   function startCheckout() {
     if (cart.length === 0 || placing) return;
-    if (extrasLines.length > 0) {
+    if (extrasLines.length > 0 && (supplies.length > 0 || hasSuggestions)) {
       setCheckoutError(null);
       setChoosingExtras(true);
       return;
@@ -263,10 +296,10 @@ function POSScreen() {
         method: "POST",
         body: {
           items: cart.map((l) => {
-            const extras = optionsFor(l)
-              .map((o) => ({
-                inventoryItemId: o.inventoryItemId,
-                quantity: Number(l.extras[o.inventoryItemId] ?? 0),
+            const extras = Object.entries(l.extras)
+              .map(([id, amount]) => ({
+                inventoryItemId: Number(id),
+                quantity: Number(amount),
               }))
               .filter((e) => Number.isFinite(e.quantity) && e.quantity > 0);
             return {
@@ -294,7 +327,7 @@ function POSScreen() {
         setStockStale(true);
       }
     } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : "Checkout failed");
+      setCheckoutError(err instanceof Error ? err.message : t("Checkout failed"));
       setChoosingExtras(false);
     } finally {
       placingRef.current = false;
@@ -310,7 +343,7 @@ function POSScreen() {
           {/* Category pills */}
           <div className="flex shrink-0 flex-wrap gap-2 px-5 py-4 sm:px-7">
             <CategoryTab
-              label="All"
+              label={t("All")}
               active={activeCategory === null}
               onClick={() => setActiveCategory(null)}
             />
@@ -346,15 +379,15 @@ function POSScreen() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search product…"
-                aria-label="Search product"
+                placeholder={t("Search product…")}
+                aria-label={t("Search product")}
                 className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-10 pr-10 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  aria-label="Clear search"
+                  aria-label={t("Clear search")}
                   className="absolute right-3 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-700"
                 >
                   ✕
@@ -367,13 +400,13 @@ function POSScreen() {
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-7">
             {loading ? (
               <GridSkeleton />
-            ) : loadError ? (
+            ) : loadError !== null ? (
               <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-                {loadError}
+                {loadError || t("Failed to load menu")}
               </p>
             ) : visibleProducts.length === 0 ? (
               <p className="mt-10 text-center text-sm text-stone-400 dark:text-stone-500">
-                No products here yet.
+                {t("No products here yet.")}
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -400,7 +433,7 @@ function POSScreen() {
         <aside className="flex w-full shrink-0 flex-col border-t border-stone-200/80 bg-white dark:border-stone-800 dark:bg-stone-900 lg:w-[26rem] lg:border-l lg:border-t-0">
           <div className="flex items-center justify-between px-6 pb-3 pt-5">
             <h2 className={`${display.className} text-lg font-semibold`}>
-              Current Order
+              {t("Current Order")}
             </h2>
             <div className="flex items-center gap-3">
               {itemCount > 0 && (
@@ -408,7 +441,9 @@ function POSScreen() {
                   key={itemCount}
                   className="pos-pop rounded-full bg-pos-button px-2.5 py-0.5 text-xs font-semibold text-pos-button-fg"
                 >
-                  {itemCount} item{itemCount === 1 ? "" : "s"}
+                  {t(itemCount === 1 ? "{count} item" : "{count} items", {
+                    count: itemCount,
+                  })}
                 </span>
               )}
               {cart.length > 0 && (
@@ -416,7 +451,7 @@ function POSScreen() {
                   onClick={clearCart}
                   className="text-sm text-stone-400 transition hover:text-red-500 dark:text-stone-500"
                 >
-                  Clear
+                  {t("Clear")}
                 </button>
               )}
             </div>
@@ -425,8 +460,9 @@ function POSScreen() {
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
             {stockStale && (
               <div className="mx-2 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
-                Stock numbers may be out of date — the menu couldn&apos;t be
-                refreshed. Reload the page before relying on them.
+                {t(
+                  "Stock numbers may be out of date — the menu couldn't be refreshed. Reload the page before relying on them.",
+                )}
               </div>
             )}
             {lastOrder && (
@@ -435,7 +471,7 @@ function POSScreen() {
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[11px] text-white">
                     ✓
                   </span>
-                  Order {lastOrder.orderNumber} placed
+                  {t("Order {number} placed", { number: lastOrder.orderNumber })}
                 </div>
                 <div className="mt-1 flex items-center justify-between pl-7">
                   <span>{formatPrice(lastOrder.total)}</span>
@@ -444,13 +480,13 @@ function POSScreen() {
                       href={`/pay?orderId=${lastOrder.id}`}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
-                      Pay
+                      {t("Pay")}
                     </Link>
                     <Link
                       href={`${rolePathBase(pathname)}/orders`}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
-                      View
+                      {t("View")}
                     </Link>
                   </div>
                 </div>
@@ -463,10 +499,10 @@ function POSScreen() {
                   🧾
                 </div>
                 <p className="mt-4 font-medium text-stone-500 dark:text-stone-400">
-                  Your order is empty
+                  {t("Your order is empty")}
                 </p>
                 <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
-                  Tap a product to add it here.
+                  {t("Tap a product to add it here.")}
                 </p>
               </div>
             ) : (
@@ -517,7 +553,7 @@ function POSScreen() {
                           )
                         }
                         maxLength={255}
-                        placeholder="Note — e.g. less sugar"
+                        placeholder={t("Note — e.g. less sugar")}
                         className="mt-1 w-full rounded-md border border-transparent bg-stone-50 px-2 py-1 text-xs text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-stone-300 focus:bg-white dark:bg-stone-800 dark:text-stone-300 dark:placeholder:text-stone-500 dark:focus:border-stone-600 dark:focus:bg-stone-900"
                       />
                     </div>
@@ -560,7 +596,7 @@ function POSScreen() {
               </p>
             )}
             <div className="mb-4 flex items-baseline justify-between">
-              <span className="text-stone-500 dark:text-stone-400">Total</span>
+              <span className="text-stone-500 dark:text-stone-400">{t("Total")}</span>
               <span className="text-right">
                 <span
                   key={total}
@@ -579,10 +615,10 @@ function POSScreen() {
               className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-pos-button py-3.5 font-semibold text-pos-button-fg shadow-lg shadow-amber-900/10 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
             >
               {placing ? (
-                "Placing order…"
+                t("Placing order…")
               ) : (
                 <>
-                  Checkout
+                  {t("Checkout")}
                   <span className="transition-transform group-hover:translate-x-0.5">
                     →
                   </span>
@@ -602,8 +638,10 @@ function POSScreen() {
       {choosingExtras && (
         <CheckoutExtrasDialog
           lines={extrasLines}
+          supplies={supplies}
           busy={placing}
           onChange={setExtra}
+          onRemove={removeExtra}
           onCancel={() => setChoosingExtras(false)}
           onConfirm={() => void handleCheckout()}
         />
@@ -625,11 +663,12 @@ function ProductCard({
   onAdd: (product: Product, size?: ProductVariant | null) => void;
   onView: (product: Product) => void;
 }) {
+  const { t } = useT();
   const sizes = product.variants ?? [];
   const stock = totalStock(product);
   const madeToOrder = isRecipeManaged(product);
   const priceLabel = sizes.length > 0
-    ? `from ${formatPrice(effectivePrice(product))}`
+    ? t("from {price}", { price: formatPrice(effectivePrice(product)) })
     : formatPrice(effectivePrice(product));
 
   return (
@@ -662,8 +701,8 @@ function ProductCard({
         <button
           type="button"
           onClick={() => onView(product)}
-          aria-label={`View ${product.name} details`}
-          title="View details"
+          aria-label={t("View {name} details", { name: product.name })}
+          title={t("View details")}
           className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/85 text-stone-700 shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white hover:text-stone-900 dark:bg-stone-900/80 dark:text-stone-300 dark:ring-white/10 dark:hover:bg-stone-900"
         >
           <svg
@@ -684,7 +723,7 @@ function ProductCard({
         {soldOut && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-stone-950/60">
             <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">
-              Sold out
+              {t("Sold out")}
             </span>
           </div>
         )}
@@ -693,9 +732,13 @@ function ProductCard({
       <span className="line-clamp-1 font-semibold text-stone-900 dark:text-stone-100">
         {product.name}
       </span>
-      <div className="mt-1 flex w-full items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
-          <span className="truncate font-semibold text-stone-900 dark:text-stone-100">{priceLabel}</span>
+      {/* Wraps rather than truncating: the price and the availability badge are
+          both longer in Khmer than in English and must stay readable. */}
+      <div className="mt-1 flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div className="flex min-w-0 items-baseline gap-1.5">
+          <span className="whitespace-nowrap font-semibold text-stone-900 dark:text-stone-100">
+            {priceLabel}
+          </span>
           {hasDiscount(product) && sizes.length === 0 && (
             <span className="shrink-0 text-xs text-stone-400 line-through dark:text-stone-500">
               {formatPrice(product.price)}
@@ -713,11 +756,11 @@ function ProductCard({
         >
           {soldOut
             ? madeToOrder
-              ? "Out of ingredients"
-              : "Out of stock"
+              ? t("Out of ingredients")
+              : t("Out of stock")
             : madeToOrder
-              ? `${stock} can be made`
-              : `${stock} left`}
+              ? t("{n} can be made", { n: stock })
+              : t("{n} left", { n: stock })}
         </span>
       </div>
 
@@ -740,7 +783,7 @@ function ProductCard({
                   <span className="max-w-full truncate leading-none">
                     {size.size}
                     {sizeOut && (
-                      <span className="ml-0.5 text-[10px] text-red-500">out</span>
+                      <span className="ml-0.5 text-[10px] text-red-500">{t("out")}</span>
                     )}
                   </span>
                   <span className="tabular-nums text-[10px] leading-none text-stone-500 dark:text-stone-400">
@@ -757,7 +800,7 @@ function ProductCard({
             onClick={() => onAdd(product, null)}
             className="w-full rounded-lg bg-pos-button px-3 py-2 text-sm font-semibold text-pos-button-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
           >
-            Add
+            {t("Add")}
           </button>
         )}
       </div>

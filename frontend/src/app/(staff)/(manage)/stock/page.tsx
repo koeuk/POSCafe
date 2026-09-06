@@ -5,6 +5,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ConsumablesManager } from "@/components/consumables-manager";
 import { RecipeEditor } from "@/components/recipe-editor";
 import { api } from "@/lib/api";
+import {
+  formatMonthShort,
+  formatTimeShort,
+  useT,
+  type Translate,
+  type TranslationKey,
+} from "@/lib/i18n";
 import { isRecipeManaged, sizeStock, totalStock } from "@/lib/pricing";
 import type {
   InventoryItem,
@@ -24,6 +31,12 @@ const CARD =
 type Tab = "products" | "supplies";
 type Filter = "all" | "out" | "count" | "recipe";
 
+/** "Sep 6, 2:10 PM" with translated month and AM/PM. */
+function formatMovementTime(iso: string, t: Translate): string {
+  const date = new Date(iso);
+  return `${formatMonthShort(date, t)} ${date.getDate()}, ${formatTimeShort(date, t)}`;
+}
+
 /**
  * Inventory: two things, kept apart.
  *  - Products: how each menu item is tracked — a counted stock figure, or
@@ -31,6 +44,7 @@ type Filter = "all" | "out" | "count" | "recipe";
  *  - Supplies: the cups, lids, straws and ingredients recipes draw from.
  */
 function Inventory() {
+  const { t } = useT();
   const [tab, setTab] = useState<Tab>("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -63,12 +77,12 @@ function Inventory() {
       try {
         await load();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
+        setError(err instanceof Error ? err.message : t("Failed to load"));
       } finally {
         setLoading(false);
       }
     })();
-  }, [load]);
+  }, [load, t]);
 
   const summary = useMemo(() => {
     let sellable = 0;
@@ -99,32 +113,32 @@ function Inventory() {
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-pos-page-fg">
-            Inventory
+            {t("Inventory")}
           </h1>
           <p className="text-sm text-pos-page-fg/60">
             {tab === "products"
-              ? "How each product is tracked and how many can be sold right now."
-              : "Cups, lids, straws and ingredients that recipes draw from."}
+              ? t("How each product is tracked and how many can be sold right now.")
+              : t("Cups, lids, straws and ingredients that recipes draw from.")}
           </p>
         </div>
         <div className="flex items-center rounded-2xl border border-stone-200 bg-stone-100/70 p-1 dark:border-stone-800 dark:bg-stone-900">
           {(
             [
-              { id: "products", label: "☕ Products" },
-              { id: "supplies", label: "🥤 Supplies" },
-            ] as { id: Tab; label: string }[]
-          ).map((t) => (
+              { id: "products", icon: "☕", label: "Products" },
+              { id: "supplies", icon: "🥤", label: "Supplies" },
+            ] as { id: Tab; icon: string; label: TranslationKey }[]
+          ).map((tabOption) => (
             <button
-              key={t.id}
+              key={tabOption.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(tabOption.id)}
               className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                tab === t.id
+                tab === tabOption.id
                   ? "bg-white text-stone-900 shadow-md dark:bg-stone-800 dark:text-stone-100"
                   : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
               }`}
             >
-              {t.label}
+              {tabOption.icon} {t(tabOption.label)}
             </button>
           ))}
         </div>
@@ -141,24 +155,24 @@ function Inventory() {
       {tab === "products" && (
         <>
           <div className="mb-6 grid grid-cols-3 gap-3">
-            <SummaryCard label="Sellable units" value={summary.sellable} tone="neutral" />
+            <SummaryCard label={t("Sellable units")} value={summary.sellable} tone="neutral" />
             <SummaryCard
-              label="Sold out"
+              label={t("Sold out")}
               value={summary.out}
               tone={summary.out > 0 ? "danger" : "ok"}
             />
-            <SummaryCard label="Made to order" value={summary.madeToOrder} tone="ok" />
+            <SummaryCard label={t("Made to order")} value={summary.madeToOrder} tone="ok" />
           </div>
 
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <h2 className="mr-auto text-lg font-semibold text-pos-page-fg">
-              Products
+              {t("Products")}
             </h2>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search product…"
+              placeholder={t("Search product…")}
               className={`${INPUT} w-48`}
             />
             <div className="flex items-center rounded-xl bg-stone-100 p-1 text-xs font-semibold dark:bg-stone-800">
@@ -168,7 +182,7 @@ function Inventory() {
                   { id: "count", label: "Counted" },
                   { id: "recipe", label: "Made to order" },
                   { id: "out", label: "Sold out" },
-                ] as { id: Filter; label: string }[]
+                ] as { id: Filter; label: TranslationKey }[]
               ).map((f) => (
                 <button
                   key={f.id}
@@ -180,17 +194,17 @@ function Inventory() {
                       : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
                   }`}
                 >
-                  {f.label}
+                  {t(f.label)}
                 </button>
               ))}
             </div>
           </div>
 
           {loading ? (
-            <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+            <p className="text-sm text-stone-500 dark:text-stone-400">{t("Loading…")}</p>
           ) : visible.length === 0 ? (
             <p className="text-sm text-stone-400 dark:text-stone-500">
-              No products match.
+              {t("No products match.")}
             </p>
           ) : (
             <ul className="space-y-3">
@@ -229,6 +243,7 @@ function ProductRow({
   supplies: InventoryItem[];
   onChanged: () => Promise<void>;
 }) {
+  const { t } = useT();
   const madeToOrder = isRecipeManaged(product);
   const units = totalStock(product);
   const sizes = product.variants ?? [];
@@ -258,7 +273,7 @@ function ProductRow({
       });
       await onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : t("Failed to save"));
     } finally {
       setBusy(false);
     }
@@ -278,7 +293,7 @@ function ProductRow({
       setEditingRecipe(pendingMode === "recipe");
       await onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to switch");
+      setError(err instanceof Error ? err.message : t("Failed to switch"));
       setPendingMode(null);
     } finally {
       setBusy(false);
@@ -310,15 +325,14 @@ function ProductRow({
             <ModePill mode={product.stockMode} />
           </div>
           <p className="text-xs text-stone-400 dark:text-stone-500">
-            {product.category?.name ?? "Uncategorized"}
+            {product.category?.name ?? t("Uncategorized")}
             {sizes.length > 0 && ` · ${sizes.map((s) => s.size).join(" / ")}`}
           </p>
         </div>
 
         <span className="hidden items-center gap-1.5 text-xs font-medium sm:inline-flex">
-          <span className="tabular-nums">
-            <span className="text-amber-600 dark:text-amber-400">{sold}</span>
-            <span className="text-stone-400 dark:text-stone-500"> sold</span>
+          <span className="tabular-nums text-stone-400 dark:text-stone-500">
+            {t("{n} sold", { n: sold })}
           </span>
           <span className="text-stone-300 dark:text-stone-600">·</span>
           <span
@@ -326,7 +340,9 @@ function ProductRow({
               out ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
             }`}
           >
-            {madeToOrder ? `${units} can be made` : `${units} in stock`}
+            {madeToOrder
+              ? t("{n} can be made", { n: units })
+              : t("{n} in stock", { n: units })}
           </span>
         </span>
 
@@ -341,7 +357,7 @@ function ProductRow({
                   : "bg-pos-button text-pos-button-fg hover:opacity-90"
               }`}
             >
-              {editingRecipe ? "Close recipe" : "Edit recipe"}
+              {editingRecipe ? t("Close recipe") : t("Edit recipe")}
             </button>
           ) : (
             <div className="flex items-center gap-1.5">
@@ -349,7 +365,7 @@ function ProductRow({
                 type="button"
                 onClick={() => setStock(Number(draftValue || "0") - 1)}
                 disabled={busy || Number(draftValue || "0") <= 0}
-                aria-label={`Remove one ${product.name}`}
+                aria-label={t("Remove one {name}", { name: product.name })}
                 className="grid h-9 w-9 place-items-center rounded-lg border border-stone-200 text-lg leading-none text-stone-600 transition hover:bg-stone-50 disabled:opacity-40 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
               >
                 −
@@ -365,7 +381,7 @@ function ProductRow({
                 onKeyDown={(e) => e.key === "Enter" && saveStock()}
                 onFocus={(e) => e.target.select()}
                 inputMode="numeric"
-                aria-label={`Stock for ${product.name}`}
+                aria-label={t("Stock for {name}", { name: product.name })}
                 className={`${INPUT} h-9 w-20 text-center text-base font-semibold ${
                   dirty ? "border-pos-button ring-2 ring-pos-button/15" : ""
                 }`}
@@ -374,7 +390,7 @@ function ProductRow({
                 type="button"
                 onClick={() => setStock(Number(draftValue || "0") + 1)}
                 disabled={busy}
-                aria-label={`Add one ${product.name}`}
+                aria-label={t("Add one {name}", { name: product.name })}
                 className="grid h-9 w-9 place-items-center rounded-lg border border-stone-200 text-lg leading-none text-stone-600 transition hover:bg-stone-50 disabled:opacity-40 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
               >
                 +
@@ -389,7 +405,7 @@ function ProductRow({
                     : "bg-stone-100 text-stone-400 dark:bg-stone-800 dark:text-stone-500"
                 }`}
               >
-                {busy ? "Saving…" : "Save"}
+                {busy ? t("Saving…") : t("Save")}
               </button>
             </div>
           )}
@@ -420,7 +436,7 @@ function ProductRow({
                 }`}
               >
                 <span className="font-semibold">{s.size}</span>
-                {!hasRecipe ? "no recipe" : `${n} can be made`}
+                {!hasRecipe ? t("no recipe") : t("{n} can be made", { n })}
               </span>
             );
           })}
@@ -428,7 +444,7 @@ function ProductRow({
       )}
       {madeToOrder && sizes.length === 0 && recipes.length === 0 && (
         <p className="mt-3 border-t border-stone-100 pt-3 text-xs text-red-600 dark:border-stone-800 dark:text-red-400">
-          No recipe yet — this product can&apos;t be sold until one is added.
+          {t("No recipe yet — this product can't be sold until one is added.")}
         </p>
       )}
 
@@ -447,18 +463,27 @@ function ProductRow({
 
       {pendingMode && (
         <ConfirmDialog
-          title={pendingMode === "recipe" ? "Make to order" : "Track by count"}
+          title={pendingMode === "recipe" ? t("Make to order") : t("Track by count")}
           message={
             pendingMode === "recipe"
-              ? `${product.name} will be made to order: each sale deducts the cups and ingredients in its recipe.` +
+              ? t(
+                  "{name} will be made to order: each sale deducts the cups and ingredients in its recipe.",
+                  { name: product.name },
+                ) +
                 (product.stock > 0
-                  ? ` The current count of ${product.stock} will be cleared.`
+                  ? ` ${t("The current count of {n} will be cleared.", { n: product.stock })}`
                   : "")
-              : `${product.name} will be tracked by a stock count. Its recipe${
-                  recipes.length === 1 ? "" : "s"
-                } will be deleted and sales will no longer deduct supplies.`
+              : recipes.length === 1
+                ? t(
+                    "{name} will be tracked by a stock count. Its recipe will be deleted and sales will no longer deduct supplies.",
+                    { name: product.name },
+                  )
+                : t(
+                    "{name} will be tracked by a stock count. Its recipes will be deleted and sales will no longer deduct supplies.",
+                    { name: product.name },
+                  )
           }
-          confirmLabel={pendingMode === "recipe" ? "Make to order" : "Track by count"}
+          confirmLabel={pendingMode === "recipe" ? t("Make to order") : t("Track by count")}
           busy={busy}
           onCancel={() => setPendingMode(null)}
           onConfirm={switchMode}
@@ -481,14 +506,15 @@ function ModeSwitch({
   disabled?: boolean;
   onSwitch: (next: StockMode) => void;
 }) {
-  const options: { id: StockMode; label: string; hint: string }[] = [
+  const { t } = useT();
+  const options: { id: StockMode; label: TranslationKey; hint: TranslationKey }[] = [
     { id: "count", label: "Counted", hint: "Track a stock number" },
     { id: "recipe", label: "Made to order", hint: "Deduct supplies from a recipe" },
   ];
   return (
     <div
       role="radiogroup"
-      aria-label="Stock tracking"
+      aria-label={t("Stock tracking")}
       className="flex items-center rounded-xl bg-stone-100 p-1 text-xs font-semibold dark:bg-stone-800"
     >
       {options.map((o) => {
@@ -499,7 +525,7 @@ function ModeSwitch({
             type="button"
             role="radio"
             aria-checked={active}
-            title={o.hint}
+            title={t(o.hint)}
             disabled={disabled}
             onClick={() => !active && onSwitch(o.id)}
             className={`rounded-lg px-3 py-2 transition ${
@@ -510,7 +536,7 @@ function ModeSwitch({
                 : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
             }`}
           >
-            {o.label}
+            {t(o.label)}
           </button>
         );
       })}
@@ -519,19 +545,20 @@ function ModeSwitch({
 }
 
 function ModePill({ mode }: { mode: StockMode }) {
+  const { t } = useT();
   return mode === "recipe" ? (
     <span
-      title="Made to order: each sale deducts the recipe's supplies"
+      title={t("Made to order: each sale deducts the recipe's supplies")}
       className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
     >
-      Made to order
+      {t("Made to order")}
     </span>
   ) : (
     <span
-      title="Counted: one stock figure, whatever the size"
+      title={t("Counted: one stock figure, whatever the size")}
       className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-600 dark:bg-stone-800 dark:text-stone-300"
     >
-      Counted
+      {t("Counted")}
     </span>
   );
 }
@@ -539,11 +566,12 @@ function ModePill({ mode }: { mode: StockMode }) {
 // ── Recent manual stock changes (restocks & corrections) ─────────────────
 
 function MovementsFeed({ movements }: { movements: StockMovement[] }) {
+  const { t } = useT();
   if (movements.length === 0) return null;
   return (
     <section className="mt-8">
       <h2 className="mb-3 text-lg font-semibold text-pos-page-fg">
-        Recent stock changes
+        {t("Recent stock changes")}
       </h2>
       <ul className={`${CARD} overflow-hidden`}>
         {movements.map((m) => {
@@ -564,21 +592,15 @@ function MovementsFeed({ movements }: { movements: StockMovement[] }) {
               </span>
               <span className="min-w-0 flex-1 truncate text-stone-700 dark:text-stone-300">
                 <span className="font-medium text-stone-900 dark:text-stone-100">
-                  {m.product?.name ?? `Product #${m.productId}`}
+                  {m.product?.name ?? t("Product #{id}", { id: m.productId })}
                 </span>
                 <span className="text-stone-400 dark:text-stone-500">
                   {" "}
-                  → {m.stockAfter} in stock
+                  → {t("{n} in stock", { n: m.stockAfter })}
                 </span>
               </span>
               <span className="text-xs text-stone-400 dark:text-stone-500">
-                {m.user?.name ?? "—"} ·{" "}
-                {new Date(m.createdAt).toLocaleString([], {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {m.user?.name ?? "—"} · {formatMovementTime(m.createdAt, t)}
               </span>
             </li>
           );

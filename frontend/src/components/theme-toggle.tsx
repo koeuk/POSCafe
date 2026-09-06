@@ -1,18 +1,20 @@
 "use client";
 
 import { useTheme } from "@/lib/theme-context";
+import { useT } from "@/lib/i18n";
 
 // Sun/moon toggle that flips between light and dark.
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { resolved, toggle } = useTheme();
+  const { t } = useT();
   const isDark = resolved === "dark";
 
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      title={isDark ? "Light mode" : "Dark mode"}
+      aria-label={isDark ? t("Switch to light mode") : t("Switch to dark mode")}
+      title={isDark ? t("Light mode") : t("Dark mode")}
       className={`grid h-9 w-9 place-items-center rounded-xl border border-stone-200 bg-white text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700 ${className}`}
     >
       {isDark ? (

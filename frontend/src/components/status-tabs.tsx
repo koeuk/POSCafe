@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 export interface TabOption<T extends string> {
   label: string;
@@ -26,13 +27,15 @@ export function StatusTabs<T extends string>({
   options,
   value,
   onChange,
-  label = "Filter",
+  label,
 }: {
   options: TabOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  /** Accessible name for the tablist; defaults to a translated "Filter". */
   label?: string;
 }) {
+  const { t } = useT();
   const listRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState<Pill | null>(null);
   // Gates the transition so the pill doesn't fly in from the corner on mount.
@@ -85,7 +88,7 @@ export function StatusTabs<T extends string>({
     <div
       ref={listRef}
       role="tablist"
-      aria-label={label}
+      aria-label={label ?? t("Filter")}
       onKeyDown={onKeyDown}
       className="relative inline-flex flex-wrap gap-1 rounded-full border border-stone-200 bg-stone-100/70 p-1 dark:border-stone-800 dark:bg-stone-900/60"
     >

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
 import {
   effectivePrice,
   formatPrice,
@@ -26,6 +27,7 @@ export function ProductDetailDrawer({
   onClose: () => void;
   onAdd?: (product: Product, size?: ProductVariant | null) => void;
 }) {
+  const { t } = useT();
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
   // Keep the latest onClose in a ref so the Escape/scroll-lock effect below can
@@ -40,6 +42,7 @@ export function ProductDetailDrawer({
 
   // Reset the previewed image whenever a different product opens.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveImage(product?.image ?? null);
   }, [product]);
 
@@ -77,11 +80,11 @@ export function ProductDetailDrawer({
       <aside className="drawer-panel-in absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl dark:bg-stone-900">
         <header className="flex items-center justify-between border-b border-stone-200 px-5 py-4 dark:border-stone-800">
           <h2 className="text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100">
-            Product details
+            {t("Product details")}
           </h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("Close")}
             className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 text-stone-500 transition hover:bg-stone-50 dark:border-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
           >
             ✕
@@ -105,13 +108,13 @@ export function ProductDetailDrawer({
             )}
             {hasDiscount(product) && (
               <span className="absolute left-3 top-3 rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-bold text-white shadow">
-                -{product.discountPercent}% OFF
+                {t("-{percent}% OFF", { percent: product.discountPercent })}
               </span>
             )}
             {soldOut && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-stone-950/60">
                 <span className="rounded-full bg-stone-900/80 px-3 py-1 text-xs font-semibold text-white">
-                  Sold out
+                  {t("Sold out")}
                 </span>
               </div>
             )}
@@ -153,8 +156,9 @@ export function ProductDetailDrawer({
           </h3>
           <div className="mt-2 flex items-baseline gap-2.5">
             <span className="text-xl font-bold text-red-600 dark:text-red-400">
-              {hasSizes(product) ? "from " : ""}
-              {formatPrice(effectivePrice(product))}
+              {hasSizes(product)
+                ? t("from {price}", { price: formatPrice(effectivePrice(product)) })
+                : formatPrice(effectivePrice(product))}
             </span>
             {hasDiscount(product) && !hasSizes(product) && (
               <span className="text-sm text-stone-400 line-through dark:text-stone-500">
@@ -166,18 +170,18 @@ export function ProductDetailDrawer({
           <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
             {soldOut
               ? isRecipeManaged(product)
-                ? "Out of ingredients"
-                : "Out of stock"
+                ? t("Out of ingredients")
+                : t("Out of stock")
               : isRecipeManaged(product)
-                ? `${stock} can be made from ingredients`
-                : `${stock} in stock`}
+                ? t("{n} can be made from ingredients", { n: stock })
+                : t("{n} in stock", { n: stock })}
           </p>
 
           {/* Sizes */}
           {hasSizes(product) && (
             <div className="mt-6">
               <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-                Sizes
+                {t("Sizes")}
               </h4>
               <div className={sizes.length === 1 ? "grid grid-cols-1 gap-2" : "grid grid-cols-2 gap-2"}>
                 {sizes.map((size, index) => {
@@ -193,7 +197,7 @@ export function ProductDetailDrawer({
                       <span className="min-w-0 break-words text-left font-medium leading-snug text-stone-700 dark:text-stone-300">
                         {size.size}
                         {sizeOut && (
-                          <span className="ml-1.5 text-xs text-red-500">out</span>
+                          <span className="ml-1.5 text-xs text-red-500">{t("out")}</span>
                         )}
                       </span>
                       <span className="shrink-0 font-semibold tabular-nums text-stone-900 dark:text-stone-100">
@@ -210,7 +214,7 @@ export function ProductDetailDrawer({
           {product.description && (
             <div className="mt-6">
               <h4 className="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-                Description
+                {t("Description")}
               </h4>
               <p className="leading-relaxed text-stone-700 dark:text-stone-300">
                 {product.description}
@@ -228,7 +232,7 @@ export function ProductDetailDrawer({
               onClick={() => onAdd(product)}
               className="w-full rounded-xl bg-pos-button py-3 text-sm font-semibold text-pos-button-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {soldOut ? "Sold out" : "Add to order"}
+              {soldOut ? t("Sold out") : t("Add to order")}
             </button>
           </div>
         )}

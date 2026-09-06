@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { useT } from "@/lib/i18n";
 
 /**
  * Small centered confirmation modal. Closes on Escape or backdrop click.
@@ -9,7 +10,7 @@ import { useEffect, type ReactNode } from "react";
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = "Delete",
+  confirmLabel,
   busy = false,
   confirmDisabled = false,
   children,
@@ -18,6 +19,7 @@ export function ConfirmDialog({
 }: {
   title: string;
   message: string;
+  /** Confirm button text; defaults to a translated "Delete". */
   confirmLabel?: string;
   busy?: boolean;
   /** Keep the confirm button off until the user has acknowledged something. */
@@ -27,6 +29,7 @@ export function ConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useT();
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && !busy) onCancel();
@@ -69,7 +72,7 @@ export function ConfirmDialog({
             disabled={busy}
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="button"
@@ -77,7 +80,7 @@ export function ConfirmDialog({
             disabled={busy || confirmDisabled}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
           >
-            {busy ? "Deleting…" : confirmLabel}
+            {busy ? t("Deleting…") : (confirmLabel ?? t("Delete"))}
           </button>
         </div>
       </div>

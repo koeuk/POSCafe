@@ -8,11 +8,12 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useT, type TranslationKey } from "@/lib/i18n";
 import { OrderStatus } from "@/lib/types";
 
 const STATUS_META: Record<
   OrderStatus,
-  { label: string; pill: string; dot: string }
+  { label: TranslationKey; pill: string; dot: string }
 > = {
   [OrderStatus.PENDING]: {
     label: "Pending",
@@ -58,6 +59,7 @@ export function StatusDropdown({
   onChange: (status: OrderStatus) => void;
   busy?: boolean;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(
     null,
@@ -114,11 +116,11 @@ export function StatusDropdown({
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Order status"
+        aria-label={t("Order status")}
         className={`flex items-center gap-2 rounded-full py-1.5 pl-3 pr-2.5 text-xs font-semibold ring-1 ring-inset ring-black/5 transition focus:ring-2 focus:ring-pos-button/30 disabled:cursor-not-allowed disabled:opacity-50 dark:ring-white/10 ${current.pill}`}
       >
         <span className={`h-1.5 w-1.5 rounded-full ${current.dot}`} />
-        {busy ? "…" : current.label}
+        {busy ? "…" : t(current.label)}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -158,7 +160,7 @@ export function StatusDropdown({
                     }`}
                   >
                     <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
-                    {meta.label}
+                    {t(meta.label)}
                     {isSelected && (
                       <span className="ml-auto text-stone-400 dark:text-stone-500">
                         ✓

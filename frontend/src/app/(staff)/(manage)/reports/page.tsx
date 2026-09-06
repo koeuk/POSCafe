@@ -8,6 +8,12 @@ import { GLASS } from "@/lib/ui";
 import { downloadExcel } from "@/lib/export-excel";
 import { useClickOutside } from "@/lib/use-click-outside";
 import {
+  formatMonthShort,
+  useT,
+  type Translate,
+  type TranslationKey,
+} from "@/lib/i18n";
+import {
   CHART_TYPES,
   RevenueChart,
   type ChartType,
@@ -46,13 +52,26 @@ function OrdersIcon() {
 
 type Period = "day" | "week" | "month" | "year" | "custom";
 
-const PERIODS: { value: Period; label: string }[] = [
+const PERIODS: { value: Period; label: TranslationKey }[] = [
   { value: "day", label: "Today" },
   { value: "week", label: "This Week" },
   { value: "month", label: "This Month" },
   { value: "year", label: "This Year" },
   { value: "custom", label: "Custom range" },
 ];
+
+// Payment methods arrive as backend enum values ("cash"); the shared
+// dictionary has the capitalised English forms, so translate those and fall
+// back to the raw value for anything unknown.
+const METHOD_LABELS: Record<string, TranslationKey> = {
+  cash: "Cash",
+  card: "Card",
+  qr: "QR",
+};
+function methodLabel(method: string, t: Translate): string {
+  const key = METHOD_LABELS[method.toLowerCase()];
+  return key ? t(key) : method;
+}
 
 // Parse a "YYYY-MM-DD" string as a LOCAL date. `new Date("YYYY-MM-DD")` parses
 // as UTC midnight, which then renders as the previous day in negative-UTC
@@ -133,6 +152,7 @@ interface StockReport {
 }
 
 export default function ReportsPage() {
+  const { t } = useT();
   const [period, setPeriod] = useState<Period>("week");
   const [chartType, setChartType] = useState<ChartType>("bar");
   const [closeDate, setCloseDate] = useState(() => toLocalDateKey(new Date()));
@@ -148,11 +168,16 @@ export default function ReportsPage() {
   const dayCloseFetch = useFetch(
     () => api<DayClose>(`/reports/day-close?date=${closeDate}`),
     [closeDate],
-    { fallback: "Failed to load day close" },
+    { fallback: t("Failed to load day close") },
   );
   const dayClose = dayCloseFetch.data;
 
   const periodMeta = PERIODS.find((p) => p.value === period) ?? PERIODS[1];
+  const periodLabel = t(periodMeta.label);
+  const chartTypeOptions = useMemo(
+    () => CHART_TYPES.map((o) => ({ ...o, label: t(o.label) })),
+    [t],
+  );
   const windowDays = useMemo(() => periodDays(period), [period]);
 
   const customRange = period === "custom" && rangeFrom <= rangeTo;
@@ -171,7 +196,7 @@ export default function ReportsPage() {
       return { summary, daily, bestProducts, stock };
     },
     [dailyQuery],
-    { fallback: "Failed to load reports" },
+    { fallback: t("Failed to load reports") },
   );
   const { summary, daily, bestProducts, stock } = data ?? {
     summary: null as ReportSummary | null,
@@ -210,16 +235,19 @@ export default function ReportsPage() {
   // The chart owns its geometry; the page owns date formatting.
   const chartPoints = useMemo(
     () =>
-      sortedDaily.map((d) => ({
-        key: d.date,
-        label: parseLocalDate(d.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        value: d.revenue,
-        note: `${d.orders} ${d.orders === 1 ? "order" : "orders"}`,
-      })),
-    [sortedDaily],
+      sortedDaily.map((d) => {
+        const day = parseLocalDate(d.date);
+        return {
+          key: d.date,
+          label: `${formatMonthShort(day, t)} ${day.getDate()}`,
+          value: d.revenue,
+          note:
+            d.orders === 1
+              ? t("{count} order", { count: d.orders })
+              : t("{count} orders", { count: d.orders }),
+        };
+      }),
+    [sortedDaily, t],
   );
 
   const totalWindowRevenue = sortedDaily.reduce((sum, d) => sum + d.revenue, 0);
@@ -229,39 +257,39 @@ export default function ReportsPage() {
     const stamp = new Date().toISOString().slice(0, 10);
     downloadExcel(`poscafe-report-${period}-${stamp}`, [
       {
-        title: `Summary (${periodMeta.label})`,
-        columns: ["Metric", "Value"],
+        title: t("Summary ({period})", { period: periodLabel }),
+        columns: [t("Metric"), t("Value")],
         rows: [
           // Revenue as raw numbers so Excel/Sheets can SUM and sort them
           // numerically (a "$3.50" string sorts lexically and breaks SUM).
-          ["Today Revenue", summary?.today.revenue ?? 0],
-          ["Today Orders", summary?.today.orders ?? 0],
-          ["All-time Revenue", summary?.allTime.revenue ?? 0],
-          ["All-time Orders", summary?.allTime.orders ?? 0],
-          ["Window Revenue", totalWindowRevenue],
-          ["Window Orders", totalWindowOrders],
+          [t("Today Revenue"), summary?.today.revenue ?? 0],
+          [t("Today Orders"), summary?.today.orders ?? 0],
+          [t("All-time Revenue"), summary?.allTime.revenue ?? 0],
+          [t("All-time Orders"), summary?.allTime.orders ?? 0],
+          [t("Window Revenue"), totalWindowRevenue],
+          [t("Window Orders"), totalWindowOrders],
         ],
       },
       {
-        title: `Daily Sales — ${periodMeta.label}`,
-        columns: ["Date", "Orders", "Revenue"],
+        title: t("Daily Sales — {period}", { period: periodLabel }),
+        columns: [t("Date"), t("Orders"), t("Revenue")],
         rows: sortedDaily.map((d) => [d.date, d.orders, d.revenue]),
       },
       {
-        title: "Best Products",
-        columns: ["Product", "Sold", "Revenue"],
+        title: t("Best Products"),
+        columns: [t("Product"), t("Sold"), t("Revenue")],
         rows: bestProducts.map((p) => [p.name, p.quantitySold, p.revenue]),
       },
       ...(stock
         ? [
             {
-              title: "Stock by Product",
-              columns: ["Product", "Tracking", "Available", "Status"],
+              title: t("Stock by Product"),
+              columns: [t("Product"), t("Tracking"), t("Available"), t("Status")],
               rows: stock.byProduct.map((p) => [
                 p.productName,
-                p.stockMode === "recipe" ? "Made to order" : "Counted",
+                p.stockMode === "recipe" ? t("Made to order") : t("Counted"),
                 p.inStock,
-                p.inStock <= 0 ? "Sold out" : "Available",
+                p.inStock <= 0 ? t("Sold out") : t("Available"),
               ]),
             },
           ]
@@ -277,10 +305,10 @@ export default function ReportsPage() {
       <div className={`relative z-20 mb-6 flex flex-wrap items-end justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-            Reports
+            {t("Reports")}
           </h1>
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-            Paid order revenue and product performance.
+            {t("Paid order revenue and product performance.")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -292,7 +320,7 @@ export default function ReportsPage() {
                 value={rangeFrom}
                 max={rangeTo}
                 onChange={(e) => e.target.value && setRangeFrom(e.target.value)}
-                aria-label="Range start"
+                aria-label={t("Range start")}
                 className="rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-sm text-stone-900 outline-none transition focus:border-pos-button dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:[color-scheme:dark]"
               />
               <span className="text-sm text-stone-400">–</span>
@@ -302,7 +330,7 @@ export default function ReportsPage() {
                 min={rangeFrom}
                 max={toLocalDateKey(new Date())}
                 onChange={(e) => e.target.value && setRangeTo(e.target.value)}
-                aria-label="Range end"
+                aria-label={t("Range end")}
                 className="rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-sm text-stone-900 outline-none transition focus:border-pos-button dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:[color-scheme:dark]"
               />
             </span>
@@ -325,7 +353,7 @@ export default function ReportsPage() {
             >
               <path d="M12 3v12M8 11l4 4 4-4M5 21h14" />
             </svg>
-            Export Excel
+            {t("Export Excel")}
           </button>
         </div>
       </div>
@@ -341,7 +369,7 @@ export default function ReportsPage() {
             counts wear the brand accent. The 2-column grid then reads as
             "revenue | orders" down the columns and today / all-time across. */}
         <Metric
-          label="Today Revenue"
+          label={t("Today Revenue")}
           value={formatPrice(summary?.today.revenue ?? 0)}
           tone="#059669"
           solid
@@ -349,21 +377,21 @@ export default function ReportsPage() {
           loading={loading}
         />
         <Metric
-          label="Today Orders"
+          label={t("Today Orders")}
           value={String(summary?.today.orders ?? 0)}
           tone={ORDERS_TONE}
           icon={<OrdersIcon />}
           loading={loading}
         />
         <Metric
-          label="All Revenue"
+          label={t("All Revenue")}
           value={formatPrice(summary?.allTime.revenue ?? 0)}
           tone={REVENUE_TONE}
           icon={<RevenueIcon />}
           loading={loading}
         />
         <Metric
-          label="All Orders"
+          label={t("All Orders")}
           value={String(summary?.allTime.orders ?? 0)}
           tone={ORDERS_TONE}
           icon={<OrdersIcon />}
@@ -375,17 +403,20 @@ export default function ReportsPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-              Daily Sales · {periodMeta.label}
+              {t("Daily Sales")} · {periodLabel}
             </h2>
             <p className="text-sm text-stone-400 dark:text-stone-500">
-              {formatPrice(totalWindowRevenue)} from {totalWindowOrders} orders
+              {t("{revenue} from {count} orders", {
+                revenue: formatPrice(totalWindowRevenue),
+                count: totalWindowOrders,
+              })}
             </p>
           </div>
           <StatusTabs
-            options={CHART_TYPES}
+            options={chartTypeOptions}
             value={chartType}
             onChange={setChartType}
-            label="Chart type"
+            label={t("Chart type")}
           />
         </div>
 
@@ -393,7 +424,7 @@ export default function ReportsPage() {
           <div className="h-56 animate-pulse rounded-xl bg-stone-100 dark:bg-stone-800" />
         ) : sortedDaily.length === 0 ? (
           <p className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
-            No paid sales yet.
+            {t("No paid sales yet.")}
           </p>
         ) : (
           <RevenueChart points={chartPoints} type={chartType} />
@@ -401,14 +432,14 @@ export default function ReportsPage() {
       </section>
 
       <section className={`mt-6 rounded-2xl p-5 ${GLASS}`}>
-        <h2 className="font-semibold text-stone-900 dark:text-stone-100">Best Products</h2>
+        <h2 className="font-semibold text-stone-900 dark:text-stone-100">{t("Best Products")}</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
               <tr>
-                <th className="pb-3 font-medium">Product</th>
-                <th className="pb-3 font-medium">Sold</th>
-                <th className="pb-3 font-medium">Revenue</th>
+                <th className="pb-3 font-medium">{t("Product")}</th>
+                <th className="pb-3 font-medium">{t("Sold")}</th>
+                <th className="pb-3 font-medium">{t("Revenue")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
@@ -423,7 +454,7 @@ export default function ReportsPage() {
               ) : bestProducts.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-8 text-center text-stone-400 dark:text-stone-500">
-                    No paid product sales yet.
+                    {t("No paid product sales yet.")}
                   </td>
                 </tr>
               ) : (
@@ -444,18 +475,21 @@ export default function ReportsPage() {
       <section className={`mt-6 rounded-2xl p-5 ${GLASS}`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-            Stock
+            {t("Stock")}
           </h2>
           {stock && (
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-              {stock.totals.inStock} sellable units · {stock.totals.outOfStock} sold out
+              {t("{inStock} sellable units · {outOfStock} sold out", {
+                inStock: stock.totals.inStock,
+                outOfStock: stock.totals.outOfStock,
+              })}
             </span>
           )}
         </div>
 
         {!stock || stock.byProduct.length === 0 ? (
           <p className="text-sm text-stone-400 dark:text-stone-500">
-            No products yet.
+            {t("No products yet.")}
           </p>
         ) : (
           <>
@@ -496,10 +530,10 @@ export default function ReportsPage() {
                             }`}
                           >
                             {out
-                              ? "Sold out"
+                              ? t("Sold out")
                               : p.stockMode === "recipe"
-                                ? `${p.inStock} can be made`
-                                : `${p.inStock} in stock`}
+                                ? t("{n} can be made", { n: p.inStock })
+                                : t("{n} in stock", { n: p.inStock })}
                           </span>
                         </div>
                       );
@@ -511,7 +545,7 @@ export default function ReportsPage() {
             {stock.outOfStockItems.length > 0 && (
               <div className="mt-5">
                 <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
-                  Sold out
+                  {t("Sold out")}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {stock.outOfStockItems.map((it) => (
@@ -535,11 +569,12 @@ export default function ReportsPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-              Day close
+              {t("Day close")}
             </h2>
             <p className="text-sm text-stone-500 dark:text-stone-400">
-              Money taken on one day, by method and by cashier — count the
-              drawer against these numbers at closing.
+              {t(
+                "Money taken on one day, by method and by cashier — count the drawer against these numbers at closing.",
+              )}
             </p>
           </div>
           <input
@@ -552,33 +587,33 @@ export default function ReportsPage() {
         </div>
 
         {dayCloseFetch.loading ? (
-          <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">{t("Loading…")}</p>
         ) : dayCloseFetch.error || !dayClose ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-            {dayCloseFetch.error ?? "Failed to load day close"}
+            {dayCloseFetch.error ?? t("Failed to load day close")}
           </p>
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-4">
               <DayCloseStat
-                label="Revenue"
+                label={t("Revenue")}
                 value={formatPrice(dayClose.totals.revenue)}
               />
               <DayCloseStat
-                label="Payments"
+                label={t("Payments")}
                 value={String(dayClose.totals.payments)}
               />
               <DayCloseStat
-                label="Cash expected in drawer"
+                label={t("Cash expected in drawer")}
                 value={formatPrice(dayClose.cashExpected)}
                 highlight
               />
               <DayCloseStat
-                label="Refunds issued"
+                label={t("Refunds issued")}
                 value={
                   dayClose.refunds.count > 0
                     ? `${dayClose.refunds.count} · ${formatPrice(dayClose.refunds.amount)}`
-                    : "None"
+                    : t("None")
                 }
                 danger={dayClose.refunds.count > 0}
               />
@@ -587,11 +622,11 @@ export default function ReportsPage() {
             <div className="mt-5 grid gap-6 lg:grid-cols-2">
               <div>
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                  By payment method
+                  {t("By payment method")}
                 </h3>
                 {dayClose.byMethod.length === 0 ? (
                   <p className="text-sm text-stone-400 dark:text-stone-500">
-                    No payments this day.
+                    {t("No payments this day.")}
                   </p>
                 ) : (
                   <ul className="divide-y divide-stone-100 rounded-xl border border-stone-200/70 dark:divide-stone-800 dark:border-stone-800">
@@ -601,9 +636,11 @@ export default function ReportsPage() {
                         className="flex items-center justify-between px-4 py-2.5 text-sm"
                       >
                         <span className="font-medium capitalize text-stone-700 dark:text-stone-300">
-                          {m.method}
+                          {methodLabel(m.method, t)}
                           <span className="ml-2 text-xs font-normal text-stone-400 dark:text-stone-500">
-                            {m.count} payment{m.count === 1 ? "" : "s"}
+                            {m.count === 1
+                              ? t("{count} payment", { count: m.count })
+                              : t("{count} payments", { count: m.count })}
                           </span>
                         </span>
                         <span className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">
@@ -617,11 +654,11 @@ export default function ReportsPage() {
 
               <div>
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                  By cashier
+                  {t("By cashier")}
                 </h3>
                 {dayClose.byCashier.length === 0 ? (
                   <p className="text-sm text-stone-400 dark:text-stone-500">
-                    No payments this day.
+                    {t("No payments this day.")}
                   </p>
                 ) : (
                   <ul className="divide-y divide-stone-100 rounded-xl border border-stone-200/70 dark:divide-stone-800 dark:border-stone-800">
@@ -633,7 +670,9 @@ export default function ReportsPage() {
                         <span className="font-medium text-stone-700 dark:text-stone-300">
                           {c.name}
                           <span className="ml-2 text-xs font-normal text-stone-400 dark:text-stone-500">
-                            {c.orders} order{c.orders === 1 ? "" : "s"}
+                            {c.orders === 1
+                              ? t("{count} order", { count: c.orders })
+                              : t("{count} orders", { count: c.orders })}
                           </span>
                         </span>
                         <span className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">
@@ -763,13 +802,16 @@ function PeriodDropdown({
   value: Period;
   onChange: (period: Period) => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // Close on outside click or Escape.
   useClickOutside(ref, () => setOpen(false), open, { escape: true });
 
-  const current = PERIODS.find((p) => p.value === value)?.label ?? "Period";
+  const current = t(
+    PERIODS.find((p) => p.value === value)?.label ?? "Period",
+  );
 
   return (
     <div ref={ref} className="relative">
@@ -778,7 +820,7 @@ function PeriodDropdown({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Report period"
+        aria-label={t("Report period")}
         className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-95 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700/60"
       >
         <svg
@@ -814,7 +856,7 @@ function PeriodDropdown({
       {open && (
         <div
           role="listbox"
-          aria-label="Report period"
+          aria-label={t("Report period")}
           className={`absolute right-0 z-20 mt-2 w-44 origin-top-right overflow-hidden rounded-xl p-1 ${GLASS}`}
           style={{ animation: "menu-pop 160ms cubic-bezier(0.22,1,0.36,1)" }}
         >
@@ -836,7 +878,7 @@ function PeriodDropdown({
                     : "text-stone-600 hover:bg-stone-100/70 dark:text-stone-300 dark:hover:bg-stone-700/40"
                 }`}
               >
-                {p.label}
+                {t(p.label)}
                 {active && (
                   <svg
                     viewBox="0 0 24 24"

@@ -9,6 +9,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { auth } from "./translations/auth";
+import { categories } from "./translations/categories";
+import { common } from "./translations/common";
+import { dashboard } from "./translations/dashboard";
+import { menu } from "./translations/menu";
+import { orders } from "./translations/orders";
+import { pay } from "./translations/pay";
+import { pos } from "./translations/pos";
+import { products } from "./translations/products";
+import { reports } from "./translations/reports";
+import { settings } from "./translations/settings";
+import { sidebar } from "./translations/sidebar";
+import { stock } from "./translations/stock";
+
 
 export type Locale = "en" | "km";
 
@@ -19,111 +33,36 @@ export const LOCALES: { value: Locale; label: string }[] = [
 ];
 
 // The English text is the key, so a component reads `t("Overview")` and the
-// English UI needs no dictionary at all. Khmer lists every English string it
-// translates; `TranslationKey` is derived from it, so a `t("...")` call with
-// text that has no Khmer entry is a compile error.
+// English UI needs no dictionary at all. Khmer is split into one module per
+// area under lib/translations/; `TranslationKey` is derived from the merged
+// map, so a `t("...")` call with text that has no Khmer entry is a compile
+// error. A key may live in only one module — check `common` first.
 const km = {
-  // Sidebar sections
-  "Overview": "ទិដ្ឋភាពរួម",
-  "Sales": "ការលក់",
-  "Catalog": "កាតាឡុក",
-  "Insights": "ការវិភាគ",
-  "Customer": "អតិថិជន",
-  // Sidebar links
-  "Dashboard": "ផ្ទាំងគ្រប់គ្រង",
-  "Point of Sale": "ចំណុចលក់",
-  "Orders": "ការបញ្ជាទិញ",
-  "Payments": "ការទូទាត់",
-  "Categories": "ប្រភេទ",
-  "Products": "ផលិតផល",
-  "Inventory": "ស្តុក",
-  "Order History": "ប្រវត្តិការបញ្ជាទិញ",
-  "Reports": "របាយការណ៍",
-  "View Menu": "មើលម៉ឺនុយ",
-  "QR Code": "កូដ QR",
-  // Sidebar chrome
-  "Collapse sidebar": "បង្រួមរបារចំហៀង",
-  "Expand sidebar": "ពង្រីករបារចំហៀង",
-  "Open menu": "បើកម៉ឺនុយ",
-  "Appearance": "រូបរាង",
-  "Language": "ភាសា",
-  "Settings": "ការកំណត់",
-  "Log out": "ចាកចេញ",
-  // Theme
-  "Light": "ភ្លឺ",
-  "System": "ប្រព័ន្ធ",
-  "Dark": "ងងឹត",
-  // Roles
-  "Admin": "អ្នកគ្រប់គ្រង",
-  "Cashier": "អ្នកគិតលុយ",
-  // Dashboard
-  "Hi": "សួស្តី",
-  "there": "អ្នកទាំងអស់គ្នា",
-  "Admin command center for today's cafe operations.": "មជ្ឈមណ្ឌលគ្រប់គ្រងសម្រាប់ប្រតិបត្តិការហាងកាហ្វេថ្ងៃនេះ។",
-  "Failed to load data": "បរាជ័យក្នុងការផ្ទុកទិន្នន័យ",
-  "Revenue": "ចំណូល",
-  "Total Orders": "ការបញ្ជាទិញសរុប",
-  "Active Orders": "ការបញ្ជាទិញកំពុងដំណើរការ",
-  "This Week": "សប្តាហ៍នេះ",
-  "Last Week": "សប្តាហ៍មុន",
-  "This Month": "ខែនេះ",
-  "Last Month": "ខែមុន",
-  "This Year": "ឆ្នាំនេះ",
-  "Last Year": "ឆ្នាំមុន",
-  "All Time": "គ្រប់ពេល",
-  "Bar": "របារ",
-  "Line": "បន្ទាត់",
-  "Area": "ផ្ទៃ",
-  "Chart type": "ប្រភេទក្រាហ្វ",
-  "total": "សរុប",
-  "No revenue in this period.": "គ្មានចំណូលក្នុងរយៈពេលនេះទេ។",
-  "Order Status": "ស្ថានភាពការបញ្ជាទិញ",
-  "All orders": "ការបញ្ជាទិញទាំងអស់",
-  "Pending": "រង់ចាំ",
-  "Preparing": "កំពុងរៀបចំ",
-  "Ready": "រួចរាល់",
-  "Completed": "បានបញ្ចប់",
-  "Cancelled": "បានលុបចោល",
-  "No orders yet.": "មិនទាន់មានការបញ្ជាទិញទេ។",
-  "Popular Categories": "ប្រភេទពេញនិយម",
-  "Items sold by category (paid orders)": "ទំនិញលក់តាមប្រភេទ (ការបញ្ជាទិញបានបង់ប្រាក់)",
-  "sold": "បានលក់",
-  "No paid sales yet.": "មិនទាន់មានការលក់បានបង់ប្រាក់ទេ។",
-  "Most popular": "ពេញនិយមបំផុត",
-  "Recent Orders": "ការបញ្ជាទិញថ្មីៗ",
-  "Order": "ការបញ្ជាទិញ",
-  "Items": "ទំនិញ",
-  "Total": "សរុប",
-  "Status": "ស្ថានភាព",
-  "Time": "ម៉ោង",
-  // Date tokens (browsers often ship no Khmer locale data, so Intl falls
-  // back to English — these let the date helpers below translate anyway).
-  "Sun": "អាទិត្យ",
-  "Mon": "ចន្ទ",
-  "Tue": "អង្គារ",
-  "Wed": "ពុធ",
-  "Thu": "ព្រហ",
-  "Fri": "សុក្រ",
-  "Sat": "សៅរ៍",
-  "Jan": "មករា",
-  "Feb": "កុម្ភៈ",
-  "Mar": "មីនា",
-  "Apr": "មេសា",
-  "May": "ឧសភា",
-  "Jun": "មិថុនា",
-  "Jul": "កក្កដា",
-  "Aug": "សីហា",
-  "Sep": "កញ្ញា",
-  "Oct": "តុលា",
-  "Nov": "វិច្ឆិកា",
-  "Dec": "ធ្នូ",
-  "AM": "ព្រឹក",
-  "PM": "ល្ងាច",
+  ...common,
+  ...sidebar,
+  ...dashboard,
+  ...pos,
+  ...pay,
+  ...orders,
+  ...products,
+  ...categories,
+  ...stock,
+  ...reports,
+  ...settings,
+  ...auth,
+  ...menu,
 } as const;
 
 export type TranslationKey = keyof typeof km;
 
-export type Translate = (key: TranslationKey) => string;
+export type TranslateVars = Record<string, string | number>;
+
+/**
+ * Translate a key, filling `{name}` placeholders from `vars`:
+ * `t("{n} left", { n: 6 })` → "នៅសល់ 6". Placeholders let Khmer reorder
+ * the words instead of gluing `t("left")` onto a number.
+ */
+export type Translate = (key: TranslationKey, vars?: TranslateVars) => string;
 
 // Date helpers. They build the English form with Intl (always available) and
 // translate its tokens, since Khmer locale data is missing from most browsers.
@@ -196,7 +135,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   // English is the key itself; any other locale falls back to it.
   const t = useCallback<Translate>(
-    (key) => (locale === "en" ? key : (km[key] ?? key)),
+    (key, vars) => {
+      const text: string = locale === "en" ? key : (km[key] ?? key);
+      if (!vars) return text;
+      return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+        name in vars ? String(vars[name]) : match,
+      );
+    },
     [locale],
   );
 

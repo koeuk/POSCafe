@@ -363,7 +363,42 @@ describe('Recipe deduction with unit conversion — Iced Coffee (e2e)', () => {
     expect(await snapshot()).toEqual(before);
   });
 
-  it('refuses an add-on the recipe does not offer, and blocks when it runs short', async () => {
+  it('takes an add-on the recipe never listed, in that supply own unit', async () => {
+    // The cashier may pick any supply at checkout, not only the recipe's
+    // optional lines. Lid L is not in the M recipe; one is deducted on top,
+    // measured in the supply's own unit (pcs).
+    await setStock('Coffee', 1);
+    const before = await snapshot();
+    const order = await auth(http().post('/orders'))
+      .send({
+        items: [
+          {
+            productId: icedCoffeeId,
+            size: 'M',
+            quantity: 2,
+            extras: [{ inventoryItemId: ids['Lid L'], quantity: 1 }],
+          },
+        ],
+      })
+      .expect(201);
+    expect(await stockOf('Lid L')).toBe(before['Lid L'] - 2);
+    expect(await stockOf('Lid M')).toBe(before['Lid M'] - 2); // recipe, as usual
+    expect(order.body.items[0].extras).toEqual([
+      {
+        inventoryItemId: ids['Lid L'],
+        name: 'Lid L',
+        quantity: 1,
+        unit: 'pcs',
+      },
+    ]);
+
+    await auth(http().patch(`/orders/${order.body.id}/status`))
+      .send({ status: 'cancelled' })
+      .expect(200);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it('refuses an add-on that is not a supply, and blocks when one runs short', async () => {
     const before = await snapshot();
     const bad = await auth(http().post('/orders'))
       .send({
@@ -372,12 +407,12 @@ describe('Recipe deduction with unit conversion — Iced Coffee (e2e)', () => {
             productId: icedCoffeeId,
             size: 'M',
             quantity: 1,
-            extras: [{ inventoryItemId: ids.Coffee, quantity: 1 }],
+            extras: [{ inventoryItemId: 999999, quantity: 1 }],
           },
         ],
       })
       .expect(400);
-    expect(bad.body.message).toContain('no optional add-on');
+    expect(bad.body.message).toContain('is not a supply');
 
     await setStock('Sugar', 15);
     const short = await auth(http().post('/orders'))

@@ -5,6 +5,7 @@ import {
   OrderItemExtra,
 } from '../orders/entities/order-item.entity';
 import { Product } from '../products/entities/product.entity';
+import { RecipeItem } from '../recipes/entities/recipe-item.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
 import { lineQuantityInStockUnit } from '../recipes/recipe-servings';
 import { InventoryItem } from './entities/inventory-item.entity';
@@ -104,57 +105,41 @@ export class OrderStockDeduction {
           `"${label}" is made to order but has no recipe yet — add one on the Inventory page`,
         );
       }
-      // Add-ons may only name the recipe's customer's-choice lines.
+      // An add-on may name any supply. A customer's-choice recipe line
+      // (optional) carries its own unit; anything else is measured in the
+      // supply's own unit.
       const optional = new Map(
         recipe.items
           .filter((i) => i.optional)
           .map((i) => [i.inventoryItemId, i]),
       );
-      const applied: OrderItemExtra[] = [];
-      for (const extra of extras) {
-        const item = optional.get(extra.inventoryItemId);
-        if (!item) {
-          throw new BadRequestException(
-            `"${label}" has no optional add-on #${extra.inventoryItemId}`,
-          );
-        }
-        applied.push({
-          inventoryItemId: item.inventoryItemId,
-          name: item.inventoryItem?.name ?? `#${item.inventoryItemId}`,
-          quantity: extra.quantity,
-          unit: item.unit ?? item.inventoryItem?.unit ?? '',
-        });
-      }
+      const applied = await this.describeExtras(extras, optional, label);
+      // Base recipe lines every time; optional lines only when chosen.
       for (const item of recipe.items) {
-        // Base lines take the recipe amount every time; optional lines take
-        // the amount typed at checkout (in the line's unit), or nothing.
-        let perDrink: number;
-        if (item.optional) {
-          const chosen = applied.find(
-            (e) => e.inventoryItemId === item.inventoryItemId,
-          );
-          if (!chosen) continue;
-          const stockUnit = item.inventoryItem?.unit ?? chosen.unit;
-          perDrink = convertQuantity(chosen.quantity, chosen.unit, stockUnit);
-        } else {
-          perDrink = lineQuantityInStockUnit(item);
-        }
-        const need = this.needs.get(item.inventoryItemId) ?? {
-          quantity: 0,
-          products: new Set<string>(),
-        };
-        need.quantity += perDrink * quantity;
-        need.products.add(label);
-        this.needs.set(item.inventoryItemId, need);
+        if (item.optional) continue;
+        this.addNeed(
+          item.inventoryItemId,
+          lineQuantityInStockUnit(item) * quantity,
+          label,
+        );
+      }
+      // Add-ons on top, converted from the amount typed at checkout.
+      for (const extra of applied) {
+        const stockUnit =
+          optional.get(extra.inventoryItemId)?.inventoryItem?.unit ??
+          extra.unit;
+        this.addNeed(
+          extra.inventoryItemId,
+          convertQuantity(extra.quantity, extra.unit, stockUnit) * quantity,
+          label,
+        );
       }
       return { stockSource: 'recipe', extras: applied.length ? applied : null };
     }
 
-    if (extras.length > 0) {
-      throw new BadRequestException(
-        `"${label}" is counted stock and has no add-ons`,
-      );
-    }
+    // A counted product can carry add-ons too (a bag, an extra straw): they
+    // come out of Supplies, exactly like a made-to-order drink's.
+    const appliedExtras = await this.describeExtras(extras, new Map(), label);
 
     if (product.stock < quantity) {
       throw new BadRequestException(
@@ -163,7 +148,57 @@ export class OrderStockDeduction {
     }
     product.stock -= quantity;
     await this.manager.save(product);
-    return { stockSource: 'stock', extras: null };
+    // Measured in the supply's own unit here, so no conversion is needed.
+    for (const extra of appliedExtras) {
+      this.addNeed(extra.inventoryItemId, extra.quantity * quantity, label);
+    }
+    return {
+      stockSource: 'stock',
+      extras: appliedExtras.length ? appliedExtras : null,
+    };
+  }
+
+  /**
+   * Resolves each add-on to a name and a unit for the order snapshot: an
+   * optional recipe line keeps that line's unit, any other supply is
+   * measured in its own.
+   */
+  private async describeExtras(
+    extras: { inventoryItemId: number; quantity: number }[],
+    optional: Map<number, RecipeItem>,
+    label: string,
+  ): Promise<OrderItemExtra[]> {
+    const applied: OrderItemExtra[] = [];
+    for (const extra of extras) {
+      const line = optional.get(extra.inventoryItemId);
+      const item =
+        line?.inventoryItem ??
+        (await this.manager.findOne(InventoryItem, {
+          where: { id: extra.inventoryItemId },
+        }));
+      if (!item) {
+        throw new BadRequestException(
+          `Add-on #${extra.inventoryItemId} for "${label}" is not a supply`,
+        );
+      }
+      applied.push({
+        inventoryItemId: item.id,
+        name: item.name,
+        quantity: extra.quantity,
+        unit: line?.unit ?? item.unit,
+      });
+    }
+    return applied;
+  }
+
+  private addNeed(inventoryItemId: number, quantity: number, label: string) {
+    const need = this.needs.get(inventoryItemId) ?? {
+      quantity: 0,
+      products: new Set<string>(),
+    };
+    need.quantity += quantity;
+    need.products.add(label);
+    this.needs.set(inventoryItemId, need);
   }
 
   /** Deducts every accumulated ingredient and journals it against the order. */

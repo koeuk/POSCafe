@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT, type Translate } from "@/lib/i18n";
 import { rolePathBase } from "@/lib/permissions";
 import { formatPrice, isRecipeManaged, totalStock } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
@@ -14,6 +15,7 @@ export function AdminCategoryDetail({
   category: Category;
   products: Product[];
 }) {
+  const { t } = useT();
   const availableCount = products.filter((product) => product.isAvailable).length;
   // Stay in the current role's namespace (admin: clean, cashier: /cashier/*).
   const base = rolePathBase(usePathname());
@@ -25,7 +27,7 @@ export function AdminCategoryDetail({
           {/* Same breadcrumb-plus-Back header as the product detail page. */}
           <nav className="flex items-center gap-1.5 text-sm text-stone-400 dark:text-stone-500">
             <Link href={`${base}/categories`} className="hover:underline">
-              Categories
+              {t("Categories")}
             </Link>
             <span>/</span>
             <span className="text-stone-600 dark:text-stone-300">
@@ -36,7 +38,7 @@ export function AdminCategoryDetail({
             {category.name}
           </h1>
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-            {category.description || "No category description has been added."}
+            {category.description || t("No category description has been added.")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -44,13 +46,13 @@ export function AdminCategoryDetail({
             href={`${base}/categories`}
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
-            ← Back
+            ← {t("Back")}
           </Link>
           <Link
             href={`${base}/categories?edit=${category.id}`}
             className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
           >
-            Edit category
+            {t("Edit category")}
           </Link>
         </div>
       </header>
@@ -72,11 +74,11 @@ export function AdminCategoryDetail({
             )}
           </div>
           <div className="grid grid-cols-2 gap-3 p-5">
-            <Info label="Products" value={String(products.length)} />
-            <Info label="Visible" value={String(availableCount)} />
+            <Info label={t("Products")} value={String(products.length)} />
+            <Info label={t("Visible")} value={String(availableCount)} />
             <Info
-              label="Status"
-              value={category.isActive ? "Active" : "Hidden"}
+              label={t("Status")}
+              value={category.isActive ? t("Active") : t("Hidden")}
               className="col-span-2"
             />
           </div>
@@ -85,26 +87,26 @@ export function AdminCategoryDetail({
         <section className={`overflow-hidden rounded-2xl ${GLASS}`}>
           <div className="border-b border-stone-100 dark:border-stone-800 px-5 py-4">
             <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-              Products in this category
+              {t("Products in this category")}
             </h2>
             <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-              Review the products that will appear under this menu category.
+              {t("Review the products that will appear under this menu category.")}
             </p>
           </div>
 
           {products.length === 0 ? (
             <p className="px-5 py-12 text-center text-sm text-stone-400 dark:text-stone-500">
-              No products in this category yet.
+              {t("No products in this category yet.")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Product</th>
-                    <th className="px-4 py-3 font-medium">Price</th>
-                    <th className="px-4 py-3 font-medium">Stock</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">{t("Product")}</th>
+                    <th className="px-4 py-3 font-medium">{t("Price")}</th>
+                    <th className="px-4 py-3 font-medium">{t("Stock")}</th>
+                    <th className="px-4 py-3 font-medium">{t("Status")}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -114,24 +116,24 @@ export function AdminCategoryDetail({
                       <td className="px-4 py-3">
                         <p className="font-medium text-stone-900 dark:text-stone-100">{product.name}</p>
                         <p className="mt-0.5 max-w-md truncate text-xs text-stone-400 dark:text-stone-500">
-                          {product.description || "No description"}
+                          {product.description || t("No description")}
                         </p>
                       </td>
-                      <td className="px-4 py-3">{productPriceLabel(product)}</td>
+                      <td className="px-4 py-3">{productPriceLabel(product, t)}</td>
                       <td className="px-4 py-3">
                         {totalStock(product)}
                         {isRecipeManaged(product) && (
-                          <span className="ml-1 text-xs text-stone-400">to order</span>
+                          <span className="ml-1 text-xs text-stone-400">{t("to order")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         {product.isAvailable ? (
                           <span className="rounded-full bg-green-50 dark:bg-green-500/15 px-2 py-0.5 text-xs text-green-700 dark:text-green-300">
-                            Available
+                            {t("Available")}
                           </span>
                         ) : (
                           <span className="rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-xs text-stone-500 dark:text-stone-400">
-                            Hidden
+                            {t("Hidden")}
                           </span>
                         )}
                       </td>
@@ -140,7 +142,7 @@ export function AdminCategoryDetail({
                           href={`${base}/products/${product.id}`}
                           className="rounded-lg border border-stone-200 dark:border-stone-800 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-400 transition hover:bg-stone-50 dark:hover:bg-stone-800"
                         >
-                          View
+                          {t("View")}
                         </Link>
                       </td>
                     </tr>
@@ -174,10 +176,10 @@ function Info({
   );
 }
 
-function productPriceLabel(product: Product): string {
+function productPriceLabel(product: Product, t: Translate): string {
   if (product.variants && product.variants.length > 0) {
     const min = Math.min(...product.variants.map((size) => Number(size.price)));
-    return `from ${formatPrice(min)}`;
+    return t("from {price}", { price: formatPrice(min) });
   }
   return formatPrice(product.price);
 }

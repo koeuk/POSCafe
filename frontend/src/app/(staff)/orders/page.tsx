@@ -5,7 +5,14 @@ import { io } from "socket.io-client";
 import { StaffShell } from "@/components/staff-shell";
 import { StatusTabs } from "@/components/status-tabs";
 import { api, getApiUrl, getToken } from "@/lib/api";
-import { STATUS_FILTERS } from "@/lib/orders";
+import {
+  formatMonthShort,
+  formatTimeShort,
+  useT,
+  type Translate,
+  type TranslationKey,
+} from "@/lib/i18n";
+import { ORDER_STATUS_LABEL, STATUS_FILTERS } from "@/lib/orders";
 import { OrderStatus, type OrderWithUser } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
@@ -22,11 +29,18 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
 };
 
 // The next step in the fulfilment flow → a one-tap "advance" button.
-const NEXT_STEP: Partial<Record<OrderStatus, { label: string; status: OrderStatus }>> = {
+// Labels are translation keys — render them through `t()`.
+const NEXT_STEP: Partial<Record<OrderStatus, { label: TranslationKey; status: OrderStatus }>> = {
   [OrderStatus.PENDING]: { label: "Start preparing", status: OrderStatus.PREPARING },
   [OrderStatus.PREPARING]: { label: "Mark ready", status: OrderStatus.READY },
   [OrderStatus.READY]: { label: "Complete", status: OrderStatus.COMPLETED },
 };
+
+// "6 Sep 2026, 2:10 PM" with the month and AM/PM translated — the browser's
+// toLocaleString() can't do Khmer on most devices.
+function formatDateTime(date: Date, t: Translate) {
+  return `${date.getDate()} ${formatMonthShort(date, t)} ${date.getFullYear()}, ${formatTimeShort(date, t)}`;
+}
 
 // Newest first, matching the order the API returns them in.
 function byNewest(a: OrderWithUser, b: OrderWithUser) {
@@ -34,6 +48,7 @@ function byNewest(a: OrderWithUser, b: OrderWithUser) {
 }
 
 function OrdersQueue() {
+  const { t } = useT();
   const [orders, setOrders] = useState<OrderWithUser[]>([]);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [loading, setLoading] = useState(true);
@@ -69,7 +84,7 @@ function OrdersQueue() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load orders");
+          setError(err instanceof Error ? err.message : t("Failed to load orders"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -80,7 +95,7 @@ function OrdersQueue() {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [load, t]);
 
   // Live updates via Socket.IO (authenticated with the JWT): new orders from
   // the POS and status changes made on any screen appear here instantly.
@@ -143,7 +158,7 @@ function OrdersQueue() {
       // so jumping to a single status there would wipe the rest off screen.
       if (filter !== "all" && status !== filter) setFilter(status);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
+      setError(err instanceof Error ? err.message : t("Failed to update status"));
     } finally {
       setUpdatingId(null);
     }
@@ -159,17 +174,33 @@ function OrdersQueue() {
     [orders],
   );
 
+  // The shared filter tabs carry English labels; translate them for the bar.
+  const filterOptions = useMemo(
+    () =>
+      STATUS_FILTERS.map((o) => ({
+        ...o,
+        label: t(o.label),
+      })),
+    [t],
+  );
+
   return (
     <main className="mx-auto max-w-7xl">
       <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Orders</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">{t("Orders")}</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">
             {/* Counts describe what's on screen, which under a status filter
                 is only that status — so label them by the active tab. */}
             {filter === "all"
-              ? `${activeCount} active · ${orders.length} total`
-              : `${orders.length} ${filter}`}
+              ? t("{count} active · {total} total", {
+                  count: activeCount,
+                  total: orders.length,
+                })
+              : t("{count} {status}", {
+                  count: orders.length,
+                  status: t(ORDER_STATUS_LABEL[filter]),
+                })}
           </p>
         </div>
         <span
@@ -182,7 +213,7 @@ function OrdersQueue() {
           <span
             className={`h-1.5 w-1.5 rounded-full ${live ? "bg-green-400" : "bg-red-400"}`}
           />
-          {live ? "Live" : "Offline"}
+          {live ? t("Live") : t("Offline")}
         </span>
       </header>
 
@@ -190,10 +221,10 @@ function OrdersQueue() {
         {/* Status filter */}
         <div className="mb-6">
           <StatusTabs
-            options={STATUS_FILTERS}
+            options={filterOptions}
             value={filter}
             onChange={setFilter}
-            label="Filter orders by status"
+            label={t("Filter orders by status")}
           />
         </div>
 
@@ -204,9 +235,9 @@ function OrdersQueue() {
         )}
 
         {loading ? (
-          <p className="text-sm text-stone-500 dark:text-stone-400">Loading orders…</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">{t("Loading orders…")}</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-stone-400 dark:text-stone-500">No orders here yet.</p>
+          <p className="text-sm text-stone-400 dark:text-stone-500">{t("No orders here yet.")}</p>
         ) : (
           <ul className="space-y-4">
             {orders.map((order) => {
@@ -227,14 +258,14 @@ function OrdersQueue() {
                         {order.orderNumber}
                       </p>
                       <p className="text-sm text-stone-500 dark:text-stone-400">
-                        {new Date(order.createdAt).toLocaleString()}
+                        {formatDateTime(new Date(order.createdAt), t)}
                         {order.user && <> · {order.user.name}</>}
                       </p>
                     </div>
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_STYLES[order.status]}`}
                     >
-                      {order.status}
+                      {t(ORDER_STATUS_LABEL[order.status])}
                     </span>
                   </div>
 
@@ -266,7 +297,7 @@ function OrdersQueue() {
 
                   <div className="mt-3 flex items-center justify-between border-t border-stone-100 dark:border-stone-800 pt-3">
                     <span className="font-semibold text-stone-900 dark:text-stone-100">
-                      Total ${Number(order.total).toFixed(2)}
+                      {t("Total")} ${Number(order.total).toFixed(2)}
                     </span>
                     <div className="flex gap-2">
                       {canCancel && (
@@ -277,7 +308,7 @@ function OrdersQueue() {
                           disabled={busy}
                           className="rounded-lg border border-stone-300 dark:border-stone-700 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-400 transition hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-50"
                         >
-                          Cancel
+                          {t("Cancel")}
                         </button>
                       )}
                       {next && (
@@ -286,7 +317,7 @@ function OrdersQueue() {
                           disabled={busy}
                           className="rounded-lg bg-pos-button px-4 py-1.5 text-sm font-medium text-pos-button-fg transition hover:brightness-110 disabled:opacity-50"
                         >
-                          {busy ? "…" : next.label}
+                          {busy ? "…" : t(next.label)}
                         </button>
                       )}
                     </div>

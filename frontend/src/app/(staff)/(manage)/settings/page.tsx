@@ -10,6 +10,7 @@ import {
 import { RequireAuth } from "@/components/require-auth";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useClickOutside } from "@/lib/use-click-outside";
+import { useT, type TranslationKey } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import { useBranding } from "@/lib/branding-context";
 import { api, uploadImage } from "@/lib/api";
@@ -20,7 +21,7 @@ import {
   resolveCashierPages,
 } from "@/lib/permissions";
 
-const ROLE_META: Record<Role, { label: string; pill: string }> = {
+const ROLE_META: Record<Role, { label: TranslationKey; pill: string }> = {
   [Role.ADMIN]: {
     label: "Admin",
     pill: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
@@ -49,7 +50,12 @@ const sw = {
 
 type Tab = "general" | "staff";
 
-const TABS: { key: Tab; label: string; hint: string; icon: ReactNode }[] = [
+const TABS: {
+  key: Tab;
+  label: TranslationKey;
+  hint: TranslationKey;
+  icon: ReactNode;
+}[] = [
   {
     key: "general",
     label: "General",
@@ -76,29 +82,30 @@ const TABS: { key: Tab; label: string; hint: string; icon: ReactNode }[] = [
 ];
 
 function Settings() {
+  const { t } = useT();
   const [tab, setTab] = useState<Tab>("general");
 
   return (
     <main className="mx-auto max-w-7xl">
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-pos-page-fg">
-          Settings
+          {t("Settings")}
         </h1>
         <p className="text-sm text-pos-page-fg/60">
-          Manage your app branding, staff accounts and access levels.
+          {t("Manage your app branding, staff accounts and access levels.")}
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         {/* Section sidebar */}
         <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1">
-          {TABS.map((t) => {
-            const active = tab === t.key;
+          {TABS.map((item) => {
+            const active = tab === item.key;
             return (
               <button
-                key={t.key}
+                key={item.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => setTab(item.key)}
                 aria-current={active ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
                   active
@@ -106,10 +113,10 @@ function Settings() {
                     : "text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
                 }`}
               >
-                <span className="shrink-0">{t.icon}</span>
+                <span className="shrink-0">{item.icon}</span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold leading-tight">
-                    {t.label}
+                    {t(item.label)}
                   </span>
                   <span
                     className={`hidden text-xs lg:block ${
@@ -118,7 +125,7 @@ function Settings() {
                         : "text-stone-400 dark:text-stone-500"
                     }`}
                   >
-                    {t.hint}
+                    {t(item.hint)}
                   </span>
                 </span>
               </button>
@@ -138,6 +145,7 @@ function Settings() {
 // ── General: app name & logo ─────────────────────────────────────────────
 
 function AppSettingsPanel() {
+  const { t } = useT();
   const { appName, logoUrl, khrPerUsd, refresh } = useBranding();
   const [name, setName] = useState(appName);
   const [logo, setLogo] = useState<string | null>(logoUrl);
@@ -243,9 +251,11 @@ function AppSettingsPanel() {
           bakongMerchantCity: bakongCity.trim() || null,
           khqrDynamic,
         });
-      setSuccess("App settings saved.");
+      setSuccess(t("App settings saved."));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save settings");
+      setError(
+        err instanceof Error ? err.message : t("Failed to save settings"),
+      );
     } finally {
       setSaving(false);
     }
@@ -257,18 +267,18 @@ function AppSettingsPanel() {
       className="rounded-2xl border border-stone-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow duration-200 hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
     >
       <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-        App branding
+        {t("App branding")}
       </h2>
       <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-        The name and logo shown in the sidebar, login screen and menu.
+        {t("The name and logo shown in the sidebar, login screen and menu.")}
       </p>
 
       <div className="mt-5 space-y-4">
-        <Field label="Logo" hint="Optional — square image works best">
+        <Field label={t("Logo")} hint={t("Optional — square image works best")}>
           <LogoPicker value={logo} onChange={setLogo} onError={setError} />
         </Field>
 
-        <Field label="App name" hint="Up to 60 characters">
+        <Field label={t("App name")} hint={t("Up to 60 characters")}>
           <input
             type="text"
             value={name}
@@ -281,8 +291,8 @@ function AppSettingsPanel() {
         </Field>
 
         <Field
-          label="Exchange rate"
-          hint="Riel per 1 US dollar — shown next to prices at checkout"
+          label={t("Exchange rate")}
+          hint={t("Riel per 1 US dollar — shown next to prices at checkout")}
         >
           <div className="flex items-center gap-2">
             <span className="text-sm text-stone-500 dark:text-stone-400">
@@ -307,25 +317,29 @@ function AppSettingsPanel() {
 
       <div className="mt-7 border-t border-stone-100 pt-5 dark:border-stone-800">
         <h3 className="font-semibold text-stone-900 dark:text-stone-100">
-          QR payment (KHQR)
+          {t("QR payment (KHQR)")}
         </h3>
         <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-          Your Bakong account. Once set, the Take Payment screen shows a
-          scannable KHQR with the order amount already filled in.
+          {t(
+            "Your Bakong account. Once set, the Take Payment screen shows a scannable KHQR with the order amount already filled in.",
+          )}
         </p>
 
         {paymentLoadFailed && (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-            Couldn&apos;t load the current QR settings, so these fields are
-            blank — they are <strong>not</strong> your saved values. Saving
-            won&apos;t change them. Reload the page to try again.
+            <strong>
+              {t(
+                "Couldn't load the current QR settings, so these fields are blank — they are not your saved values.",
+              )}
+            </strong>{" "}
+            {t("Saving won't change them. Reload the page to try again.")}
           </p>
         )}
 
         <div className="mt-4 space-y-4">
           <Field
-            label="Bakong account ID"
-            hint='Looks like "yourname@aclb" — find it in your banking app'
+            label={t("Bakong account ID")}
+            hint={t('Looks like "yourname@aclb" — find it in your banking app')}
           >
             <input
               type="text"
@@ -338,14 +352,14 @@ function AppSettingsPanel() {
             />
             {!bakongValid && (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                Must look like &quot;name@bank&quot;.
+                {t('Must look like "name@bank".')}
               </p>
             )}
           </Field>
 
           <Field
-            label="Merchant name"
-            hint="Shown in the customer's banking app — max 25 characters"
+            label={t("Merchant name")}
+            hint={t("Shown in the customer's banking app — max 25 characters")}
           >
             <input
               type="text"
@@ -358,7 +372,7 @@ function AppSettingsPanel() {
             />
           </Field>
 
-          <Field label="Merchant city" hint="Max 15 characters">
+          <Field label={t("Merchant city")} hint={t("Max 15 characters")}>
             <input
               type="text"
               value={bakongCity}
@@ -371,21 +385,27 @@ function AppSettingsPanel() {
           </Field>
 
           <Field
-            label="QR code type"
-            hint="How the Take Payment screen builds its code — the printable poster is always static"
+            label={t("QR code type")}
+            hint={t(
+              "How the Take Payment screen builds its code — the printable poster is always static",
+            )}
           >
             <div className="grid gap-2 sm:grid-cols-2">
               <QrTypeOption
                 selected={khqrDynamic}
                 onSelect={() => setKhqrDynamic(true)}
-                title="Dynamic"
-                detail="Amount filled in automatically. Expires after 5 minutes, so a new code is generated per order."
+                title={t("Dynamic")}
+                detail={t(
+                  "Amount filled in automatically. Expires after 5 minutes, so a new code is generated per order.",
+                )}
               />
               <QrTypeOption
                 selected={!khqrDynamic}
                 onSelect={() => setKhqrDynamic(false)}
-                title="Static"
-                detail="One reusable code that never expires. The customer types the amount themselves."
+                title={t("Static")}
+                detail={t(
+                  "One reusable code that never expires. The customer types the amount themselves.",
+                )}
               />
             </div>
           </Field>
@@ -408,7 +428,7 @@ function AppSettingsPanel() {
         disabled={!canSave}
         className="mt-5 rounded-xl bg-pos-button px-5 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {saving ? "Saving…" : "Save changes"}
+        {saving ? t("Saving…") : t("Save changes")}
       </button>
     </form>
   );
@@ -468,6 +488,7 @@ function LogoPicker({
   onChange: (url: string | null) => void;
   onError: (msg: string | null) => void;
 }) {
+  const { t } = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -480,7 +501,7 @@ function LogoPicker({
       const url = await uploadImage(file);
       onChange(url);
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Failed to upload image");
+      onError(err instanceof Error ? err.message : t("Failed to upload image"));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -493,7 +514,7 @@ function LogoPicker({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={value}
-          alt="Logo preview"
+          alt={t("Logo preview")}
           className="h-14 w-14 rounded-2xl object-cover shadow-sm"
         />
       ) : (
@@ -508,7 +529,7 @@ function LogoPicker({
           disabled={uploading}
           className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
         >
-          {uploading ? "Uploading…" : value ? "Change" : "Upload"}
+          {uploading ? t("Uploading…") : value ? t("Replace") : t("Upload")}
         </button>
         {value && !uploading && (
           <button
@@ -516,7 +537,7 @@ function LogoPicker({
             onClick={() => onChange(null)}
             className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
           >
-            Remove
+            {t("Remove")}
           </button>
         )}
       </div>
@@ -534,6 +555,7 @@ function LogoPicker({
 // ── Staff: accounts & access ─────────────────────────────────────────────
 
 function StaffPanel() {
+  const { t } = useT();
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -554,11 +576,11 @@ function StaffPanel() {
       const data = await api<User[]>("/users");
       setUsers(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users");
+      setError(err instanceof Error ? err.message : t("Failed to load users"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     // Mount fetch: loading the staff list after mount is intentional, not a
@@ -576,7 +598,7 @@ function StaffPanel() {
       setDeleting(null);
       await loadUsers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete user");
+      setError(err instanceof Error ? err.message : t("Failed to delete user"));
     } finally {
       setDeleteBusy(false);
     }
@@ -588,10 +610,12 @@ function StaffPanel() {
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-              Staff
+              {t("Staff")}
             </h2>
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-              {users.length} {users.length === 1 ? "account" : "accounts"}
+              {users.length === 1
+                ? t("{count} account", { count: users.length })
+                : t("{count} accounts", { count: users.length })}
             </span>
           </div>
           <button
@@ -602,7 +626,7 @@ function StaffPanel() {
             <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
               <path d="M12 5v14M5 12h14" />
             </svg>
-            Add user
+            {t("Add user")}
           </button>
         </div>
 
@@ -614,11 +638,11 @@ function StaffPanel() {
 
         {loading ? (
           <p className="text-sm text-stone-500 dark:text-stone-400">
-            Loading users…
+            {t("Loading users…")}
           </p>
         ) : users.length === 0 ? (
           <p className="text-sm text-stone-400 dark:text-stone-500">
-            No users yet.
+            {t("No users yet.")}
           </p>
         ) : (
           <ul className="space-y-1">
@@ -661,9 +685,12 @@ function StaffPanel() {
 
       {deleting && (
         <ConfirmDialog
-          title="Delete user"
-          message={`Delete ${deleting.name} (@${deleting.username})? This action cannot be undone.`}
-          confirmLabel="Delete"
+          title={t("Delete user")}
+          message={t(
+            "Delete {name} (@{username})? This action cannot be undone.",
+            { name: deleting.name, username: deleting.username },
+          )}
+          confirmLabel={t("Delete")}
           busy={deleteBusy}
           onCancel={() => setDeleting(null)}
           onConfirm={confirmDelete}
@@ -693,6 +720,7 @@ function CreateUserModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { t } = useT();
   const [form, setForm] = useState(EMPTY);
   const [avatar, setAvatar] = useState<string | null>(null);
   // Sidebar pages a new cashier may see (only used when role === cashier).
@@ -720,7 +748,7 @@ function CreateUserModal({
       });
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create user");
+      setError(err instanceof Error ? err.message : t("Failed to create user"));
     } finally {
       setSubmitting(false);
     }
@@ -748,16 +776,16 @@ function CreateUserModal({
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-              Create user
+              {t("Create user")}
             </h2>
             <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-              Add a new admin or cashier account.
+              {t("Add a new admin or cashier account.")}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("Close")}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800"
           >
             ✕
@@ -765,7 +793,7 @@ function CreateUserModal({
         </div>
 
         <div className="space-y-4">
-          <Field label="Profile photo" hint="Optional">
+          <Field label={t("Profile photo")} hint={t("Optional")}>
             <AvatarPicker
               value={avatar}
               name={form.name}
@@ -774,18 +802,18 @@ function CreateUserModal({
             />
           </Field>
 
-          <Field label="Full name">
+          <Field label={t("Full name")}>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Jane Doe"
+              placeholder={t("Jane Doe")}
               autoComplete="off"
               className={inputClass}
             />
           </Field>
 
-          <Field label="Username" hint="At least 3 characters">
+          <Field label={t("Username")} hint={t("At least 3 characters")}>
             <input
               type="text"
               value={form.username}
@@ -797,11 +825,13 @@ function CreateUserModal({
           </Field>
 
           <Field
-            label="Email"
+            label={t("Email")}
             hint={
               form.role === Role.ADMIN
-                ? "Required for the forgot-password code — without one this admin can't reset themselves"
-                : "Optional — cashiers get their password reset by an admin"
+                ? t(
+                    "Required for the forgot-password code — without one this admin can't reset themselves",
+                  )
+                : t("Optional — cashiers get their password reset by an admin")
             }
           >
             <input
@@ -814,7 +844,7 @@ function CreateUserModal({
             />
           </Field>
 
-          <Field label="Password" hint="At least 6 characters">
+          <Field label={t("Password")} hint={t("At least 6 characters")}>
             <input
               type="password"
               value={form.password}
@@ -825,7 +855,7 @@ function CreateUserModal({
             />
           </Field>
 
-          <Field label="Role">
+          <Field label={t("Role")}>
             <RolePicker
               value={form.role}
               onChange={(role) => setForm({ ...form, role })}
@@ -834,8 +864,8 @@ function CreateUserModal({
 
           {form.role === Role.CASHIER && (
             <Field
-              label="Page access"
-              hint="Sidebar pages this cashier can see"
+              label={t("Page access")}
+              hint={t("Sidebar pages this cashier can see")}
             >
               <PagePermissions value={pages} onChange={setPages} />
             </Field>
@@ -854,14 +884,14 @@ function CreateUserModal({
             onClick={onClose}
             className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="submit"
             disabled={!canSubmit}
             className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Creating…" : "Create user"}
+            {submitting ? t("Creating…") : t("Create user")}
           </button>
         </div>
       </form>
@@ -884,6 +914,7 @@ function StaffRow({
   onDelete: () => void;
   onPermissions: () => void;
 }) {
+  const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -897,7 +928,7 @@ function StaffRow({
           {user.name}
           {isSelf && (
             <span className="ml-1.5 text-xs font-normal text-stone-400">
-              (you)
+              {t("(you)")}
             </span>
           )}
         </p>
@@ -914,14 +945,14 @@ function StaffRow({
               <path d="M12 9v4M12 17h.01" />
               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
             </svg>
-            No recovery email
+            {t("No recovery email")}
           </p>
         )}
       </div>
       <span
         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_META[user.role].pill}`}
       >
-        {ROLE_META[user.role].label}
+        {t(ROLE_META[user.role].label)}
       </span>
 
       <div ref={menuRef} className="relative">
@@ -930,7 +961,7 @@ function StaffRow({
           onClick={() => setMenuOpen((o) => !o)}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          aria-label="Open actions"
+          aria-label={t("Open actions")}
           className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
@@ -958,7 +989,7 @@ function StaffRow({
                 <path d="M12 20h9" />
                 <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
               </svg>
-              Edit
+              {t("Edit")}
             </button>
             {user.role === Role.CASHIER && (
               <button
@@ -974,7 +1005,7 @@ function StaffRow({
                   <rect x="3" y="11" width="18" height="11" rx="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
-                Permissions
+                {t("Permissions")}
               </button>
             )}
             <button
@@ -985,13 +1016,13 @@ function StaffRow({
                 setMenuOpen(false);
                 onDelete();
               }}
-              title={isSelf ? "You can't delete your own account" : undefined}
+              title={isSelf ? t("You can't delete your own account") : undefined}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-500/10"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" {...sw}>
                 <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6M10 11v6M14 11v6" />
               </svg>
-              Delete
+              {t("Delete")}
             </button>
           </div>
         )}
@@ -1011,6 +1042,7 @@ function EditUserModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useT();
   const [name, setName] = useState(user.name);
   const [username, setUsername] = useState(user.username);
   const [email, setEmail] = useState(user.email ?? "");
@@ -1040,7 +1072,7 @@ function EditUserModal({
       });
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update user");
+      setError(err instanceof Error ? err.message : t("Failed to update user"));
     } finally {
       setSaving(false);
     }
@@ -1064,12 +1096,12 @@ function EditUserModal({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-            Edit user
+            {t("Edit user")}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("Close")}
             className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800"
           >
             ✕
@@ -1077,7 +1109,7 @@ function EditUserModal({
         </div>
 
         <div className="space-y-4">
-          <Field label="Profile photo" hint="Optional">
+          <Field label={t("Profile photo")} hint={t("Optional")}>
             <AvatarPicker
               value={avatar}
               name={name}
@@ -1086,7 +1118,7 @@ function EditUserModal({
             />
           </Field>
 
-          <Field label="Full name">
+          <Field label={t("Full name")}>
             <input
               type="text"
               value={name}
@@ -1096,7 +1128,7 @@ function EditUserModal({
             />
           </Field>
 
-          <Field label="Username" hint="At least 3 characters">
+          <Field label={t("Username")} hint={t("At least 3 characters")}>
             <input
               type="text"
               value={username}
@@ -1107,11 +1139,11 @@ function EditUserModal({
           </Field>
 
           <Field
-            label="Email"
+            label={t("Email")}
             hint={
               role === Role.ADMIN
-                ? "Where the forgot-password code is sent"
-                : "Optional — cashiers get their password reset by an admin"
+                ? t("Where the forgot-password code is sent")
+                : t("Optional — cashiers get their password reset by an admin")
             }
           >
             <input
@@ -1124,7 +1156,7 @@ function EditUserModal({
             />
           </Field>
 
-          <Field label="New password" hint="Leave blank to keep current">
+          <Field label={t("New password")} hint={t("Leave blank to keep current")}>
             <input
               type="password"
               value={password}
@@ -1135,7 +1167,7 @@ function EditUserModal({
             />
           </Field>
 
-          <Field label="Role">
+          <Field label={t("Role")}>
             <RolePicker value={role} onChange={setRole} />
           </Field>
         </div>
@@ -1152,14 +1184,14 @@ function EditUserModal({
             onClick={onClose}
             className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="submit"
             disabled={!canSave}
             className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? t("Saving…") : t("Save changes")}
           </button>
         </div>
       </form>
@@ -1178,6 +1210,7 @@ function PermissionsModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useT();
   const [pages, setPages] = useState<string[]>(
     resolveCashierPages(user.allowedPages),
   );
@@ -1196,7 +1229,7 @@ function PermissionsModal({
       onSaved();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to update permissions",
+        err instanceof Error ? err.message : t("Failed to update permissions"),
       );
     } finally {
       setSaving(false);
@@ -1215,31 +1248,44 @@ function PermissionsModal({
       >
         <div className="mb-1 flex items-center justify-between">
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-            Page access
+            {t("Page access")}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("Close")}
             className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800"
           >
             ✕
           </button>
         </div>
         <p className="mb-4 text-sm text-stone-500 dark:text-stone-400">
-          Choose which sidebar pages{" "}
-          <span className="font-medium text-stone-700 dark:text-stone-300">
-            {user.name}
-          </span>{" "}
-          can see.
+          {/* Split on the placeholder so the name keeps its emphasis while
+              Khmer is free to place it anywhere in the sentence. */}
+          {(() => {
+            const [before, after] = t(
+              "Choose which sidebar pages {name} can see.",
+            ).split("{name}");
+            return (
+              <>
+                {before}
+                <span className="font-medium text-stone-700 dark:text-stone-300">
+                  {user.name}
+                </span>
+                {after}
+              </>
+            );
+          })()}
         </p>
 
         <PagePermissions value={pages} onChange={setPages} />
 
         <p className="mt-3 text-xs text-stone-400 dark:text-stone-500">
           {pages.length === 0
-            ? "Select at least one page — a cashier with no access can't sign in."
-            : "Changes take effect the next time this cashier logs in."}
+            ? t(
+                "Select at least one page — a cashier with no access can't sign in.",
+              )
+            : t("Changes take effect the next time this cashier logs in.")}
         </p>
 
         {error && (
@@ -1254,14 +1300,14 @@ function PermissionsModal({
             onClick={onClose}
             className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="submit"
             disabled={saving || pages.length === 0}
             className="flex-1 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save access"}
+            {saving ? t("Saving…") : t("Save access")}
           </button>
         </div>
       </form>
@@ -1277,6 +1323,7 @@ function PagePermissions({
   value: string[];
   onChange: (pages: string[]) => void;
 }) {
+  const { t } = useT();
   function toggle(key: string) {
     onChange(
       value.includes(key) ? value.filter((k) => k !== key) : [...value, key],
@@ -1312,7 +1359,8 @@ function PagePermissions({
                 </svg>
               )}
             </span>
-            {p.label}
+            {/* Labels mirror the sidebar link names, which live in sidebar.ts. */}
+            {t(p.label)}
           </button>
         );
       })}
@@ -1354,6 +1402,7 @@ function AvatarPicker({
   onChange: (url: string | null) => void;
   onError: (msg: string | null) => void;
 }) {
+  const { t } = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -1366,7 +1415,7 @@ function AvatarPicker({
       const url = await uploadImage(file);
       onChange(url);
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Failed to upload image");
+      onError(err instanceof Error ? err.message : t("Failed to upload image"));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -1383,7 +1432,7 @@ function AvatarPicker({
           disabled={uploading}
           className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
         >
-          {uploading ? "Uploading…" : value ? "Change" : "Upload"}
+          {uploading ? t("Uploading…") : value ? t("Replace") : t("Upload")}
         </button>
         {value && !uploading && (
           <button
@@ -1391,7 +1440,7 @@ function AvatarPicker({
             onClick={() => onChange(null)}
             className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
           >
-            Remove
+            {t("Remove")}
           </button>
         )}
       </div>
@@ -1413,6 +1462,7 @@ function RolePicker({
   value: Role;
   onChange: (role: Role) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="grid grid-cols-2 gap-2">
       {[Role.CASHIER, Role.ADMIN].map((role) => {
@@ -1428,7 +1478,7 @@ function RolePicker({
                 : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
             }`}
           >
-            {ROLE_META[role].label}
+            {t(ROLE_META[role].label)}
           </button>
         );
       })}

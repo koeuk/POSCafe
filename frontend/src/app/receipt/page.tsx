@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
+import {
+  formatTimeShort,
+  useT,
+  type Translate,
+  type TranslationKey,
+} from "@/lib/i18n";
 import { formatKhr, formatPrice } from "@/lib/pricing";
 import { PaymentStatus, type Order, type Payment } from "@/lib/types";
 
-const METHOD_LABELS: Record<string, string> = {
+const METHOD_LABELS: Record<string, TranslationKey> = {
   cash: "Cash",
   qr: "QR",
   card: "Card",
@@ -24,13 +30,19 @@ function ReceiptScreen() {
   const params = useSearchParams();
   const orderId = params.get("orderId");
   const { appName, logoUrl, khrPerUsd } = useBranding();
+  const { t } = useT();
+  // Latest `t` for the fetch effect, so switching language doesn't refetch.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(Boolean(orderId));
   const [fetchError, setFetchError] = useState<string | null>(null);
   // Derived, not state: a missing orderId is known at render time.
-  const error = fetchError ?? (orderId ? null : "No order selected.");
+  const error = fetchError ?? (orderId ? null : t("No order selected."));
 
   useEffect(() => {
     if (!orderId) return;
@@ -50,7 +62,7 @@ function ReceiptScreen() {
       } catch (err) {
         if (!cancelled) {
           setFetchError(
-            err instanceof Error ? err.message : "Failed to load order",
+            err instanceof Error ? err.message : tRef.current("Failed to load order"),
           );
         }
       } finally {
@@ -88,7 +100,7 @@ function ReceiptScreen() {
           href="/pay"
           className="text-sm text-stone-500 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
         >
-          ← Back
+          ← {t("Back")}
         </Link>
         {order && (
           <button
@@ -96,18 +108,18 @@ function ReceiptScreen() {
             onClick={() => window.print()}
             className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800 dark:bg-white dark:text-stone-900 dark:hover:bg-stone-200"
           >
-            🖨 Print
+            🖨 {t("Print")}
           </button>
         )}
       </div>
 
       {loading ? (
         <p className="receipt-chrome text-center text-sm text-stone-500 dark:text-stone-400">
-          Loading…
+          {t("Loading…")}
         </p>
       ) : error || !order ? (
         <p className="receipt-chrome mx-auto max-w-xs rounded-lg bg-red-50 px-4 py-3 text-center text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-          {error ?? "Order not found."}
+          {error ?? t("Order not found.")}
         </p>
       ) : (
         <div className="receipt-paper mx-auto w-full max-w-xs rounded-xl border border-stone-200 bg-white p-5 font-mono text-[13px] leading-snug text-stone-900 shadow-sm dark:border-stone-800">
@@ -127,7 +139,7 @@ function ReceiptScreen() {
               {appName}
             </p>
             <p className="mt-1">{order.orderNumber}</p>
-            <p>{new Date(order.createdAt).toLocaleString()}</p>
+            <p>{formatReceiptDate(new Date(order.createdAt), t)}</p>
           </div>
 
           <Divider />
@@ -154,8 +166,8 @@ function ReceiptScreen() {
           <Divider />
 
           {/* Totals */}
-          <p className="flex justify-between text-base font-bold tabular-nums">
-            <span>TOTAL</span>
+          <p className="flex justify-between text-base font-bold uppercase tabular-nums">
+            <span>{t("Total")}</span>
             <span>{formatPrice(order.total)}</span>
           </p>
           <p className="flex justify-between tabular-nums">
@@ -165,31 +177,40 @@ function ReceiptScreen() {
           {payment && (
             <div className="mt-1 space-y-0.5 tabular-nums">
               <p className="flex justify-between">
-                <span>{METHOD_LABELS[payment.method] ?? payment.method}</span>
+                <span>
+                  {METHOD_LABELS[payment.method]
+                    ? t(METHOD_LABELS[payment.method])
+                    : payment.method}
+                </span>
                 <span>{formatPrice(payment.tendered)}</span>
               </p>
               {Number(payment.change) > 0 && (
                 <p className="flex justify-between">
-                  <span>Change</span>
+                  <span>{t("Change")}</span>
                   <span>{formatPrice(payment.change)}</span>
                 </p>
               )}
             </div>
           )}
           {order.paymentStatus === PaymentStatus.UNPAID && (
-            <p className="mt-1 text-center font-bold uppercase">— Unpaid —</p>
+            <p className="mt-1 text-center font-bold uppercase">— {t("Unpaid")} —</p>
           )}
           {order.paymentStatus === PaymentStatus.REFUNDED && (
-            <p className="mt-1 text-center font-bold uppercase">— Refunded —</p>
+            <p className="mt-1 text-center font-bold uppercase">— {t("Refunded")} —</p>
           )}
 
           <Divider />
 
-          <p className="text-center">Thank you, see you again!</p>
+          <p className="text-center">{t("Thank you, see you again!")}</p>
         </div>
       )}
     </main>
   );
+}
+
+/** Numeric date plus a translated AM/PM time, e.g. "9/6/2026 2:10 ល្ងាច". */
+function formatReceiptDate(date: Date, t: Translate): string {
+  return `${date.toLocaleDateString("en-US")} ${formatTimeShort(date, t)}`;
 }
 
 function Divider() {
@@ -200,16 +221,19 @@ function Divider() {
   );
 }
 
+function LoadingFallback() {
+  const { t } = useT();
+  return (
+    <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
+      {t("Loading…")}
+    </div>
+  );
+}
+
 export default function ReceiptPage() {
   return (
     <RequireAuth>
-      <Suspense
-        fallback={
-          <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
-            Loading…
-          </div>
-        }
-      >
+      <Suspense fallback={<LoadingFallback />}>
         <ReceiptScreen />
       </Suspense>
     </RequireAuth>

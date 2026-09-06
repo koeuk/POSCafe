@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useT } from "@/lib/i18n";
 
 /**
  * Customer-facing product image slider. The main image plus any gallery
@@ -20,6 +21,7 @@ export function ProductGallery({
   discountPercent: number;
 }) {
   // Main image first (when present), then the gallery images.
+  const { t } = useT();
   const images = [mainImage, ...gallery].filter(Boolean) as string[];
   const [active, setActive] = useState(0);
 
@@ -47,7 +49,7 @@ export function ProductGallery({
         <Link
           href="/menu"
           className="group absolute left-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-md ring-1 ring-black/5 backdrop-blur transition hover:w-auto hover:gap-1.5 hover:bg-white hover:px-4 hover:text-stone-900 active:scale-95"
-          aria-label="Back to menu"
+          aria-label={t("Back to menu")}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -63,13 +65,13 @@ export function ProductGallery({
             <path d="M15 18l-6-6 6-6" />
           </svg>
           <span className="hidden text-sm font-medium group-hover:inline">
-            Back
+            {t("Back")}
           </span>
         </Link>
 
         {discountPercent > 0 && (
           <span className="absolute right-4 top-4 rounded-full bg-red-500 px-3 py-1 text-sm font-semibold text-white shadow">
-            -{discountPercent}% OFF
+            {t("-{percent}% OFF", { percent: discountPercent })}
           </span>
         )}
 
@@ -78,7 +80,7 @@ export function ProductGallery({
             <button
               type="button"
               onClick={() => go(-1)}
-              aria-label="Previous image"
+              aria-label={t("Previous image")}
               className="absolute left-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-stone-700 shadow-md ring-1 ring-black/5 backdrop-blur transition hover:bg-white active:scale-95"
             >
               <svg
@@ -97,7 +99,7 @@ export function ProductGallery({
             <button
               type="button"
               onClick={() => go(1)}
-              aria-label="Next image"
+              aria-label={t("Next image")}
               className="absolute right-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-stone-700 shadow-md ring-1 ring-black/5 backdrop-blur transition hover:bg-white active:scale-95"
             >
               <svg
@@ -124,7 +126,7 @@ export function ProductGallery({
               type="button"
               key={`${url}-${index}`}
               onClick={() => setActive(index)}
-              aria-label={`Show image ${index + 1}`}
+              aria-label={t("Show image {n}", { n: index + 1 })}
               className={`shrink-0 overflow-hidden rounded-xl ring-2 transition ${
                 index === active
                   ? "ring-stone-900"

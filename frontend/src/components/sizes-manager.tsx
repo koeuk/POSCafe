@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api } from "@/lib/api";
 import type { Size } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 const INPUT =
   "rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-sm text-stone-900 outline-none transition focus:border-pos-button focus:ring-2 focus:ring-pos-button/15 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
@@ -20,6 +21,7 @@ export function SizesManager({
   sizes: Size[];
   onChanged: () => Promise<void>;
 }) {
+  const { t } = useT();
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Size | null>(null);
@@ -36,7 +38,7 @@ export function SizesManager({
       setNewName("");
       await onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add size");
+      setError(err instanceof Error ? err.message : t("Failed to add size"));
     } finally {
       setBusy(false);
     }
@@ -52,7 +54,7 @@ export function SizesManager({
       });
       await onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to rename size");
+      setError(err instanceof Error ? err.message : t("Failed to rename size"));
     }
   }
 
@@ -65,7 +67,7 @@ export function SizesManager({
       await api(`/sizes/${size.id}`, { method: "DELETE" });
       await onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete size");
+      setError(err instanceof Error ? err.message : t("Failed to delete size"));
     } finally {
       setPendingDelete(null);
       setDeleting(false);
@@ -77,11 +79,12 @@ export function SizesManager({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-            Sizes
+            {t("Sizes")}
           </h2>
           <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-            The size options a product can offer (e.g. S, M, L). Each size
-            only sets a price — stock is tracked per product.
+            {t(
+              "The size options a product can offer (e.g. S, M, L). Each size only sets a price — stock is tracked per product.",
+            )}
           </p>
         </div>
         <div className="flex gap-2">
@@ -89,7 +92,7 @@ export function SizesManager({
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder="New size (e.g. XL)"
+            placeholder={t("New size (e.g. XL)")}
             className={`${INPUT} w-40`}
           />
           <button
@@ -98,7 +101,7 @@ export function SizesManager({
             disabled={busy || !newName.trim()}
             className="rounded-lg bg-pos-button px-3.5 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Add size
+            {t("Add size")}
           </button>
         </div>
       </div>
@@ -112,13 +115,13 @@ export function SizesManager({
             <input
               defaultValue={s.name}
               onBlur={(e) => rename(s, e.target.value)}
-              aria-label={`Rename size ${s.name}`}
+              aria-label={t("Rename size {name}", { name: s.name })}
               className="w-20 bg-transparent text-stone-800 outline-none dark:text-stone-200"
             />
             <button
               type="button"
               onClick={() => setPendingDelete(s)}
-              aria-label={`Delete ${s.name}`}
+              aria-label={t("Delete {name}", { name: s.name })}
               className="grid h-6 w-6 place-items-center rounded-full text-stone-400 transition hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/20"
             >
               ✕
@@ -127,7 +130,7 @@ export function SizesManager({
         ))}
         {sizes.length === 0 && (
           <span className="text-sm text-stone-400 dark:text-stone-500">
-            No sizes yet — add one.
+            {t("No sizes yet — add one.")}
           </span>
         )}
       </div>
@@ -138,8 +141,12 @@ export function SizesManager({
 
       {pendingDelete && (
         <ConfirmDialog
-          title="Delete size"
-          message={`Delete size "${pendingDelete.name}"? Products using it will lose that option.`}
+          title={t("Delete size")}
+          message={t(
+            'Delete size "{name}"? Products using it will lose that option.',
+            { name: pendingDelete.name },
+          )}
+          confirmLabel={t("Delete")}
           busy={deleting}
           onCancel={() => setPendingDelete(null)}
           onConfirm={remove}

@@ -5,6 +5,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PopSelect } from "@/components/pop-select";
 import { api } from "@/lib/api";
 import {
+  formatMonthShort,
+  formatTimeShort,
+  useT,
+  type Translate,
+  type TranslationKey,
+} from "@/lib/i18n";
+import {
   type InventoryItem,
   type InventoryMovement,
   type Recipe,
@@ -17,19 +24,34 @@ const INPUT =
 const NEW_UNIT = "__new__";
 const NEW_GROUP = "__new_group__";
 // The three kinds of supplies a café keeps. Anything else can be typed in.
-const SUPPLY_GROUPS = ["Raw Materials", "Packaging", "Operating Supplies"];
+// These are the stored values; `groupLabel` translates them for display.
+const SUPPLY_GROUPS: readonly TranslationKey[] = ["Raw Materials", "Packaging", "Operating Supplies"];
+const DEFAULT_GROUP: string = SUPPLY_GROUPS[0];
 // Common units of measure; anything else can be typed in.
 const DEFAULT_UNITS = ["pcs", "g", "kg", "ml", "L"];
 
 // Human labels for the journal reasons written by the backend.
-const REASON_LABELS: Record<string, string> = {
+const REASON_LABELS: Record<string, TranslationKey> = {
   restock: "restock",
   correction: "correction",
   order_deduction: "sold",
   order_refund: "returned (cancel/refund)",
 };
 
+/** Display label for a supply group: the standard groups are translated, custom names pass through. */
+function groupLabel(name: string, t: Translate): string {
+  const standard = SUPPLY_GROUPS.find((g) => g.toLowerCase() === name.toLowerCase());
+  return standard ? t(standard) : name;
+}
+
+/** "Sep 6, 2:10 PM" with translated month and AM/PM. */
+function formatMovementTime(iso: string, t: Translate): string {
+  const date = new Date(iso);
+  return `${formatMonthShort(date, t)} ${date.getDate()}, ${formatTimeShort(date, t)}`;
+}
+
 export function ConsumablesManager() {
+  const { t } = useT();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
@@ -43,7 +65,7 @@ export function ConsumablesManager() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    category: SUPPLY_GROUPS[0],
+    category: DEFAULT_GROUP,
     unit: "pcs",
     stockQuantity: "0",
     minThreshold: "10",
@@ -74,13 +96,14 @@ export function ConsumablesManager() {
       setRecipes(recipeList);
       setMovements(movementList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load inventory");
+      setError(err instanceof Error ? err.message : t("Failed to load inventory"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 
@@ -109,7 +132,7 @@ export function ConsumablesManager() {
   // Group names for the filter tabs and the picker: the three standard
   // groups, plus any custom name an existing item carries.
   const categoryNames = useMemo(() => {
-    const names = [...SUPPLY_GROUPS];
+    const names: string[] = [...SUPPLY_GROUPS];
     const known = new Set(names.map((n) => n.toLowerCase()));
     for (const item of items) {
       const name = (item.category || "").trim();
@@ -142,7 +165,7 @@ export function ConsumablesManager() {
     setEditingItem(null);
     setFormData({
       name: "",
-      category: SUPPLY_GROUPS[0],
+      category: DEFAULT_GROUP,
       unit: "pcs",
       stockQuantity: "100",
       minThreshold: "20",
@@ -170,7 +193,7 @@ export function ConsumablesManager() {
     try {
       const payload = {
         name: formData.name.trim(),
-        category: formData.category.trim() || SUPPLY_GROUPS[0],
+        category: formData.category.trim() || DEFAULT_GROUP,
         unit: formData.unit.trim(),
         stockQuantity: Number(formData.stockQuantity) || 0,
         minThreshold: Number(formData.minThreshold) || 0,
@@ -190,7 +213,7 @@ export function ConsumablesManager() {
       setShowAddModal(false);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save item");
+      setError(err instanceof Error ? err.message : t("Failed to save item"));
     } finally {
       setSubmitting(false);
     }
@@ -214,7 +237,7 @@ export function ConsumablesManager() {
       setRestockReason("");
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to restock item");
+      setError(err instanceof Error ? err.message : t("Failed to restock item"));
     } finally {
       setRestocking(false);
     }
@@ -234,7 +257,7 @@ export function ConsumablesManager() {
       setPendingDelete(null);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete item");
+      setError(err instanceof Error ? err.message : t("Failed to delete item"));
     } finally {
       setDeleting(false);
     }
@@ -246,10 +269,10 @@ export function ConsumablesManager() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-pos-page-fg">
-            Consumable Supplies & Raw Ingredients
+            {t("Consumable Supplies & Raw Ingredients")}
           </h2>
           <p className="text-xs text-pos-page-fg/60">
-            Track packaging (cups, lids, straws) and raw materials (coffee beans, milk, syrups).
+            {t("Track packaging (cups, lids, straws) and raw materials (coffee beans, milk, syrups).")}
           </p>
         </div>
         <button
@@ -257,7 +280,7 @@ export function ConsumablesManager() {
           onClick={openAddModal}
           className="rounded-xl bg-pos-button px-4 py-2 text-sm font-semibold text-pos-button-fg shadow-sm transition hover:opacity-90"
         >
-          + Add Consumable Item
+          {t("+ Add Consumable Item")}
         </button>
       </div>
 
@@ -271,8 +294,8 @@ export function ConsumablesManager() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap items-center rounded-xl border border-stone-200 bg-stone-50 p-1 dark:border-stone-800 dark:bg-stone-900">
           {[
-            { id: "all", label: "All Items" },
-            ...categoryNames.map((c) => ({ id: c.toLowerCase(), label: c })),
+            { id: "all", label: t("All Items") },
+            ...categoryNames.map((c) => ({ id: c.toLowerCase(), label: groupLabel(c, t) })),
           ].map((cat) => (
             <button
               key={cat.id}
@@ -293,23 +316,23 @@ export function ConsumablesManager() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search items…"
+          placeholder={t("Search items…")}
           className={`${INPUT} w-52`}
         />
 
         {lowStockCount > 0 && (
           <span className="ml-auto flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-            ⚠️ {lowStockCount} items low in stock
+            ⚠️ {t("{n} items low in stock", { n: lowStockCount })}
           </span>
         )}
       </div>
 
       {/* Items Table / Cards */}
       {loading ? (
-        <p className="text-sm text-stone-500">Loading supplies inventory…</p>
+        <p className="text-sm text-stone-500">{t("Loading supplies inventory…")}</p>
       ) : filteredItems.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-stone-200 p-8 text-center text-sm text-stone-400 dark:border-stone-800">
-          No consumable items match your filter.
+          {t("No consumable items match your filter.")}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -332,7 +355,7 @@ export function ConsumablesManager() {
                     <div>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="inline-block rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium uppercase text-stone-600 dark:bg-stone-800 dark:text-stone-400">
-                          {item.category}
+                          {groupLabel(item.category, t)}
                         </span>
                       </div>
                       <h3 className="mt-1 font-semibold text-stone-900 dark:text-stone-100">
@@ -345,18 +368,21 @@ export function ConsumablesManager() {
                             className="mt-0.5 line-clamp-1 text-[11px] text-stone-500 dark:text-stone-400"
                             title={uses.join(", ")}
                           >
-                            📜 Used by {uses.length === 1 ? uses[0] : `${uses.length} recipes`}
+                            📜{" "}
+                            {uses.length === 1
+                              ? t("Used by {name}", { name: uses[0] })
+                              : t("Used by {n} recipes", { n: uses.length })}
                           </p>
                         ) : (
                           <p className="mt-0.5 text-[11px] text-stone-400 dark:text-stone-500">
-                            Not used by any recipe yet
+                            {t("Not used by any recipe yet")}
                           </p>
                         );
                       })()}
                     </div>
                     {isLow && (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-500/20 dark:text-red-400">
-                        Low Stock
+                        {t("Low stock")}
                       </span>
                     )}
                   </div>
@@ -369,7 +395,7 @@ export function ConsumablesManager() {
                       {item.unit}
                     </span>
                     <span className="ml-auto text-xs text-stone-400 dark:text-stone-500">
-                      Min: {minThresh} {item.unit}
+                      {t("Min: {n} {unit}", { n: minThresh, unit: item.unit })}
                     </span>
                   </div>
                 </div>
@@ -384,14 +410,14 @@ export function ConsumablesManager() {
                     }}
                     className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 transition hover:bg-green-100 dark:bg-green-500/15 dark:text-green-400 dark:hover:bg-green-500/25"
                   >
-                    + Adjust / Restock
+                    {t("+ Adjust / Restock")}
                   </button>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => openEditModal(item)}
                       className="rounded-lg p-2 text-stone-400 transition hover:bg-stone-100 hover:text-stone-800 dark:text-stone-500 dark:hover:bg-stone-800 dark:hover:text-stone-200"
-                      title="Edit Item"
+                      title={t("Edit Item")}
                     >
                       <svg
                         className="h-4 w-4"
@@ -412,7 +438,7 @@ export function ConsumablesManager() {
                         setPendingDelete(item);
                       }}
                       className="rounded-lg p-2 text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:text-stone-500 dark:hover:bg-red-500/20 dark:hover:text-red-400"
-                      title="Delete Item"
+                      title={t("Delete Item")}
                     >
                       <svg
                         className="h-4 w-4"
@@ -438,7 +464,7 @@ export function ConsumablesManager() {
       {movements.length > 0 && (
         <div className="mt-8">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-stone-500">
-            Recent Consumable Stock Movements
+            {t("Recent Consumable Stock Movements")}
           </h3>
           <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200/70 bg-white dark:divide-stone-800 dark:border-stone-800 dark:bg-stone-900">
             {movements.map((m) => {
@@ -460,18 +486,13 @@ export function ConsumablesManager() {
                       {isPlus ? `+${deltaNum}` : deltaNum}
                     </span>
                     <span className="font-medium text-stone-900 dark:text-stone-100">
-                      {m.inventoryItem?.name ?? `Item #${m.inventoryItemId}`}
+                      {m.inventoryItem?.name ?? t("Item #{id}", { id: m.inventoryItemId })}
                     </span>
-                    <span className="text-stone-400">({REASON_LABELS[m.reason] ?? m.reason})</span>
+                    <span className="text-stone-400">
+                      ({REASON_LABELS[m.reason] ? t(REASON_LABELS[m.reason]) : m.reason})
+                    </span>
                   </div>
-                  <div className="text-stone-400">
-                    {new Date(m.createdAt).toLocaleString([], {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
+                  <div className="text-stone-400">{formatMovementTime(m.createdAt, t)}</div>
                 </li>
               );
             })}
@@ -484,20 +505,20 @@ export function ConsumablesManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
             <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
-              {editingItem ? "Edit Consumable Item" : "Add New Consumable Item"}
+              {editingItem ? t("Edit Consumable Item") : t("Add New Consumable Item")}
             </h3>
 
             <form onSubmit={handleSaveItem} className="mt-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                  Item Name
+                  {t("Item Name")}
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Plastic Cup 16oz"
+                  placeholder={t("e.g. Plastic Cup 16oz")}
                   className={`${INPUT} mt-1 w-full`}
                 />
               </div>
@@ -505,7 +526,7 @@ export function ConsumablesManager() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                    Group
+                    {t("Group")}
                   </label>
                   {(() => {
                     const counts = new Map<string, number>();
@@ -520,21 +541,23 @@ export function ConsumablesManager() {
                     const options = [
                       ...categoryNames.map((c) => ({
                         value: c,
-                        label: c,
+                        label: groupLabel(c, t),
                         hint: counts.get(c)
-                          ? `${counts.get(c)} item${counts.get(c) === 1 ? "" : "s"}`
+                          ? counts.get(c) === 1
+                            ? t("{n} item", { n: 1 })
+                            : t("{n} items", { n: counts.get(c) ?? 0 })
                           : undefined,
                       })),
-                      { value: NEW_GROUP, label: "Other…", hint: undefined },
+                      { value: NEW_GROUP, label: t("Other…"), hint: undefined },
                     ];
                     return (
                       <>
                         <PopSelect
-                          ariaLabel="Group"
+                          ariaLabel={t("Group")}
                           className="mt-1"
                           buttonClassName={INPUT}
                           value={custom ? NEW_GROUP : formData.category}
-                          placeholder="Select a group"
+                          placeholder={t("Select a group")}
                           onChange={(v) =>
                             setFormData({
                               ...formData,
@@ -549,14 +572,15 @@ export function ConsumablesManager() {
                             onChange={(e) =>
                               setFormData({ ...formData, category: e.target.value })
                             }
-                            placeholder="Group name"
-                            aria-label="Custom group name"
+                            placeholder={t("Group name")}
+                            aria-label={t("Custom group name")}
                             className={`${INPUT} mt-2 w-full`}
                           />
                         )}
                         <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
-                          Raw materials go into drinks, packaging leaves with
-                          the order, operating supplies are used in the shop.
+                          {t(
+                            "Raw materials go into drinks, packaging leaves with the order, operating supplies are used in the shop.",
+                          )}
                         </p>
                       </>
                     );
@@ -565,7 +589,7 @@ export function ConsumablesManager() {
 
                 <div>
                   <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                    Unit of Measure
+                    {t("Unit of measure")}
                   </label>
                   {(() => {
                     const units = [
@@ -578,7 +602,7 @@ export function ConsumablesManager() {
                     return (
                       <>
                         <PopSelect
-                          ariaLabel="Unit of measure"
+                          ariaLabel={t("Unit of measure")}
                           className="mt-1"
                           buttonClassName={INPUT}
                           value={isKnown ? formData.unit : NEW_UNIT}
@@ -587,7 +611,7 @@ export function ConsumablesManager() {
                           }
                           options={[
                             ...units.map((u) => ({ value: u, label: u })),
-                            { value: NEW_UNIT, label: "+ Other unit…" },
+                            { value: NEW_UNIT, label: t("+ Other unit…") },
                           ]}
                         />
                         {!isKnown && (
@@ -599,7 +623,7 @@ export function ConsumablesManager() {
                             onChange={(e) =>
                               setFormData({ ...formData, unit: e.target.value })
                             }
-                            placeholder="e.g. box, bottle"
+                            placeholder={t("e.g. box, bottle")}
                             className={`${INPUT} mt-2 w-full`}
                           />
                         )}
@@ -612,7 +636,7 @@ export function ConsumablesManager() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                    Initial Stock
+                    {t("Initial Stock")}
                   </label>
                   <input
                     type="number"
@@ -628,7 +652,7 @@ export function ConsumablesManager() {
 
                 <div>
                   <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                    Min Alert Threshold
+                    {t("Min Alert Threshold")}
                   </label>
                   <input
                     type="number"
@@ -649,14 +673,14 @@ export function ConsumablesManager() {
                   onClick={() => setShowAddModal(false)}
                   className="rounded-lg border border-stone-200 px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="rounded-lg bg-pos-button px-4 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:opacity-40"
                 >
-                  {submitting ? "Saving…" : "Save Item"}
+                  {submitting ? t("Saving…") : t("Save Item")}
                 </button>
               </div>
             </form>
@@ -669,17 +693,19 @@ export function ConsumablesManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
             <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
-              Adjust Stock: {restockItem.name}
+              {t("Adjust Stock: {name}", { name: restockItem.name })}
             </h3>
             <p className="mt-1 text-xs text-stone-500">
-              Current stock: {Number(restockItem.stockQuantity).toLocaleString()}{" "}
-              {restockItem.unit}
+              {t("Current stock: {n} {unit}", {
+                n: Number(restockItem.stockQuantity).toLocaleString(),
+                unit: restockItem.unit,
+              })}
             </p>
 
             <form onSubmit={handleRestock} className="mt-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                  Quantity Adjustment (+ to add, - to subtract)
+                  {t("Quantity Adjustment (+ to add, - to subtract)")}
                 </label>
                 <input
                   type="number"
@@ -687,20 +713,20 @@ export function ConsumablesManager() {
                   required
                   value={restockDelta}
                   onChange={(e) => setRestockDelta(e.target.value)}
-                  placeholder="e.g. +100 or -10"
+                  placeholder={t("e.g. +100 or -10")}
                   className={`${INPUT} mt-1 w-full`}
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                  Reason / Note
+                  {t("Reason / Note")}
                 </label>
                 <input
                   type="text"
                   value={restockReason}
                   onChange={(e) => setRestockReason(e.target.value)}
-                  placeholder="e.g. Restock, Spoilage, Correction"
+                  placeholder={t("e.g. Restock, Spoilage, Correction")}
                   className={`${INPUT} mt-1 w-full`}
                 />
               </div>
@@ -711,14 +737,14 @@ export function ConsumablesManager() {
                   onClick={() => setRestockItem(null)}
                   className="rounded-lg border border-stone-200 px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={restocking}
                   className="rounded-lg bg-pos-button px-4 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:opacity-40"
                 >
-                  {restocking ? "Saving…" : "Confirm Adjustment"}
+                  {restocking ? t("Saving…") : t("Confirm Adjustment")}
                 </button>
               </div>
             </form>
@@ -733,13 +759,23 @@ export function ConsumablesManager() {
           const inUse = uses.length > 0;
           return (
             <ConfirmDialog
-              title="Delete Item"
+              title={t("Delete Item")}
               message={
                 inUse
-                  ? `"${pendingDelete.name}" is still used by ${uses.length === 1 ? "a recipe" : `${uses.length} recipes`}. Deleting it removes it from ${uses.length === 1 ? "that recipe" : "them"} too; a recipe left with no ingredients is dropped and its product goes back to counted stock. This cannot be undone.`
-                  : `Are you sure you want to delete "${pendingDelete.name}"? This action cannot be undone.`
+                  ? uses.length === 1
+                    ? t(
+                        '"{name}" is still used by a recipe. Deleting it removes it from that recipe too; a recipe left with no ingredients is dropped and its product goes back to counted stock. This cannot be undone.',
+                        { name: pendingDelete.name },
+                      )
+                    : t(
+                        '"{name}" is still used by {n} recipes. Deleting it removes it from them too; a recipe left with no ingredients is dropped and its product goes back to counted stock. This cannot be undone.',
+                        { name: pendingDelete.name, n: uses.length },
+                      )
+                  : t('Are you sure you want to delete "{name}"? This action cannot be undone.', {
+                      name: pendingDelete.name,
+                    })
               }
-              confirmLabel={inUse ? "Delete anyway" : "Delete"}
+              confirmLabel={inUse ? t("Delete anyway") : t("Delete")}
               confirmDisabled={inUse && !forceAck}
               busy={deleting}
               onCancel={() => setPendingDelete(null)}
@@ -763,8 +799,9 @@ export function ConsumablesManager() {
                       className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-red-600 dark:border-stone-600"
                     />
                     <span>
-                      I understand — remove it from{" "}
-                      {uses.length === 1 ? "this recipe" : "these recipes"} and delete the item.
+                      {uses.length === 1
+                        ? t("I understand — remove it from this recipe and delete the item.")
+                        : t("I understand — remove it from these recipes and delete the item.")}
                     </span>
                   </label>
                 </div>

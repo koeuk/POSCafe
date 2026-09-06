@@ -2,7 +2,9 @@
 
 import { Fraunces } from "next/font/google";
 import type { ReactNode } from "react";
+import { LanguageSwitch } from "@/components/language-switch";
 import { useBranding } from "@/lib/branding-context";
+import { useT } from "@/lib/i18n";
 
 // Warm display serif for the brand & headings — matches the POS screen.
 const display = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -40,6 +42,7 @@ export function AuthShell({
   children: ReactNode;
 }) {
   const { appName, logoUrl } = useBranding();
+  const { t } = useT();
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#1a120c] px-5 py-12">
@@ -62,6 +65,11 @@ export function AuthShell({
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E\")",
         }}
       />
+
+      {/* Language — lets staff pick Khmer before they sign in */}
+      <div className="absolute right-4 top-4 z-10">
+        <LanguageSwitch />
+      </div>
 
       <div className="relative w-full max-w-md">
         {/* Brand */}
@@ -87,7 +95,7 @@ export function AuthShell({
             {appName}
           </h1>
           <p className="mt-3 text-sm text-amber-50/75">
-            Point of sale, brewed for your counter
+            {t("Point of sale, brewed for your counter")}
           </p>
         </div>
 
@@ -114,7 +122,7 @@ export function AuthShell({
           className="ios-rise mt-6 text-center text-xs text-amber-50/55"
           style={{ animationDelay: "260ms" }}
         >
-          {appName} · Coffee shop point of sale
+          {appName} · {t("Coffee shop point of sale")}
         </p>
       </div>
     </main>

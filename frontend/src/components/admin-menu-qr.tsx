@@ -3,10 +3,12 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { useBranding } from "@/lib/branding-context";
+import { useT } from "@/lib/i18n";
 import { GLASS } from "@/lib/ui";
 
 export function AdminMenuQr() {
   const { appName } = useBranding();
+  const { t } = useT();
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [menuUrl, setMenuUrl] = useState("");
   const [downloading, setDownloading] = useState(false);
@@ -50,10 +52,10 @@ export function AdminMenuQr() {
       <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-            Menu QR Code
+            {t("Menu QR Code")}
           </h1>
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-            Print or share the public customer menu link.
+            {t("Print or share the public customer menu link.")}
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
@@ -73,13 +75,13 @@ export function AdminMenuQr() {
             >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
             </svg>
-            {downloading ? "Preparing…" : "Download QR"}
+            {downloading ? t("Preparing…") : t("Download QR")}
           </button>
           <button
             onClick={() => window.print()}
             className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
           >
-            Print QR
+            {t("Print QR")}
           </button>
         </div>
       </header>
@@ -90,26 +92,27 @@ export function AdminMenuQr() {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={qrDataUrl}
-              alt="Public menu QR code"
+              alt={t("Public menu QR code")}
               className="h-72 w-72 rounded-2xl border border-stone-200 bg-white p-3 dark:border-stone-700"
             />
           ) : (
             <div className="grid h-72 w-72 place-items-center rounded-2xl border border-dashed border-stone-300 text-sm text-stone-400 dark:border-stone-700 dark:text-stone-500">
-              Generating...
+              {t("Generating...")}
             </div>
           )}
         </div>
 
         <div className="flex flex-col justify-center">
           <span className="w-fit rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600 dark:bg-stone-800 dark:text-stone-400">
-            Customer destination
+            {t("Customer destination")}
           </span>
           <p className="mt-4 break-all rounded-xl border border-stone-200/70 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-800 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-200">
-            {menuUrl || "Preparing link..."}
+            {menuUrl || t("Preparing link...")}
           </p>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-            This admin page is for staff management only. The QR still opens the
-            customer-facing menu experience at <span className="font-medium text-stone-700 dark:text-stone-300">/menu</span>.
+            {t("This admin page is for staff management only.")}{" "}
+            {t("The QR still opens the customer-facing menu experience at")}{" "}
+            <span className="font-medium text-stone-700 dark:text-stone-300">/menu</span>.
           </p>
         </div>
       </section>

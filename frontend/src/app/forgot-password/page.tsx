@@ -22,6 +22,7 @@ import {
   userIcon,
 } from "@/components/auth-shell";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 // Mirrors the backend: codes are 6 digits, live 10 minutes, and a new one can
 // only be requested once a minute.
@@ -32,12 +33,13 @@ const MIN_PASSWORD_LENGTH = 6;
 type Step = "identify" | "code" | "password" | "done";
 
 export default function ForgotPasswordPage() {
+  const { t } = useT();
   // useSearchParams needs a Suspense boundary to keep the route statically
   // renderable; the fallback is the same shell so there's no visible flash.
   return (
     <Suspense
       fallback={
-        <AuthShell title="Reset password" subtitle="Loading…">
+        <AuthShell title={t("Reset password")} subtitle={t("Loading…")}>
           <div className="h-40" />
         </AuthShell>
       }
@@ -50,6 +52,7 @@ export default function ForgotPasswordPage() {
 function ForgotPasswordFlow() {
   const router = useRouter();
   const params = useSearchParams();
+  const { t } = useT();
 
   const [step, setStep] = useState<Step>("identify");
   // Prefilled from the login screen when the admin already typed a username.
@@ -90,7 +93,7 @@ function ForgotPasswordFlow() {
       await sendCode(identifier);
       setStep("code");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send the code");
+      setError(err instanceof Error ? err.message : t("Could not send the code"));
     } finally {
       setBusy(false);
     }
@@ -103,7 +106,7 @@ function ForgotPasswordFlow() {
     try {
       await sendCode(identifier);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend the code");
+      setError(err instanceof Error ? err.message : t("Could not resend the code"));
     } finally {
       setBusy(false);
     }
@@ -121,7 +124,7 @@ function ForgotPasswordFlow() {
       setResetToken(res.resetToken);
       setStep("password");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not verify the code");
+      setError(err instanceof Error ? err.message : t("Could not verify the code"));
       // Clear the boxes so the next attempt starts from an empty field rather
       // than making them backspace six times.
       setCode("");
@@ -144,7 +147,7 @@ function ForgotPasswordFlow() {
       setTimeout(() => router.replace("/login"), 2200);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not update the password",
+        err instanceof Error ? err.message : t("Could not update the password"),
       );
     } finally {
       setBusy(false);
@@ -154,8 +157,8 @@ function ForgotPasswordFlow() {
   if (step === "done") {
     return (
       <AuthShell
-        title="Password updated"
-        subtitle="You can sign in with your new password"
+        title={t("Password updated")}
+        subtitle={t("You can sign in with your new password")}
       >
         <div className="flex flex-col items-center py-4 text-center">
           <span className="grid h-14 w-14 place-items-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
@@ -172,13 +175,13 @@ function ForgotPasswordFlow() {
             </svg>
           </span>
           <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">
-            Taking you back to sign in…
+            {t("Taking you back to sign in…")}
           </p>
           <Link
             href="/login"
             className="mt-5 text-sm font-medium text-amber-600 underline-offset-2 hover:underline dark:text-amber-400"
           >
-            Go now
+            {t("Go now")}
           </Link>
         </div>
       </AuthShell>
@@ -188,13 +191,15 @@ function ForgotPasswordFlow() {
   if (step === "identify") {
     return (
       <AuthShell
-        title="Reset password"
-        subtitle="We'll email a 6-digit code to the address on your admin account"
+        title={t("Reset password")}
+        subtitle={t(
+          "We'll email a 6-digit code to the address on your admin account",
+        )}
       >
         <form onSubmit={handleIdentify} className="space-y-5">
           <AuthField
             id="identifier"
-            label="Username or email"
+            label={t("Username or email")}
             type="text"
             placeholder="admin"
             autoComplete="username"
@@ -202,7 +207,9 @@ function ForgotPasswordFlow() {
             value={identifier}
             onChange={setIdentifier}
             icon={userIcon}
-            hint="Only admin accounts can reset themselves. Cashiers: ask an admin to set a new password for you."
+            hint={t(
+              "Only admin accounts can reset themselves. Cashiers: ask an admin to set a new password for you.",
+            )}
           />
 
           {error && <AuthError message={error} />}
@@ -210,9 +217,9 @@ function ForgotPasswordFlow() {
           <AuthSubmit
             busy={busy}
             disabled={identifier.trim() === "" || busy}
-            busyLabel="Sending code…"
+            busyLabel={t("Sending code…")}
           >
-            Send code
+            {t("Send code")}
           </AuthSubmit>
 
           <BackToLogin />
@@ -224,8 +231,10 @@ function ForgotPasswordFlow() {
   if (step === "code") {
     return (
       <AuthShell
-        title="Enter the code"
-        subtitle="Check the inbox for your admin account — the code expires in 10 minutes"
+        title={t("Enter the code")}
+        subtitle={t(
+          "Check the inbox for your admin account — the code expires in 10 minutes",
+        )}
       >
         <form onSubmit={handleVerify} className="space-y-5">
           <CodeInput value={code} onChange={setCode} />
@@ -237,9 +246,9 @@ function ForgotPasswordFlow() {
             // Every box filled — a gap in the middle survives as a space, and
             // the backend would reject it with a validation error.
             disabled={!/^\d{6}$/.test(code) || busy}
-            busyLabel="Checking…"
+            busyLabel={t("Checking…")}
           >
-            Continue
+            {t("Continue")}
           </AuthSubmit>
 
           <div className="flex items-center justify-between text-xs">
@@ -252,7 +261,7 @@ function ForgotPasswordFlow() {
               }}
               className="font-medium text-stone-500 underline-offset-2 hover:underline dark:text-stone-400"
             >
-              Wrong account?
+              {t("Wrong account?")}
             </button>
             <button
               type="button"
@@ -260,7 +269,9 @@ function ForgotPasswordFlow() {
               disabled={cooldown > 0 || busy}
               className="font-medium text-amber-600 underline-offset-2 transition hover:underline disabled:cursor-not-allowed disabled:text-stone-400 disabled:no-underline dark:text-amber-400 dark:disabled:text-stone-500"
             >
-              {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
+              {cooldown > 0
+                ? t("Resend in {s}s", { s: cooldown })
+                : t("Resend code")}
             </button>
           </div>
 
@@ -276,8 +287,8 @@ function ForgotPasswordFlow() {
 
   return (
     <AuthShell
-      title="Choose a new password"
-      subtitle="Pick something you'll remember — at least 6 characters"
+      title={t("Choose a new password")}
+      subtitle={t("Pick something you'll remember — at least 6 characters")}
     >
       <form onSubmit={handleReset} className="space-y-5">
         <div>
@@ -285,7 +296,7 @@ function ForgotPasswordFlow() {
             htmlFor="new-password"
             className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300"
           >
-            New password
+            {t("New password")}
           </label>
           <div className="group relative">
             <span className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-11 items-center justify-center text-stone-400 transition-colors group-focus-within:text-amber-500 dark:text-stone-500 dark:group-focus-within:text-amber-400">
@@ -305,7 +316,7 @@ function ForgotPasswordFlow() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("Hide password") : t("Show password")}
               aria-pressed={showPassword}
               className="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center rounded-r-xl text-stone-400 transition hover:text-stone-700 dark:hover:text-amber-50"
             >
@@ -341,7 +352,7 @@ function ForgotPasswordFlow() {
             htmlFor="confirm-password"
             className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300"
           >
-            Confirm password
+            {t("Confirm password")}
           </label>
           <div className="group relative">
             <span className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-11 items-center justify-center text-stone-400 transition-colors group-focus-within:text-amber-500 dark:text-stone-500 dark:group-focus-within:text-amber-400">
@@ -360,15 +371,15 @@ function ForgotPasswordFlow() {
           </div>
           {confirm !== "" && !passwordsMatch && (
             <p className="mt-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-              Passwords don&apos;t match yet
+              {t("Passwords don't match yet")}
             </p>
           )}
         </div>
 
         {error && <AuthError message={error} />}
 
-        <AuthSubmit busy={busy} disabled={!canSubmit} busyLabel="Saving…">
-          Update password
+        <AuthSubmit busy={busy} disabled={!canSubmit} busyLabel={t("Saving…")}>
+          {t("Update password")}
         </AuthSubmit>
 
         <BackToLogin />
@@ -378,13 +389,14 @@ function ForgotPasswordFlow() {
 }
 
 function BackToLogin() {
+  const { t } = useT();
   return (
     <p className="pt-1 text-center text-sm text-stone-500 dark:text-stone-400">
       <Link
         href="/login"
         className="font-medium text-amber-600 underline-offset-2 hover:underline dark:text-amber-400"
       >
-        Back to sign in
+        {t("Back to sign in")}
       </Link>
     </p>
   );
@@ -403,6 +415,7 @@ function CodeInput({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { t } = useT();
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const digits = value.padEnd(CODE_LENGTH, " ").slice(0, CODE_LENGTH).split("");
 
@@ -450,7 +463,7 @@ function CodeInput({
         htmlFor="code-0"
         className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-300"
       >
-        6-digit code
+        {t("6-digit code")}
       </label>
       <div className="flex justify-between gap-2">
         {digits.map((digit, i) => (
@@ -472,7 +485,7 @@ function CodeInput({
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={handlePaste}
             onFocus={(e) => e.target.select()}
-            aria-label={`Digit ${i + 1}`}
+            aria-label={t("Digit {n}", { n: i + 1 })}
             className="h-14 w-full rounded-xl border text-center text-xl font-semibold tabular-nums outline-none transition duration-200 border-stone-200 bg-white text-stone-900 hover:border-stone-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 dark:border-white/12 dark:bg-black/30 dark:text-stone-50 dark:hover:border-white/20 dark:focus:border-amber-400/70 dark:focus:ring-amber-400/20"
           />
         ))}

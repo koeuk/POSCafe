@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { Role } from "@/lib/types";
 
 interface RequireAuthProps {
@@ -17,6 +18,7 @@ interface RequireAuthProps {
  */
 export function RequireAuth({ children, role }: RequireAuthProps) {
   const { user, loading } = useAuth();
+  const { t } = useT();
   const router = useRouter();
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export function RequireAuth({ children, role }: RequireAuthProps) {
   if (loading || !user || (role && user.role !== role)) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-        Loading…
+        {t("Loading…")}
       </div>
     );
   }

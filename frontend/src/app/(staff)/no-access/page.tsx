@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 
 /**
  * Terminal page for an account with no granted pages.
@@ -13,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
  */
 export default function NoAccessPage() {
   const { user, logout } = useAuth();
+  const { t } = useT();
   const router = useRouter();
 
   return (
@@ -32,12 +34,17 @@ export default function NoAccessPage() {
         </svg>
       </span>
       <h1 className="mt-5 text-xl font-semibold text-pos-page-fg">
-        No pages assigned
+        {t("No pages assigned")}
       </h1>
       <p className="mt-2 text-sm text-pos-page-fg/60">
-        {user ? `Hi ${user.name} — your` : "Your"} account doesn&apos;t have
-        access to any pages yet. Ask an admin to grant you access from Settings
-        → Staff.
+        {user
+          ? t(
+              "Hi {name} — your account doesn't have access to any pages yet. Ask an admin to grant you access from Settings → Staff.",
+              { name: user.name },
+            )
+          : t(
+              "Your account doesn't have access to any pages yet. Ask an admin to grant you access from Settings → Staff.",
+            )}
       </p>
       <button
         type="button"
@@ -47,7 +54,7 @@ export default function NoAccessPage() {
         }}
         className="mt-6 rounded-xl bg-pos-button px-4 py-2.5 text-sm font-semibold text-pos-button-fg transition hover:opacity-90"
       >
-        Sign out
+        {t("Sign out")}
       </button>
     </main>
   );

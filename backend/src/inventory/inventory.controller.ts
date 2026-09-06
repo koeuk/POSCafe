@@ -24,6 +24,9 @@ import { InventoryService } from './inventory.service';
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
+  // The POS needs this list too: the checkout add-ons dialog offers every
+  // supply, not just the ones a recipe marks optional.
+  @RequiresPage('stock', 'pos')
   @Get()
   findAll(@Query('category') category?: string) {
     return this.inventoryService.findAll(category);

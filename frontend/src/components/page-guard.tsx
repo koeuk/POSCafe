@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import {
   NO_ACCESS_HREF,
   firstAllowedHref,
@@ -18,6 +19,7 @@ import { Role } from "@/lib/types";
  */
 export function PageGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const { t } = useT();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -43,7 +45,7 @@ export function PageGuard({ children }: { children: ReactNode }) {
   if (!loading && user && !allowed) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
-        Redirecting…
+        {t("Redirecting…")}
       </div>
     );
   }

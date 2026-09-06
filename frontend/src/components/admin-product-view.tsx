@@ -8,8 +8,10 @@ import { rolePathBase } from "@/lib/permissions";
 import { effectivePrice, formatPrice, hasDiscount, hasSizes, isRecipeManaged, sizeStock, totalStock } from "@/lib/pricing";
 import { type Product } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
+import { useT } from "@/lib/i18n";
 
 function ProductView({ id }: { id: string }) {
+  const { t } = useT();
   const [product, setProduct] = useState<Product | null>(null);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ function ProductView({ id }: { id: string }) {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Failed to load product",
+            err instanceof Error ? err.message : t("Failed to load product"),
           );
         }
       } finally {
@@ -36,6 +38,8 @@ function ProductView({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
+    // `t` only labels a fallback error; a locale switch must not refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (loading) {
@@ -52,13 +56,13 @@ function ProductView({ id }: { id: string }) {
       <main className="mx-auto max-w-5xl">
         <div className={`rounded-2xl p-6 ${GLASS}`}>
           <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-            {error ?? "Product not found."}
+            {error ?? t("Product not found.")}
           </p>
           <Link
             href={`${base}/products`}
             className="mt-4 inline-block text-sm font-medium text-stone-600 hover:underline dark:text-stone-300"
           >
-            ← Back to products
+            ← {t("Back to products")}
           </Link>
         </div>
       </main>
@@ -83,7 +87,7 @@ function ProductView({ id }: { id: string }) {
         <div>
           <nav className="flex items-center gap-1.5 text-sm text-stone-400 dark:text-stone-500">
             <Link href={`${base}/products`} className="hover:underline">
-              Products
+              {t("Products")}
             </Link>
             <span>/</span>
             <span className="text-stone-600 dark:text-stone-300">
@@ -99,19 +103,19 @@ function ProductView({ id }: { id: string }) {
             href={`${base}/products`}
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
-            Back
+            {t("Back")}
           </Link>
           <Link
             href={`/menu/${product.id}`}
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
-            Customer view
+            {t("Customer view")}
           </Link>
           <Link
             href={`${base}/products?edit=${product.id}`}
             className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:opacity-90"
           >
-            Edit product
+            {t("Edit product")}
           </Link>
         </div>
       </header>
@@ -140,7 +144,7 @@ function ProductView({ id }: { id: string }) {
                   key={`${url}-${index}`}
                   type="button"
                   onClick={() => setActive(index)}
-                  aria-label={`Show image ${index + 1}`}
+                  aria-label={t("Show image {n}", { n: index + 1 })}
                   className={`shrink-0 overflow-hidden rounded-xl ring-2 transition ${
                     index === active
                       ? "ring-pos-button"
@@ -176,13 +180,16 @@ function ProductView({ id }: { id: string }) {
                       : "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400"
                   }`}
                 >
-                  {product.isAvailable ? "Available" : "Hidden"}
+                  {product.isAvailable ? t("Available") : t("Hidden")}
                 </span>
               </div>
               <div className="mt-4 flex flex-wrap items-baseline gap-3">
                 <span className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                  {sized ? "from " : ""}
-                  {formatPrice(effectivePrice(product))}
+                  {sized
+                    ? t("from {price}", {
+                        price: formatPrice(effectivePrice(product)),
+                      })
+                    : formatPrice(effectivePrice(product))}
                 </span>
                 {discounted && !sized && (
                   <span className="text-base text-stone-400 line-through">
@@ -193,33 +200,33 @@ function ProductView({ id }: { id: string }) {
             </div>
             {discounted && (
               <span className="rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
-                {product.discountPercent}% off
+                {t("{percent}% off", { percent: product.discountPercent })}
               </span>
             )}
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <Info label="Base price" value={formatPrice(product.price)} />
+            <Info label={t("Base price")} value={formatPrice(product.price)} />
             <Info
-              label={madeToOrder ? "Can be made (recipe)" : "In stock"}
+              label={madeToOrder ? t("Can be made (recipe)") : t("In stock")}
               value={String(units)}
             />
-            <Info label="Sizes" value={sized ? String(product.variants?.length ?? 0) : "—"} />
+            <Info label={t("Sizes")} value={sized ? String(product.variants?.length ?? 0) : "—"} />
           </div>
 
           {sized && product.variants && product.variants.length > 0 && (
             <div className="mt-6">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                Sizes &amp; prices
+                {t("Sizes & prices")}
               </h2>
               <div className="mt-3 overflow-hidden rounded-xl border border-stone-200/70 dark:border-stone-800">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-400 dark:bg-stone-800/50 dark:text-stone-500">
                     <tr>
-                      <th className="px-4 py-2.5 font-medium">Size</th>
-                      <th className="px-4 py-2.5 font-medium">Price</th>
+                      <th className="px-4 py-2.5 font-medium">{t("Size")}</th>
+                      <th className="px-4 py-2.5 font-medium">{t("Price")}</th>
                       {madeToOrder && (
-                        <th className="px-4 py-2.5 font-medium">Can be made</th>
+                        <th className="px-4 py-2.5 font-medium">{t("Can be made")}</th>
                       )}
                     </tr>
                   </thead>
@@ -257,7 +264,7 @@ function ProductView({ id }: { id: string }) {
           {product.description && (
             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                Description
+                {t("Description")}
               </h2>
               <p className="mt-2 leading-relaxed text-stone-700 dark:text-stone-300">
                 {product.description}

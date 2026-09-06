@@ -7,6 +7,13 @@ import { StatusDropdown } from "@/components/status-dropdown";
 import { StatusTabs } from "@/components/status-tabs";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import {
+  formatMonthShort,
+  formatTimeShort,
+  useT,
+  type Translate,
+  type TranslationKey,
+} from "@/lib/i18n";
 import { STATUS_FILTERS } from "@/lib/orders";
 import {
   OrderStatus,
@@ -17,7 +24,8 @@ import {
 import { GLASS } from "@/lib/ui";
 
 // Small Paid / Unpaid / Refunded pill shown next to each order number.
-const PAYMENT_BADGE: Record<PaymentStatus, { label: string; cls: string }> = {
+// Labels are translation keys — render them through `t()`.
+const PAYMENT_BADGE: Record<PaymentStatus, { label: TranslationKey; cls: string }> = {
   [PaymentStatus.PAID]: {
     label: "Paid",
     cls: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
@@ -33,12 +41,19 @@ const PAYMENT_BADGE: Record<PaymentStatus, { label: string; cls: string }> = {
 };
 
 function PaymentBadge({ status }: { status: PaymentStatus }) {
+  const { t } = useT();
   const meta = PAYMENT_BADGE[status] ?? PAYMENT_BADGE[PaymentStatus.UNPAID];
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${meta.cls}`}>
-      {meta.label}
+      {t(meta.label)}
     </span>
   );
+}
+
+// "6 Sep 2026, 2:10 PM" with the month and AM/PM translated — the browser's
+// toLocaleString() can't do Khmer on most devices.
+function formatDateTime(date: Date, t: Translate) {
+  return `${date.getDate()} ${formatMonthShort(date, t)} ${date.getFullYear()}, ${formatTimeShort(date, t)}`;
 }
 
 /**
@@ -47,6 +62,7 @@ function PaymentBadge({ status }: { status: PaymentStatus }) {
  * only in their auth/shell wrapper.
  */
 export function OrderHistoryView() {
+  const { t } = useT();
   const { user } = useAuth();
   const isAdmin = user?.role === Role.ADMIN;
   const [orders, setOrders] = useState<OrderWithUser[]>([]);
@@ -75,7 +91,7 @@ export function OrderHistoryView() {
         if (!cancelled) setOrders(data);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load orders");
+          setError(err instanceof Error ? err.message : t("Failed to load orders"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -85,7 +101,7 @@ export function OrderHistoryView() {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [load, t]);
 
   async function changeStatus(id: number, status: OrderStatus) {
     setUpdatingId(id);
@@ -97,7 +113,7 @@ export function OrderHistoryView() {
       });
       setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
+      setError(err instanceof Error ? err.message : t("Failed to update status"));
     } finally {
       setUpdatingId(null);
     }
@@ -113,7 +129,7 @@ export function OrderHistoryView() {
       setOrders((prev) => prev.map((o) => (o.id === order.id ? updated : o)));
       setRefundTarget(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to refund order");
+      setError(err instanceof Error ? err.message : t("Failed to refund order"));
     } finally {
       setRefunding(false);
     }
@@ -127,15 +143,27 @@ export function OrderHistoryView() {
     [orders],
   );
 
+  // The shared filter tabs carry English labels; translate them for the bar.
+  const filterOptions = useMemo(
+    () =>
+      STATUS_FILTERS.map((o) => ({
+        ...o,
+        label: t(o.label),
+      })),
+    [t],
+  );
+
   return (
     <main className="mx-auto max-w-7xl">
       <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Order History</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">{t("Order History")}</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">
-            {orders.length} order{orders.length === 1 ? "" : "s"}
+            {orders.length === 1
+              ? t("1 order")
+              : t("{count} orders", { count: orders.length })}
             {filter === "all" && revenue > 0 && (
-              <> · ${revenue.toFixed(2)} paid revenue</>
+              <> · {t("${amount} paid revenue", { amount: revenue.toFixed(2) })}</>
             )}
           </p>
         </div>
@@ -145,10 +173,10 @@ export function OrderHistoryView() {
         {/* Status filter */}
         <div className="mb-6">
           <StatusTabs
-            options={STATUS_FILTERS}
+            options={filterOptions}
             value={filter}
             onChange={setFilter}
-            label="Filter orders by status"
+            label={t("Filter orders by status")}
           />
         </div>
 
@@ -159,9 +187,9 @@ export function OrderHistoryView() {
         )}
 
         {loading ? (
-          <p className="text-sm text-stone-500 dark:text-stone-400">Loading orders…</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">{t("Loading orders…")}</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-stone-400 dark:text-stone-500">No orders here yet.</p>
+          <p className="text-sm text-stone-400 dark:text-stone-500">{t("No orders here yet.")}</p>
         ) : (
           <ul className="space-y-4">
             {orders.map((order) => (
@@ -176,7 +204,7 @@ export function OrderHistoryView() {
                       <PaymentBadge status={order.paymentStatus} />
                     </p>
                     <p className="text-sm text-stone-500 dark:text-stone-400">
-                      {new Date(order.createdAt).toLocaleString()}
+                      {formatDateTime(new Date(order.createdAt), t)}
                       {order.user && <> · {order.user.name}</>}
                     </p>
                   </div>
@@ -214,7 +242,7 @@ export function OrderHistoryView() {
                 </ul>
 
                 <div className="mt-3 flex items-center justify-between border-t border-stone-100 dark:border-stone-800 pt-3 font-semibold text-stone-900 dark:text-stone-100">
-                  <span>Total</span>
+                  <span>{t("Total")}</span>
                   <span className="flex items-center gap-3">
                     ${Number(order.total).toFixed(2)}
                     {isAdmin &&
@@ -224,15 +252,15 @@ export function OrderHistoryView() {
                           onClick={() => setRefundTarget(order)}
                           className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
                         >
-                          Refund
+                          {t("Refund")}
                         </button>
                       )}
                     <Link
                       href={`/receipt?orderId=${order.id}`}
-                      title="Print receipt"
+                      title={t("Print receipt")}
                       className="rounded-lg border border-stone-200 px-2.5 py-1 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
                     >
-                      🖨 Receipt
+                      🖨 {t("Receipt")}
                     </Link>
                   </span>
                 </div>
@@ -244,11 +272,12 @@ export function OrderHistoryView() {
 
       {refundTarget && (
         <ConfirmDialog
-          title={`Refund ${refundTarget.orderNumber}?`}
-          message={`This returns $${Number(refundTarget.total).toFixed(
-            2,
-          )} to the customer, cancels the order and restocks its items. This cannot be undone.`}
-          confirmLabel={refunding ? "Refunding…" : "Refund order"}
+          title={t("Refund {order}?", { order: refundTarget.orderNumber })}
+          message={t(
+            "This returns ${amount} to the customer, cancels the order and restocks its items. This cannot be undone.",
+            { amount: Number(refundTarget.total).toFixed(2) },
+          )}
+          confirmLabel={refunding ? t("Refunding…") : t("Refund order")}
           busy={refunding}
           onCancel={() => setRefundTarget(null)}
           onConfirm={() => void refund(refundTarget)}

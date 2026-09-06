@@ -1,9 +1,10 @@
 "use client";
 
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
+import { useT } from "@/lib/i18n";
 import { GLASS } from "@/lib/ui";
 import type { StaticKhqr } from "@/lib/types";
 
@@ -14,6 +15,12 @@ import type { StaticKhqr } from "@/lib/types";
  */
 export function PaymentQr() {
   const { appName, khqrEnabled } = useBranding();
+  const { t } = useT();
+  // Latest `t` for the fetch effect, so switching language doesn't refetch.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const [data, setData] = useState<StaticKhqr | null>(null);
   const [image, setImage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -36,7 +43,7 @@ export function PaymentQr() {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Could not build the QR code",
+            err instanceof Error ? err.message : tRef.current("Could not build the QR code"),
           );
         }
       } finally {
@@ -90,11 +97,12 @@ export function PaymentQr() {
       >
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-            Payment QR (KHQR)
+            {t("Payment QR (KHQR)")}
           </h1>
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-            Print this and stand it on the counter — customers scan and enter
-            the amount themselves.
+            {t(
+              "Print this and stand it on the counter — customers scan and enter the amount themselves.",
+            )}
           </p>
         </div>
         {data && (
@@ -104,13 +112,13 @@ export function PaymentQr() {
               disabled={downloading}
               className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
             >
-              {downloading ? "Preparing…" : "Download PNG"}
+              {downloading ? t("Preparing…") : t("Download PNG")}
             </button>
             <button
               onClick={() => window.print()}
               className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110"
             >
-              Print poster
+              {t("Print poster")}
             </button>
           </div>
         )}
@@ -118,14 +126,16 @@ export function PaymentQr() {
 
       {loading ? (
         <p className="qr-chrome text-sm text-stone-500 dark:text-stone-400">
-          Generating…
+          {t("Generating…")}
         </p>
       ) : error || !khqrEnabled ? (
         <div className={`qr-chrome rounded-2xl p-6 ${GLASS}`}>
           <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
             {khqrEnabled
               ? error
-              : "QR payment isn't set up yet — add your Bakong account in Settings to generate a payment QR."}
+              : t(
+                  "QR payment isn't set up yet — add your Bakong account in Settings to generate a payment QR.",
+                )}
           </p>
         </div>
       ) : (
@@ -137,16 +147,16 @@ export function PaymentQr() {
                 {data.merchantName}
               </p>
               <p className="mt-1 text-sm font-medium uppercase tracking-widest text-stone-500 dark:text-stone-400">
-                Scan to pay · KHQR
+                {t("Scan to pay · KHQR")}
               </p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image}
-                alt="Shop payment QR code"
+                alt={t("Shop payment QR code")}
                 className="mx-auto mt-5 h-72 w-72 rounded-xl bg-white"
               />
               <p className="mt-4 text-sm text-stone-600 dark:text-stone-300">
-                Scan with any Cambodian banking app, then enter the amount.
+                {t("Scan with any Cambodian banking app, then enter the amount.")}
               </p>
               <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
                 {data.merchantCity}
@@ -154,8 +164,9 @@ export function PaymentQr() {
             </section>
 
             <p className="qr-chrome mx-auto mt-4 max-w-md text-center text-xs text-stone-400 dark:text-stone-500">
-              This code carries no amount and never expires. For a code with the
-              amount already filled in, use the QR tab on the Payments screen.
+              {t(
+                "This code carries no amount and never expires. For a code with the amount already filled in, use the QR tab on the Payments screen.",
+              )}
             </p>
           </>
         )

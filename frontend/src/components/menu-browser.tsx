@@ -12,7 +12,9 @@ import {
 } from "@/lib/pricing";
 import type { MenuCategory } from "@/lib/types";
 import { useMenuFilter } from "@/lib/use-menu-filter";
+import { LanguageSwitch } from "@/components/language-switch";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useT } from "@/lib/i18n";
 
 // Editorial display serif — gives the menu its warm, artisanal voice.
 const display = Fraunces({
@@ -23,6 +25,7 @@ const display = Fraunces({
 
 export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
   const { appName, logoUrl } = useBranding();
+  const { t } = useT();
   const { query, setQuery, activeCat, setActiveCat, visible } =
     useMenuFilter(menu);
 
@@ -110,7 +113,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                     {appName}
                   </h1>
                   <p className="mt-1 text-sm font-medium text-emerald-100/75 sm:mt-1.5 dark:text-amber-200/70">
-                    Freshly brewed, made to order
+                    {t("Freshly brewed, made to order")}
                   </p>
                 </div>
               </div>
@@ -132,19 +135,20 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search a drink, pastry, or category…"
+                placeholder={t("Search a drink, pastry, or category…")}
                 className="w-full rounded-2xl border border-white/70 bg-white/95 py-3 pl-11 pr-11 text-sm text-stone-900 shadow-lg shadow-emerald-950/20 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/40 sm:py-3.5 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
               />
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  aria-label="Clear search"
+                  aria-label={t("Clear search")}
                   className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-700"
                 >
                   <ClearIcon />
                 </button>
               )}
             </div>
+            <LanguageSwitch />
             <ThemeToggle />
           </div>
 
@@ -155,7 +159,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
             }`}
           >
             <Chip
-              label="All"
+              label={t("All")}
               active={activeCat === "all"}
               onClick={() => setActiveCat("all")}
             />
@@ -187,15 +191,15 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
               />
               <div className="relative z-10">
                 <span className="inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] backdrop-blur-sm">
-                  Today only
+                  {t("Today only")}
                 </span>
                 <p
                   className={`${display.className} mt-2 text-4xl font-black leading-none sm:text-5xl`}
                 >
-                  {topDiscount}% OFF
+                  {t("{percent}% OFF", { percent: topDiscount })}
                 </p>
                 <p className="mt-2 text-sm text-white/90">
-                  On selected items — ask our staff
+                  {t("On selected items — ask our staff")}
                 </p>
               </div>
               <span className="promo-bob relative z-10 text-6xl drop-shadow-md">
@@ -211,10 +215,10 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                 🔎
               </span>
               <p className="mt-4 font-semibold text-stone-700 dark:text-stone-200">
-                Nothing matches “{query}”
+                {t("Nothing matches “{query}”", { query })}
               </p>
               <p className="mt-1 text-sm text-stone-400 dark:text-stone-500">
-                Try a different drink or category.
+                {t("Try a different drink or category.")}
               </p>
             </div>
           ) : (
@@ -274,7 +278,7 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
                             >
                               {hasSizes(product) && (
                                 <span className="mr-1 font-sans text-xs font-medium text-stone-400">
-                                  from
+                                  {t("from")}
                                 </span>
                               )}
                               {formatPrice(effectivePrice(product))}
@@ -297,12 +301,24 @@ export function MenuBrowser({ menu }: { menu: MenuCategory[] }) {
           <footer className="mt-16 flex flex-col items-center gap-1 text-center">
             <span className="text-lg">☕</span>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-stone-400 dark:text-stone-500">
-              Prices in USD · Ask our staff to place your order
+              {t("Prices in USD")} · {t("Ask our staff to place your order")}
             </p>
           </footer>
         </div>
       </div>
     </div>
+  );
+}
+
+/** Shown by the server page when the menu API can't be reached. */
+export function MenuUnavailable() {
+  const { t } = useT();
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-amber-50 px-4">
+      <p className="rounded-xl bg-red-50 px-6 py-8 text-center text-red-600">
+        {t("Sorry, the menu is unavailable right now.")}
+      </p>
+    </main>
   );
 }
 

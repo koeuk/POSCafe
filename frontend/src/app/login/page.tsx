@@ -13,11 +13,13 @@ import {
   userIcon,
 } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { landingHref } from "@/lib/permissions";
 
 export default function LoginPage() {
   const { user, loading, login } = useAuth();
   const router = useRouter();
+  const { t } = useT();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,7 +47,7 @@ export default function LoginPage() {
       const signedIn = await login(username, password);
       router.replace(landingHref(signedIn.role, signedIn.allowedPages));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("Login failed"));
       setSubmitting(false);
     }
   }
@@ -57,13 +59,16 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell title="Welcome back" subtitle="Sign in to your counter to continue">
+    <AuthShell
+      title={t("Welcome back")}
+      subtitle={t("Sign in to your counter to continue")}
+    >
       <form onSubmit={handleSubmit} className="space-y-5">
         <AuthField
           id="username"
-          label="Username or email"
+          label={t("Username or email")}
           type="text"
-          placeholder="your username or email"
+          placeholder={t("your username or email")}
           autoComplete="username"
           autoFocus
           value={username}
@@ -77,7 +82,7 @@ export default function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-stone-700 dark:text-stone-300"
             >
-              Password
+              {t("Password")}
             </label>
             {/* Carries the typed username across so the reset screen doesn't
                 ask for it again — the admin has already told us who they are. */}
@@ -89,7 +94,7 @@ export default function LoginPage() {
               }
               className="text-xs font-medium text-amber-600 underline-offset-2 transition hover:text-amber-700 hover:underline dark:text-amber-400 dark:hover:text-amber-300"
             >
-              Forgot password?
+              {t("Forgot password?")}
             </Link>
           </div>
           <div className="group relative">
@@ -112,7 +117,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("Hide password") : t("Show password")}
               aria-pressed={showPassword}
               className="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center rounded-r-xl text-stone-400 transition hover:text-stone-700 dark:hover:text-amber-50"
             >
@@ -162,7 +167,7 @@ export default function LoginPage() {
                 <path d="M12 4 4 12h4v4h8v-4h4L12 4Z" />
                 <line x1="8" y1="20" x2="16" y2="20" />
               </svg>
-              Caps Lock is on
+              {t("Caps Lock is on")}
             </p>
           )}
         </div>
@@ -172,9 +177,9 @@ export default function LoginPage() {
         <AuthSubmit
           busy={submitting}
           disabled={!canSubmit}
-          busyLabel="Signing in…"
+          busyLabel={t("Signing in…")}
         >
-          Sign in
+          {t("Sign in")}
         </AuthSubmit>
       </form>
     </AuthShell>

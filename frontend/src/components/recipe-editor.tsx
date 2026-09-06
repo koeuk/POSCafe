@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { PopSelect } from "@/components/pop-select";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { InventoryItem, Product, Recipe } from "@/lib/types";
 import { compatibleUnits, convertQuantity } from "@/lib/units";
 
@@ -51,6 +52,7 @@ export function RecipeEditor({
   inventoryItems: InventoryItem[];
   onSaved: () => Promise<void>;
 }) {
+  const { t } = useT();
   const sizes = useMemo<(string | null)[]>(
     () =>
       product.variants && product.variants.length > 0
@@ -126,7 +128,7 @@ export function RecipeEditor({
     try {
       if (items.length === 0) {
         if (current) await api(`/recipes/${current.id}`, { method: "DELETE" });
-        setNotice("Recipe removed.");
+        setNotice(t("Recipe removed."));
       } else {
         for (const s of targetSizes) {
           await api("/recipes", {
@@ -136,13 +138,13 @@ export function RecipeEditor({
         }
         setNotice(
           targetSizes.length > 1
-            ? `Recipe saved for ${targetSizes.length} sizes.`
-            : "Recipe saved.",
+            ? t("Recipe saved for {n} sizes.", { n: targetSizes.length })
+            : t("Recipe saved."),
         );
       }
       await onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save recipe");
+      setError(err instanceof Error ? err.message : t("Failed to save recipe"));
     } finally {
       setSaving(false);
     }
@@ -152,8 +154,9 @@ export function RecipeEditor({
     <div className="mt-3 rounded-xl border border-emerald-200/70 bg-emerald-50/40 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-          Recipe — what one {product.name}
-          {size ? ` (${size})` : ""} uses
+          {t("Recipe — what one {name} uses", {
+            name: size ? `${product.name} (${size})` : product.name,
+          })}
         </p>
         {sizes.length > 1 && (
           <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm dark:bg-stone-800">
@@ -177,7 +180,7 @@ export function RecipeEditor({
                   {s}
                   {!has && (
                     <span className="ml-1 text-[10px] font-medium opacity-70">
-                      · none
+                      · {t("None")}
                     </span>
                   )}
                 </button>
@@ -190,8 +193,9 @@ export function RecipeEditor({
       <div className="mt-3 space-y-2">
         {lines.length === 0 ? (
           <p className="rounded-lg border border-dashed border-stone-300 px-3 py-4 text-center text-xs text-stone-500 dark:border-stone-700 dark:text-stone-400">
-            No ingredients yet. Add the cup, lid, straw and ingredients one
-            {size ? ` ${size}` : ""} uses.
+            {size
+              ? t("No ingredients yet. Add the cup, lid, straw and ingredients one {size} uses.", { size })
+              : t("No ingredients yet. Add the cup, lid, straw and ingredients one uses.")}
           </p>
         ) : (
           lines.map((line, index) => {
@@ -202,7 +206,7 @@ export function RecipeEditor({
                 className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-2.5 py-2 shadow-sm dark:bg-stone-800"
               >
                 <PopSelect
-                  ariaLabel="Ingredient or packaging"
+                  ariaLabel={t("Ingredient or packaging")}
                   className="min-w-48 flex-1"
                   buttonClassName={INPUT}
                   value={String(line.inventoryItemId)}
@@ -216,7 +220,7 @@ export function RecipeEditor({
                   options={inventoryItems.map((item) => ({
                     value: String(item.id),
                     label: `${item.name} (${item.unit})`,
-                    hint: `${Number(item.stockQuantity)} left`,
+                    hint: t("{n} left", { n: Number(item.stockQuantity) }),
                   }))}
                 />
                 <input
@@ -231,7 +235,7 @@ export function RecipeEditor({
                       ),
                     )
                   }
-                  aria-label="Quantity per serving"
+                  aria-label={t("Quantity per serving")}
                   className={`${INPUT} w-24 text-right`}
                 />
                 {(() => {
@@ -239,7 +243,7 @@ export function RecipeEditor({
                   const unit = line.unit || units[0] || "";
                   return units.length > 1 ? (
                     <PopSelect
-                      ariaLabel="Unit"
+                      ariaLabel={t("Unit")}
                       className="w-20"
                       buttonClassName={INPUT}
                       value={unit}
@@ -260,7 +264,7 @@ export function RecipeEditor({
                 })()}
                 <label
                   className="flex cursor-pointer items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300"
-                  title="Customer's choice: asked at checkout instead of always deducted (sugar, straw…)"
+                  title={t("Customer's choice: asked at checkout instead of always deducted (sugar, straw…)")}
                 >
                   <input
                     type="checkbox"
@@ -274,12 +278,12 @@ export function RecipeEditor({
                     }
                     className="h-3.5 w-3.5 accent-pos-button"
                   />
-                  Optional
+                  {t("Optional")}
                 </label>
                 <button
                   type="button"
                   onClick={() => setLines(lines.filter((_, i) => i !== index))}
-                  aria-label="Remove ingredient"
+                  aria-label={t("Remove ingredient")}
                   className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
                 >
                   ✕
@@ -295,19 +299,23 @@ export function RecipeEditor({
           className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-pos-button hover:text-pos-button disabled:opacity-40 dark:border-stone-700 dark:text-stone-300"
         >
           <span className="text-base leading-none">＋</span>
-          Add ingredient
+          {t("Add ingredient")}
         </button>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-stone-600 dark:text-stone-400">
           {inventoryItems.length === 0
-            ? "Add cups and ingredients under Supplies first."
+            ? t("Add cups and ingredients under Supplies first.")
             : servings === null
-              ? "Nothing to deduct yet."
-              : `Supplies on hand cover ${servings} serving${servings === 1 ? "" : "s"}.${
+              ? t("Nothing to deduct yet.")
+              : `${
+                  servings === 1
+                    ? t("Supplies on hand cover {n} serving.", { n: servings })
+                    : t("Supplies on hand cover {n} servings.", { n: servings })
+                }${
                   lines.some((l) => l.optional)
-                    ? " Optional lines are offered at checkout."
+                    ? ` ${t("Optional lines are offered at checkout.")}`
                     : ""
                 }`}
         </p>
@@ -317,10 +325,10 @@ export function RecipeEditor({
               type="button"
               onClick={() => save(sizes)}
               disabled={saving}
-              title="Save these lines as the recipe for every size"
+              title={t("Save these lines as the recipe for every size")}
               className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-40 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700"
             >
-              Save for all sizes
+              {t("Save for all sizes")}
             </button>
           )}
           <button
@@ -329,7 +337,11 @@ export function RecipeEditor({
             disabled={saving || (!dirty && lines.length > 0)}
             className="rounded-lg bg-pos-button px-4 py-2 text-sm font-semibold text-pos-button-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {saving ? "Saving…" : lines.length === 0 && current ? "Remove recipe" : "Save recipe"}
+            {saving
+              ? t("Saving…")
+              : lines.length === 0 && current
+                ? t("Remove recipe")
+                : t("Save recipe")}
           </button>
         </div>
       </div>

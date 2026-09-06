@@ -11,6 +11,7 @@ export function StaffFrame({ children }: { children: ReactNode }) {
 
   // Restore the user's collapsed preference after mount.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (localStorage.getItem(COLLAPSE_KEY) === "1") setCollapsed(true);
   }, []);
 

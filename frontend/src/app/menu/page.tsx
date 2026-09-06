@@ -1,4 +1,4 @@
-import { MenuBrowser } from "@/components/menu-browser";
+import { MenuBrowser, MenuUnavailable } from "@/components/menu-browser";
 import type { MenuCategory } from "@/lib/types";
 
 // Customer-facing menu is always fresh (availability/prices change).
@@ -13,22 +13,13 @@ async function getMenu(): Promise<MenuCategory[]> {
 }
 
 export default async function MenuPage() {
-  let menu: MenuCategory[] = [];
-  let error: string | null = null;
+  let menu: MenuCategory[] | null = null;
   try {
     menu = await getMenu();
   } catch {
-    error = "Sorry, the menu is unavailable right now.";
-  }
-
-  if (error) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-amber-50 px-4">
-        <p className="rounded-xl bg-red-50 px-6 py-8 text-center text-red-600">
-          {error}
-        </p>
-      </main>
-    );
+    // The apology text is rendered by a client component so it can be
+    // translated; this server page only decides which state to show.
+    return <MenuUnavailable />;
   }
 
   return <MenuBrowser menu={menu} />;

@@ -1,3 +1,5 @@
+import type { TranslationKey } from "./i18n";
+
 // Sidebar pages an admin can grant to a cashier.
 //
 // `key` must match the `key` on the corresponding NAV item in
@@ -9,7 +11,8 @@
 
 export interface PagePermission {
   key: string;
-  label: string;
+  /** Translation key — render with `t()`. */
+  label: TranslationKey;
 }
 
 // Every sidebar page is assignable. Order here drives the permissions UI and

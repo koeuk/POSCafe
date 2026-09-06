@@ -12,6 +12,7 @@ import {
 } from "react";
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
+import { useT, type TranslationKey } from "@/lib/i18n";
 import { formatKhr, formatPrice } from "@/lib/pricing";
 import {
   PaymentMethod,
@@ -22,7 +23,7 @@ import {
 
 const QUICK_CASH = [5, 10, 20, 50];
 
-const METHOD_LABELS: Record<PaymentMethod, string> = {
+const METHOD_LABELS: Record<PaymentMethod, TranslationKey> = {
   [PaymentMethod.CASH]: "Cash",
   [PaymentMethod.QR]: "QR",
   [PaymentMethod.CARD]: "Card",
@@ -32,6 +33,12 @@ function PayScreen() {
   const params = useSearchParams();
   const orderIdParam = params.get("orderId");
   const { khrPerUsd } = useBranding();
+  const { t } = useT();
+  // Latest `t` for the fetch effect, so switching language doesn't refetch.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [pending, setPending] = useState<Order[]>([]);
@@ -78,7 +85,7 @@ function PayScreen() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load");
+          setError(err instanceof Error ? err.message : tRef.current("Failed to load"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -151,7 +158,7 @@ function PayScreen() {
       } catch {
         // Still unreachable — fall through to the original error.
       }
-      setError(err instanceof Error ? err.message : "Payment failed");
+      setError(err instanceof Error ? err.message : t("Payment failed"));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -162,14 +169,14 @@ function PayScreen() {
   if (!orderIdParam) {
     return (
       <Shell>
-        <h1 className="mb-1 text-2xl font-bold text-stone-900 dark:text-stone-100">Take Payment</h1>
-        <p className="mb-6 text-sm text-stone-500 dark:text-stone-400">Pick an unpaid order</p>
+        <h1 className="mb-1 text-2xl font-bold text-stone-900 dark:text-stone-100">{t("Take Payment")}</h1>
+        <p className="mb-6 text-sm text-stone-500 dark:text-stone-400">{t("Pick an unpaid order")}</p>
         {loading ? (
-          <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">{t("Loading…")}</p>
         ) : error ? (
           <ErrorBox>{error}</ErrorBox>
         ) : pending.length === 0 ? (
-          <p className="text-sm text-stone-400 dark:text-stone-500">No unpaid orders right now.</p>
+          <p className="text-sm text-stone-400 dark:text-stone-500">{t("No unpaid orders right now.")}</p>
         ) : (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {pending.map((o) => (
@@ -183,7 +190,9 @@ function PayScreen() {
                       {o.orderNumber}
                     </span>
                     <span className="ml-2 text-sm text-stone-500 dark:text-stone-400">
-                      {o.items.length} item{o.items.length === 1 ? "" : "s"}
+                      {o.items.length === 1
+                        ? t("1 item")
+                        : t("{count} items", { count: o.items.length })}
                     </span>
                   </span>
                   <span className="font-semibold text-stone-900 dark:text-stone-100">
@@ -202,7 +211,7 @@ function PayScreen() {
   if (loading) {
     return (
       <Shell>
-        <p className="text-sm text-stone-500 dark:text-stone-400">Loading order…</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">{t("Loading order…")}</p>
       </Shell>
     );
   }
@@ -222,14 +231,18 @@ function PayScreen() {
         <div className="rounded-2xl bg-green-50 p-8 text-center dark:bg-green-500/15">
           <p className="text-5xl">✅</p>
           <p className="mt-4 text-lg font-semibold text-green-800 dark:text-green-300">
-            Payment complete
+            {t("Payment complete")}
           </p>
           <p className="mt-1 text-sm text-green-700 dark:text-green-300">
-            {order?.orderNumber} · {METHOD_LABELS[paid.method]} paid {formatPrice(paid.amount)}
+            {order?.orderNumber} ·{" "}
+            {t("{method} paid {amount}", {
+              method: t(METHOD_LABELS[paid.method]),
+              amount: formatPrice(paid.amount),
+            })}
           </p>
           {Number(paid.change) > 0 && (
             <p className="mt-4 rounded-xl bg-white px-4 py-3 text-2xl font-bold text-stone-900 dark:bg-stone-900 dark:text-stone-100">
-              Change {formatPrice(paid.change)}
+              {t("Change")} {formatPrice(paid.change)}
               <span className="block text-base font-medium text-stone-400 dark:text-stone-500">
                 ≈ {formatKhr(paid.change, khrPerUsd)}
               </span>
@@ -241,13 +254,13 @@ function PayScreen() {
             href={`/receipt?orderId=${paid.orderId}`}
             className="rounded-lg border border-stone-300 px-5 py-2.5 font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
-            🖨 Print receipt
+            🖨 {t("Print receipt")}
           </Link>
           <Link
             href="/pay"
             className="rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white transition hover:bg-stone-800"
           >
-            Next payment
+            {t("Next payment")}
           </Link>
         </div>
       </Shell>
@@ -258,7 +271,7 @@ function PayScreen() {
   if (alreadyPaid) {
     return (
       <Shell>
-        <ErrorBox>This order has already been paid.</ErrorBox>
+        <ErrorBox>{t("This order has already been paid.")}</ErrorBox>
         <BackLink />
       </Shell>
     );
@@ -292,7 +305,7 @@ function PayScreen() {
             ))}
           </ul>
           <div className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold text-stone-900 dark:border-stone-800 dark:text-stone-100">
-            <span>Total due</span>
+            <span>{t("Total due")}</span>
             <span className="text-right">
               {formatPrice(due)}
               <span className="block text-sm font-medium text-stone-400 dark:text-stone-500">
@@ -317,7 +330,7 @@ function PayScreen() {
                     : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:bg-stone-800"
                 }`}
               >
-                {METHOD_LABELS[option]}
+                {t(METHOD_LABELS[option])}
               </button>
             ))}
           </div>
@@ -326,7 +339,7 @@ function PayScreen() {
             <>
               <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 p-4 text-right dark:border-stone-800 dark:bg-stone-800/50">
                 <p className="text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                  Cash received
+                  {t("Cash received")}
                 </p>
                 <p className="text-3xl font-bold text-stone-900 dark:text-stone-100">
                   {formatPrice(tendered === "" ? 0 : tendered)}
@@ -336,7 +349,7 @@ function PayScreen() {
                     tenderedNum >= due ? "text-green-600 dark:text-green-400" : "text-stone-400 dark:text-stone-500"
                   }`}
                 >
-                  Change {formatPrice(change >= 0 ? change : 0)}
+                  {t("Change")} {formatPrice(change >= 0 ? change : 0)}
                   {change > 0 && (
                     <span className="ml-1 text-stone-400 dark:text-stone-500">
                       (≈ {formatKhr(change, khrPerUsd)})
@@ -346,7 +359,7 @@ function PayScreen() {
               </div>
 
               <div className="mb-3 grid grid-cols-4 gap-2">
-                <QuickBtn label="Exact" onClick={() => setTendered(due.toFixed(2))} />
+                <QuickBtn label={t("Exact")} onClick={() => setTendered(due.toFixed(2))} />
                 {QUICK_CASH.map((amt) => (
                   <QuickBtn
                     key={amt}
@@ -360,7 +373,7 @@ function PayScreen() {
                 {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"].map(
                   (k) => (
                     <PadBtn key={k} onClick={() => press(k)}>
-                      {k === "back" ? "Back" : k}
+                      {k === "back" ? t("Back") : k}
                     </PadBtn>
                   ),
                 )}
@@ -369,7 +382,7 @@ function PayScreen() {
           ) : (
             <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-center dark:border-stone-800 dark:bg-stone-800/50">
               <p className="text-sm font-medium text-stone-500 dark:text-stone-400">
-                {METHOD_LABELS[method]} payment
+                {t("{method} payment", { method: t(METHOD_LABELS[method]) })}
               </p>
               <p className="mt-2 text-3xl font-bold text-stone-900 dark:text-stone-100">
                 {formatPrice(due)}
@@ -381,7 +394,7 @@ function PayScreen() {
                 <KhqrPanel orderId={order.id} />
               ) : (
                 <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
-                  Confirm after the terminal transfer succeeds.
+                  {t("Confirm after the terminal transfer succeeds.")}
                 </p>
               )}
             </div>
@@ -395,8 +408,11 @@ function PayScreen() {
             className="mt-4 w-full rounded-lg bg-stone-900 py-3 font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting
-              ? "Processing..."
-              : `Confirm ${METHOD_LABELS[method].toLowerCase()} payment · ${formatPrice(due)}`}
+              ? t("Processing...")
+              : t("Confirm {method} payment · {amount}", {
+                  method: t(METHOD_LABELS[method]).toLowerCase(),
+                  amount: formatPrice(due),
+                })}
           </button>
         </div>
       </div>
@@ -412,6 +428,12 @@ function PayScreen() {
  */
 function KhqrPanel({ orderId }: { orderId: number }) {
   const { khqrEnabled } = useBranding();
+  const { t } = useT();
+  // Latest `t` for the fetch effect, so switching language doesn't refetch.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const [image, setImage] = useState<string | null>(null);
   // Static codes carry no amount and never expire, so the countdown and the
   // regenerate button only apply to dynamic ones.
@@ -452,7 +474,7 @@ function KhqrPanel({ orderId }: { orderId: number }) {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Could not build the QR code",
+            err instanceof Error ? err.message : tRef.current("Could not build the QR code"),
           );
         }
       } finally {
@@ -480,8 +502,9 @@ function KhqrPanel({ orderId }: { orderId: number }) {
   if (!khqrEnabled) {
     return (
       <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-        QR payment isn&apos;t set up yet — add your Bakong account in Settings to
-        show a scannable KHQR here. You can still confirm a transfer manually.
+        {t(
+          "QR payment isn't set up yet — add your Bakong account in Settings to show a scannable KHQR here. You can still confirm a transfer manually.",
+        )}
       </p>
     );
   }
@@ -492,7 +515,7 @@ function KhqrPanel({ orderId }: { orderId: number }) {
     <div className="mt-3">
       {loading ? (
         <p className="text-sm text-stone-400 dark:text-stone-500">
-          Generating QR…
+          {t("Generating QR…")}
         </p>
       ) : error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
@@ -504,23 +527,27 @@ function KhqrPanel({ orderId }: { orderId: number }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={image}
-              alt="KHQR code for this order"
+              alt={t("KHQR code for this order")}
               width={220}
               height={220}
               className={`h-[220px] w-[220px] ${expired ? "opacity-20" : ""}`}
             />
             {expired && (
               <span className="absolute inset-0 grid place-items-center text-sm font-semibold text-stone-700">
-                QR expired
+                {t("QR expired")}
               </span>
             )}
           </div>
           <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
             {!dynamic
-              ? "Scan with any Cambodian banking app, then ask the customer to enter the amount above."
+              ? t(
+                  "Scan with any Cambodian banking app, then ask the customer to enter the amount above.",
+                )
               : expired
-                ? "Generate a new code to try again."
-                : `Scan with any Cambodian banking app · expires in ${formatCountdown(secondsLeft)}`}
+                ? t("Generate a new code to try again.")
+                : t("Scan with any Cambodian banking app · expires in {time}", {
+                    time: formatCountdown(secondsLeft),
+                  })}
           </p>
           {expired && (
             <button
@@ -528,7 +555,7 @@ function KhqrPanel({ orderId }: { orderId: number }) {
               onClick={() => setAttempt((n) => n + 1)}
               className="mt-2 rounded-lg border border-stone-300 px-4 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
             >
-              New QR code
+              {t("New QR code")}
             </button>
           )}
         </>
@@ -572,12 +599,13 @@ function ErrorBox({ children }: { children: React.ReactNode }) {
 }
 
 function BackLink() {
+  const { t } = useT();
   return (
     <Link
       href="/pay"
       className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
     >
-      ← All unpaid orders
+      ← {t("All unpaid orders")}
     </Link>
   );
 }
@@ -610,15 +638,18 @@ function PadBtn({
   );
 }
 
+function LoadingFallback() {
+  const { t } = useT();
+  return (
+    <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
+      {t("Loading…")}
+    </div>
+  );
+}
+
 export default function PayPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-sm text-stone-500 dark:text-stone-400">
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <PayScreen />
     </Suspense>
   );

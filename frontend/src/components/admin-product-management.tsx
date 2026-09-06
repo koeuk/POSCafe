@@ -14,6 +14,7 @@ import { formatPrice, isRecipeManaged, sizeStock, totalStock } from "@/lib/prici
 import { SizesManager } from "@/components/sizes-manager";
 import type { Category, Product, Size, SizeRow, StockMode } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
+import { useT, type Translate, type TranslationKey } from "@/lib/i18n";
 
 interface CategoryForm {
   id: number | null;
@@ -79,7 +80,10 @@ const EMPTY_PRODUCT_FORM: ProductForm = {
 
 type ManagementView = "categories" | "products";
 
-const VIEW_COPY: Record<ManagementView, { title: string; description: string }> = {
+const VIEW_COPY: Record<
+  ManagementView,
+  { title: TranslationKey; description: TranslationKey }
+> = {
   categories: {
     title: "Category Management",
     description: "Manage menu categories and customer-facing menu sections.",
@@ -95,6 +99,7 @@ export function AdminProductManagement({
 }: {
   view?: ManagementView;
 }) {
+  const { t } = useT();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [sizeCatalog, setSizeCatalog] = useState<Size[]>([]);
@@ -156,7 +161,7 @@ export function AdminProductManagement({
       const [url] = await upload(file);
       setProductForm((form) => ({ ...form, image: url }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : t("Upload failed"));
     }
   }
 
@@ -167,7 +172,7 @@ export function AdminProductManagement({
       const [url] = await upload(file);
       setCategoryForm((form) => ({ ...form, image: url }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : t("Upload failed"));
     }
   }
 
@@ -178,7 +183,7 @@ export function AdminProductManagement({
       const urls = await upload(files);
       setProductForm((form) => ({ ...form, gallery: [...form.gallery, ...urls] }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : t("Upload failed"));
     }
   }
 
@@ -224,7 +229,7 @@ export function AdminProductManagement({
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load data");
+          setError(err instanceof Error ? err.message : t("Failed to load data"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -235,6 +240,8 @@ export function AdminProductManagement({
     return () => {
       cancelled = true;
     };
+    // `t` only labels a fallback error; a locale switch must not reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Deep-link: open the create/edit drawer when arriving via ?create=1 or
@@ -405,7 +412,7 @@ export function AdminProductManagement({
       await reload();
       closeDrawer();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save category");
+      setError(err instanceof Error ? err.message : t("Failed to save category"));
     } finally {
       setBusy(false);
     }
@@ -414,12 +421,12 @@ export function AdminProductManagement({
   async function submitProduct(event: FormEvent) {
     event.preventDefault();
     if (!productForm.categoryId) {
-      setError("Pick a category for the product");
+      setError(t("Pick a category for the product"));
       return;
     }
 
     // Sizes: pick a size + price per row. Stock is tracked per product.
-    const parsedSizes = buildSizes(productForm.sizes);
+    const parsedSizes = buildSizes(productForm.sizes, t);
     // Did the product being edited actually have sizes? Distinguishes
     // "cleared them deliberately" from "there was never a size editor".
     const hadSizes =
@@ -463,7 +470,7 @@ export function AdminProductManagement({
       await reload();
       closeDrawer();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save product");
+      setError(err instanceof Error ? err.message : t("Failed to save product"));
     } finally {
       setBusy(false);
     }
@@ -487,7 +494,13 @@ export function AdminProductManagement({
       if (err instanceof ApiError && err.status === 409 && forceDelete === null) {
         setForceDelete({ message: err.message, ack: false });
       } else {
-        setError(err instanceof Error ? err.message : `Failed to delete ${deleteTarget.type}`);
+        setError(
+          err instanceof Error
+            ? err.message
+            : deleteTarget.type === "category"
+              ? t("Failed to delete category")
+              : t("Failed to delete product"),
+        );
       }
     } finally {
       setBusy(false);
@@ -499,10 +512,10 @@ export function AdminProductManagement({
       <header className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-5 ${GLASS}`}>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-            {pageCopy.title}
+            {t(pageCopy.title)}
           </h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">
-            {pageCopy.description}
+            {t(pageCopy.description)}
           </p>
         </div>
       </header>
@@ -514,28 +527,28 @@ export function AdminProductManagement({
       )}
 
       {loading ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">Loading...</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">{t("Loading…")}</p>
       ) : (
         <div className="space-y-6">
           {view === "categories" && (
             <ManagementSection
-              title="Menu Categories"
-              description="Group customer-facing products into visible menu sections."
+              title={t("Menu Categories")}
+              description={t("Group customer-facing products into visible menu sections.")}
               count={categories.length}
-              actionLabel="Create category"
+              actionLabel={t("Create category")}
               onCreate={openCategoryCreate}
             >
             {categories.length === 0 ? (
-              <EmptyState message="No categories yet." />
+              <EmptyState message={t("No categories yet.")} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-stone-50 text-stone-500 dark:bg-stone-800/50 dark:text-stone-400">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Category</th>
-                      <th className="px-4 py-3 font-medium">Products</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Image</th>
+                      <th className="px-4 py-3 font-medium">{t("Category")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Products")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Status")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Image")}</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -547,14 +560,14 @@ export function AdminProductManagement({
                         <td className="px-4 py-3">
                           <p className="font-medium text-stone-900 dark:text-stone-100">{category.name}</p>
                           <p className="mt-0.5 max-w-md truncate text-xs text-stone-400 dark:text-stone-500">
-                            {category.description || "No description"}
+                            {category.description || t("No description")}
                           </p>
                         </td>
                         <td className="px-4 py-3 text-stone-600 dark:text-stone-400">
                           {productCountByCategory.get(category.id) ?? 0}
                         </td>
                         <td className="px-4 py-3">
-                          <StatusPill active={category.isActive} activeLabel="Active" inactiveLabel="Hidden" />
+                          <StatusPill active={category.isActive} activeLabel={t("Active")} inactiveLabel={t("Hidden")} />
                         </td>
                         <td className="px-4 py-3">
                           {category.image ? (
@@ -602,10 +615,10 @@ export function AdminProductManagement({
 
           {view === "products" && (
             <ManagementSection
-              title="Products"
-              description="Control item details, availability, stock, prices, and menu visibility."
+              title={t("Products")}
+              description={t("Control item details, availability, stock, prices, and menu visibility.")}
               count={products.length}
-              actionLabel="Create product"
+              actionLabel={t("Create product")}
               onCreate={openProductCreate}
             >
             <div className="flex items-center gap-3 px-5 py-4">
@@ -629,15 +642,15 @@ export function AdminProductManagement({
                   type="text"
                   value={productQuery}
                   onChange={(e) => setProductQuery(e.target.value)}
-                  placeholder="Search product, category, or size…"
-                  aria-label="Search products"
+                  placeholder={t("Search product, category, or size…")}
+                  aria-label={t("Search products")}
                   className={`${INPUT_CLASS} pl-9 pr-9`}
                 />
                 {productQuery && (
                   <button
                     type="button"
                     onClick={() => setProductQuery("")}
-                    aria-label="Clear search"
+                    aria-label={t("Clear search")}
                     className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-700"
                   >
                     ✕
@@ -650,7 +663,7 @@ export function AdminProductManagement({
                 options={[
                   {
                     value: "all" as const,
-                    label: `All categories (${products.length})`,
+                    label: t("All categories ({count})", { count: products.length }),
                   },
                   ...categories.map((c) => ({
                     value: c.id,
@@ -667,25 +680,25 @@ export function AdminProductManagement({
                   }}
                   className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
                 >
-                  Clear
+                  {t("Clear")}
                 </button>
               )}
             </div>
             {products.length === 0 ? (
-              <EmptyState message="No products yet." />
+              <EmptyState message={t("No products yet.")} />
             ) : filteredProducts.length === 0 ? (
-              <EmptyState message={`No products match “${productQuery}”.`} />
+              <EmptyState message={t("No products match “{query}”.", { query: productQuery })} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-stone-50 text-stone-500 dark:bg-stone-800/50 dark:text-stone-400">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Product</th>
-                      <th className="px-4 py-3 font-medium">Category</th>
-                      <th className="px-4 py-3 font-medium">Price</th>
-                      <th className="px-4 py-3 font-medium">Stock</th>
-                      <th className="px-4 py-3 font-medium">Discount</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
+                      <th className="px-4 py-3 font-medium">{t("Product")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Category")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Price")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Stock")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Discount")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Status")}</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -723,7 +736,7 @@ export function AdminProductManagement({
                         <td className="px-4 py-3 text-stone-500 dark:text-stone-400">
                           {categoryName(product.categoryId)}
                         </td>
-                        <td className="px-4 py-3">{productPriceLabel(product)}</td>
+                        <td className="px-4 py-3">{productPriceLabel(product, t)}</td>
                         <td className="px-4 py-3">
                           <StockCell product={product} />
                         </td>
@@ -733,8 +746,8 @@ export function AdminProductManagement({
                         <td className="px-4 py-3">
                           <StatusPill
                             active={product.isAvailable}
-                            activeLabel="Available"
-                            inactiveLabel="Hidden"
+                            activeLabel={t("Available")}
+                            inactiveLabel={t("Hidden")}
                           />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -763,8 +776,8 @@ export function AdminProductManagement({
 
       {drawer?.type === "category" && (
         <SidePanel
-          title={drawer.mode === "create" ? "Create category" : "Edit category"}
-          description="Categories appear as sections on the customer menu."
+          title={drawer.mode === "create" ? t("Create category") : t("Edit category")}
+          description={t("Categories appear as sections on the customer menu.")}
           onClose={() => closeDrawer()}
         >
           <form
@@ -772,7 +785,7 @@ export function AdminProductManagement({
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
-            <Field label="Name">
+            <Field label={t("Name")}>
               <input
                 value={categoryForm.name}
                 onChange={(event) =>
@@ -782,7 +795,7 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Description">
+            <Field label={t("Description")}>
               <textarea
                 value={categoryForm.description}
                 onChange={(event) =>
@@ -795,7 +808,7 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Image">
+            <Field label={t("Image")}>
               <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm dark:bg-stone-800">
                 <button
                   type="button"
@@ -806,7 +819,7 @@ export function AdminProductManagement({
                       : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
-                  Upload
+                  {t("Upload")}
                 </button>
                 <button
                   type="button"
@@ -817,7 +830,7 @@ export function AdminProductManagement({
                       : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
-                  Use link
+                  {t("Use link")}
                 </button>
               </div>
               {categoryImageMode === "upload" ? (
@@ -860,7 +873,7 @@ export function AdminProductManagement({
                     }
                     className="text-sm text-red-600 hover:underline dark:text-red-400"
                   >
-                    Remove
+                    {t("Remove")}
                   </button>
                 </div>
               )}
@@ -876,12 +889,12 @@ export function AdminProductManagement({
                   }))
                 }
               />
-              Active on menu
+              {t("Active on menu")}
             </label>
             </div>
             <PanelActions
               busy={busy}
-              submitLabel={drawer.mode === "create" ? "Create category" : "Save category"}
+              submitLabel={drawer.mode === "create" ? t("Create category") : t("Save category")}
               onCancel={() => closeDrawer()}
             />
           </form>
@@ -890,8 +903,8 @@ export function AdminProductManagement({
 
       {drawer?.type === "product" && (
         <SidePanel
-          title={drawer.mode === "create" ? "Create product" : "Edit product"}
-          description="Products are shown in the customer menu when available."
+          title={drawer.mode === "create" ? t("Create product") : t("Edit product")}
+          description={t("Products are shown in the customer menu when available.")}
           onClose={() => closeDrawer()}
         >
           <form
@@ -899,7 +912,7 @@ export function AdminProductManagement({
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
-            <Field label="Name">
+            <Field label={t("Name")}>
               <input
                 value={productForm.name}
                 onChange={(event) =>
@@ -909,7 +922,7 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Category">
+            <Field label={t("Category")}>
               <CategoryCombobox
                 categories={categories}
                 value={productForm.categoryId}
@@ -919,7 +932,7 @@ export function AdminProductManagement({
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Base price ($)">
+              <Field label={t("Base price ($)")}>
                 <input
                   type="number"
                   step="0.01"
@@ -935,18 +948,18 @@ export function AdminProductManagement({
                   className={INPUT_CLASS}
                 />
               </Field>
-              <Field label="Stock">
+              <Field label={t("Stock")}>
                 <div className="flex gap-2">
                   <div
                     role="radiogroup"
-                    aria-label="Stock tracking"
+                    aria-label={t("Stock tracking")}
                     className="flex shrink-0 items-center rounded-lg bg-stone-100 p-0.5 text-xs font-semibold dark:bg-stone-800"
                   >
                     {(
                       [
                         { id: "count", label: "Counted" },
                         { id: "recipe", label: "Made to order" },
-                      ] as { id: StockMode; label: string }[]
+                      ] as { id: StockMode; label: TranslationKey }[]
                     ).map((m) => (
                       <button
                         key={m.id}
@@ -962,7 +975,7 @@ export function AdminProductManagement({
                             : "text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
                         }`}
                       >
-                        {m.label}
+                        {t(m.label)}
                       </button>
                     ))}
                   </div>
@@ -977,19 +990,19 @@ export function AdminProductManagement({
                           stock: event.target.value,
                         }))
                       }
-                      aria-label="Units in stock"
+                      aria-label={t("Units in stock")}
                       required
                       className={INPUT_CLASS}
                     />
                   ) : (
                     <span className="self-center text-xs text-stone-500 dark:text-stone-400">
-                      Recipe on the Inventory page
+                      {t("Recipe on the Inventory page")}
                     </span>
                   )}
                 </div>
               </Field>
             </div>
-            <Field label="Discount (%)">
+            <Field label={t("Discount (%)")}>
               <input
                 type="number"
                 min="0"
@@ -1004,7 +1017,7 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Main image">
+            <Field label={t("Main image")}>
               <div className="mb-2 flex gap-1 rounded-lg bg-stone-100 p-1 text-sm dark:bg-stone-800">
                 <button
                   type="button"
@@ -1015,7 +1028,7 @@ export function AdminProductManagement({
                       : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
-                  Upload
+                  {t("Upload")}
                 </button>
                 <button
                   type="button"
@@ -1026,7 +1039,7 @@ export function AdminProductManagement({
                       : "text-stone-500 dark:text-stone-400"
                   }`}
                 >
-                  Use link
+                  {t("Use link")}
                 </button>
               </div>
               {imageMode === "upload" ? (
@@ -1066,12 +1079,12 @@ export function AdminProductManagement({
                     }
                     className="text-sm text-red-600 hover:underline dark:text-red-400"
                   >
-                    Remove
+                    {t("Remove")}
                   </button>
                 </div>
               )}
             </Field>
-            <Field label="Gallery (extra images)">
+            <Field label={t("Gallery (extra images)")}>
               <input
                 type="file"
                 accept="image/*"
@@ -1090,7 +1103,7 @@ export function AdminProductManagement({
                       addGalleryLink();
                     }
                   }}
-                  placeholder="…or paste an image link"
+                  placeholder={t("…or paste an image link")}
                   className={INPUT_CLASS}
                 />
                 <button
@@ -1098,7 +1111,7 @@ export function AdminProductManagement({
                   onClick={addGalleryLink}
                   className="shrink-0 rounded-lg bg-stone-800 px-3 py-2 text-sm font-medium text-white dark:bg-stone-700"
                 >
-                  Add
+                  {t("Add")}
                 </button>
               </div>
               {productForm.gallery.length > 0 && (
@@ -1115,7 +1128,7 @@ export function AdminProductManagement({
                         type="button"
                         onClick={() => removeGalleryImage(index)}
                         className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-red-600 text-xs leading-none text-white"
-                        aria-label="Remove image"
+                        aria-label={t("Remove image")}
                       >
                         ×
                       </button>
@@ -1124,7 +1137,7 @@ export function AdminProductManagement({
                 </div>
               )}
             </Field>
-            <Field label="Description">
+            <Field label={t("Description")}>
               <textarea
                 value={productForm.description}
                 onChange={(event) =>
@@ -1137,19 +1150,18 @@ export function AdminProductManagement({
                 className={INPUT_CLASS}
               />
             </Field>
-            <Field label="Sizes (optional)">
+            <Field label={t("Sizes (optional)")}>
               {sizeCatalog.length === 0 ? (
                 <p className="rounded-lg bg-stone-50 px-3 py-2.5 text-xs text-stone-500 dark:bg-stone-800/60 dark:text-stone-400">
-                  No sizes defined yet. Add some in the Sizes section of the
-                  Products page first.
+                  {t("No sizes defined yet. Add some in the Sizes section of the Products page first.")}
                 </p>
               ) : (
                 <div className="space-y-2">
                   {/* Column labels — aligned to the grid below. */}
                   {productForm.sizes.length > 0 && (
                     <div className="grid grid-cols-[1fr_1fr_2rem] gap-2 px-0.5 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                      <span>Size</span>
-                      <span>Price</span>
+                      <span>{t("Size")}</span>
+                      <span>{t("Price")}</span>
                       <span />
                     </div>
                   )}
@@ -1169,11 +1181,11 @@ export function AdminProductManagement({
                         className="grid grid-cols-[1fr_1fr_2rem] items-center gap-2"
                       >
                         <PopSelect
-                          ariaLabel="Size"
+                          ariaLabel={t("Size")}
                           className="min-w-0"
                           buttonClassName={INPUT_CLASS}
                           value={row.size}
-                          placeholder="Select…"
+                          placeholder={t("Select…")}
                           onChange={(v) => updateSizeRow(index, "size", v)}
                           options={options.map((s) => ({
                             value: s.name,
@@ -1191,14 +1203,14 @@ export function AdminProductManagement({
                             }
                             inputMode="decimal"
                             placeholder="0.00"
-                            aria-label="Price"
+                            aria-label={t("Price")}
                             className={`${INPUT_CLASS} pl-6`}
                           />
                         </div>
                         <button
                           type="button"
                           onClick={() => removeSizeRow(index)}
-                          aria-label="Remove size"
+                          aria-label={t("Remove size")}
                           className="flex h-9 w-8 items-center justify-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600 dark:text-stone-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                         >
                           ✕
@@ -1214,18 +1226,28 @@ export function AdminProductManagement({
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 transition hover:border-pos-button hover:text-pos-button disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:text-stone-400"
                   >
                     <span className="text-base leading-none">＋</span>
-                    Add size
+                    {t("Add size")}
                   </button>
                   <p className="text-xs text-stone-400 dark:text-stone-500">
-                    Each size only sets a price. Stock is tracked per product on
-                    the{" "}
-                    <Link
-                      href={`${base}/stock`}
-                      className="underline hover:text-stone-600 dark:hover:text-stone-300"
-                    >
-                      Inventory
-                    </Link>{" "}
-                    page.
+                    {/* The sentence is one key so Khmer can place the link
+                        wherever its grammar needs it. */}
+                    {t(
+                      "Each size only sets a price. Stock is tracked per product on the {inventory} page.",
+                    )
+                      .split("{inventory}")
+                      .map((part, i) => (
+                        <span key={i}>
+                          {i > 0 && (
+                            <Link
+                              href={`${base}/stock`}
+                              className="underline hover:text-stone-600 dark:hover:text-stone-300"
+                            >
+                              {t("Inventory")}
+                            </Link>
+                          )}
+                          {part}
+                        </span>
+                      ))}
                   </p>
                 </div>
               )}
@@ -1241,12 +1263,12 @@ export function AdminProductManagement({
                   }))
                 }
               />
-              Available for sale
+              {t("Available for sale")}
             </label>
             </div>
             <PanelActions
               busy={busy}
-              submitLabel={drawer.mode === "create" ? "Create product" : "Save product"}
+              submitLabel={drawer.mode === "create" ? t("Create product") : t("Save product")}
               onCancel={() => closeDrawer()}
             />
           </form>
@@ -1255,13 +1277,19 @@ export function AdminProductManagement({
 
       {deleteTarget && (
         <ConfirmDialog
-          title={`Delete ${deleteTarget.type}`}
+          title={
+            deleteTarget.type === "category"
+              ? t("Delete category")
+              : t("Delete product")
+          }
           message={
             forceDelete
               ? forceDelete.message
-              : `Delete "${deleteTarget.name}"? This action cannot be undone.`
+              : t('Delete "{name}"? This action cannot be undone.', {
+                  name: deleteTarget.name,
+                })
           }
-          confirmLabel={forceDelete ? "Delete anyway" : "Delete"}
+          confirmLabel={forceDelete ? t("Delete anyway") : t("Delete")}
           confirmDisabled={forceDelete !== null && !forceDelete.ack}
           busy={busy}
           onCancel={() => requestDelete(null)}
@@ -1277,7 +1305,7 @@ export function AdminProductManagement({
                 }
                 className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-red-600 dark:border-stone-600"
               />
-              <span>I understand — go ahead and delete &ldquo;{deleteTarget.name}&rdquo;.</span>
+              <span>{t("I understand — go ahead and delete “{name}”.", { name: deleteTarget.name })}</span>
             </label>
           )}
         </ConfirmDialog>
@@ -1334,25 +1362,26 @@ function RowActions({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="inline-flex items-center gap-2">
       <Link
         href={viewHref}
         className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
       >
-        View
+        {t("View")}
       </Link>
       <button
         onClick={onEdit}
         className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
       >
-        Edit
+        {t("Edit")}
       </button>
       <button
         onClick={onDelete}
         className="rounded-lg border border-red-100 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
       >
-        Delete
+        {t("Delete")}
       </button>
     </div>
   );
@@ -1369,6 +1398,7 @@ function SidePanel({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t } = useT();
   return (
     <div className="fixed inset-0 z-50">
       {/* Backdrop is non-dismissing — only Close/Cancel can close the form. */}
@@ -1386,7 +1416,7 @@ function SidePanel({
               onClick={onClose}
               className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50 dark:border-stone-800 dark:text-stone-400 dark:hover:bg-stone-800"
             >
-              Close
+              {t("Close")}
             </button>
           </div>
         </header>
@@ -1405,6 +1435,7 @@ function PanelActions({
   submitLabel: string;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="flex shrink-0 justify-end gap-2 border-t border-stone-200 bg-white px-6 py-4 dark:border-stone-800 dark:bg-stone-900">
       <button
@@ -1413,14 +1444,14 @@ function PanelActions({
         disabled={busy}
         className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
       >
-        Cancel
+        {t("Cancel")}
       </button>
       <button
         type="submit"
         disabled={busy}
         className="rounded-lg bg-pos-button px-4 py-2 text-sm font-medium text-pos-button-fg transition hover:brightness-110 disabled:opacity-50"
       >
-        {busy ? "Saving..." : submitLabel}
+        {busy ? t("Saving…") : submitLabel}
       </button>
     </div>
   );
@@ -1472,6 +1503,7 @@ function CategoryCombobox({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1510,7 +1542,7 @@ function CategoryCombobox({
         className={`${INPUT_CLASS} flex items-center justify-between text-left`}
       >
         <span className={selected ? "text-stone-900 dark:text-stone-100" : "text-stone-400 dark:text-stone-500"}>
-          {selected ? selected.name : "Select..."}
+          {selected ? selected.name : t("Select…")}
         </span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -1536,14 +1568,14 @@ function CategoryCombobox({
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search category…"
+              placeholder={t("Search category…")}
               className="w-full rounded-md border border-stone-200 px-2.5 py-1.5 text-sm text-stone-900 outline-none focus:border-pos-button dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:placeholder:text-stone-500"
             />
           </div>
           <ul role="listbox" className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <li className="px-3 py-2 text-sm text-stone-400 dark:text-stone-500">
-                No categories found
+                {t("No categories found")}
               </li>
             ) : (
               filtered.map((category) => {
@@ -1576,6 +1608,7 @@ function CategoryCombobox({
 // Validate the size rows: each needs a picked size (unique) and a valid price.
 function buildSizes(
   rows: SizeRow[],
+  t: Translate,
 ): { size: string; price: number }[] | null | Error {
   const filled = rows.filter((r) => r.size.trim() || r.price.trim());
   if (filled.length === 0) return null;
@@ -1584,12 +1617,14 @@ function buildSizes(
   const sizes: { size: string; price: number }[] = [];
   for (const row of filled) {
     const size = row.size.trim();
-    if (!size) return new Error("Pick a size for each row.");
-    if (seen.has(size)) return new Error(`Size "${size}" is selected twice.`);
+    if (!size) return new Error(t("Pick a size for each row."));
+    if (seen.has(size)) {
+      return new Error(t('Size "{size}" is selected twice.', { size }));
+    }
     seen.add(size);
     const price = Number(row.price);
     if (!row.price || Number.isNaN(price) || price < 0) {
-      return new Error(`Enter a valid price for "${size}".`);
+      return new Error(t('Enter a valid price for "{size}".', { size }));
     }
     sizes.push({ size, price });
   }
@@ -1635,6 +1670,7 @@ function stockTone(qty: number): StockTone {
  * wrapper can't clip it.
  */
 function StockCell({ product }: { product: Product }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(
     null,
@@ -1695,7 +1731,7 @@ function StockCell({ product }: { product: Product }) {
         }))
       : [
           {
-            label: madeToOrder ? "Can be made" : "In stock",
+            label: madeToOrder ? t("Can be made") : t("In stock"),
             qty: Math.max(0, totalStock(product)),
           },
         ];
@@ -1711,13 +1747,17 @@ function StockCell({ product }: { product: Product }) {
 
   const summary = madeToOrder
     ? outCount > 0 && lines.length > 1
-      ? `${outCount} of ${lines.length} sizes can't be made`
-      : "made to order"
+      ? t("{out} of {total} sizes can't be made", {
+          out: outCount,
+          total: lines.length,
+        })
+      : t("made to order")
     : outCount > 0
-      ? "sold out"
+      ? t("sold out")
       : lowCount > 0
-        ? "running low"
-        : "in stock";
+        ? t("running low")
+        : t("in stock");
+  const modeLabel = madeToOrder ? t("can be made") : t("in stock");
 
   return (
     <>
@@ -1727,14 +1767,14 @@ function StockCell({ product }: { product: Product }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Stock: ${total} ${madeToOrder ? "can be made" : "in stock"}, ${summary}`}
+        aria-label={t("Stock: {total} {mode}, {summary}", { total, mode: modeLabel, summary })}
         className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-xs font-medium transition hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/40 dark:hover:bg-stone-800"
       >
         <span className={`h-2 w-2 shrink-0 rounded-full ${STOCK_TONE[tone].dot}`} />
         <span className={`tabular-nums ${STOCK_TONE[tone].text}`}>{total}</span>
         {outCount > 0 && (
           <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-500/15 dark:text-red-400">
-            {outCount} out
+            {t("{count} out", { count: outCount })}
           </span>
         )}
         <svg
@@ -1757,7 +1797,7 @@ function StockCell({ product }: { product: Product }) {
           <div
             ref={menuRef}
             role="dialog"
-            aria-label={`Stock breakdown for ${product.name}`}
+            aria-label={t("Stock breakdown for {name}", { name: product.name })}
             style={{ top: coords.top, left: coords.left }}
             className="pos-drop fixed z-50 w-60 overflow-hidden rounded-xl border border-stone-200 bg-white text-left shadow-lg dark:border-stone-800 dark:bg-stone-900"
           >
@@ -1767,7 +1807,7 @@ function StockCell({ product }: { product: Product }) {
               </p>
               <p className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">
                 <span className="font-medium tabular-nums">{total}</span>{" "}
-                {madeToOrder ? "can be made" : "in stock"} · {summary}
+                {modeLabel} · {summary}
               </p>
             </div>
 
@@ -1785,7 +1825,7 @@ function StockCell({ product }: { product: Product }) {
                           <span
                             className={`text-[10px] font-semibold uppercase tracking-wide ${STOCK_TONE[lineTone].text}`}
                           >
-                            {lineTone === "out" ? "Sold out" : "Low"}
+                            {lineTone === "out" ? t("Sold out") : t("Low")}
                           </span>
                         )}
                         <span
@@ -1816,10 +1856,10 @@ function StockCell({ product }: { product: Product }) {
   );
 }
 
-function productPriceLabel(product: Product): string {
+function productPriceLabel(product: Product, t: Translate): string {
   if (product.variants && product.variants.length > 0) {
     const min = Math.min(...product.variants.map((size) => Number(size.price)));
-    return `from ${formatPrice(min)}`;
+    return t("from {price}", { price: formatPrice(min) });
   }
   return formatPrice(product.price);
 }
@@ -1836,13 +1876,14 @@ function CategoryFilterDropdown({
   onChange: (value: number | "all") => void;
   options: { value: number | "all"; label: string }[];
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useClickOutside(ref, () => setOpen(false), open, { escape: true });
 
   const current =
-    options.find((o) => o.value === value)?.label ?? "All categories";
+    options.find((o) => o.value === value)?.label ?? t("All categories");
 
   return (
     <div ref={ref} className="relative shrink-0">
@@ -1851,7 +1892,7 @@ function CategoryFilterDropdown({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Filter by category"
+        aria-label={t("Filter by category")}
         className={`${INPUT_CLASS} flex w-56 cursor-pointer items-center justify-between gap-2 text-left transition hover:border-stone-400 dark:hover:border-stone-600`}
       >
         <span className="truncate">{current}</span>
@@ -1874,7 +1915,7 @@ function CategoryFilterDropdown({
       {open && (
         <div
           role="listbox"
-          aria-label="Filter by category"
+          aria-label={t("Filter by category")}
           className={`absolute right-0 z-20 mt-2 max-h-72 w-full origin-top-right overflow-y-auto rounded-xl p-1 ${GLASS}`}
           style={{ animation: "menu-pop 160ms cubic-bezier(0.22,1,0.36,1)" }}
         >
