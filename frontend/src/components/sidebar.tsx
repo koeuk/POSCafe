@@ -489,7 +489,7 @@ function UserBlock({ collapsed }: { collapsed?: boolean }) {
       {open && (
         <div
           role="menu"
-          className="pos-drop absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
+          className="pos-drop absolute bottom-full left-0 z-50 mb-2 w-56 overflow-hidden rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-900"
         >
           <div className="flex items-center justify-between gap-2 px-2.5 py-2">
             <span className="text-xs font-medium text-stone-500 dark:text-stone-400">
