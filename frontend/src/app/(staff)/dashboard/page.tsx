@@ -7,6 +7,13 @@ import { useFetch } from "@/lib/use-api";
 import { useClickOutside } from "@/lib/use-click-outside";
 import { formatPrice } from "@/lib/pricing";
 import {
+  formatMonthShort,
+  formatTimeShort,
+  formatWeekdayShort,
+  useT,
+  type TranslationKey,
+} from "@/lib/i18n";
+import {
   OrderStatus,
   PaymentStatus,
   type Order,
@@ -48,7 +55,8 @@ const CAT_COLORS = [
   "#EC4899",
 ];
 
-const STATUS_META: Record<OrderStatus, { label: string; color: string }> = {
+// Labels are translation keys — render them through `t()`.
+const STATUS_META: Record<OrderStatus, { label: TranslationKey; color: string }> = {
   [OrderStatus.PENDING]: { label: "Pending", color: "#F59E0B" },
   [OrderStatus.PREPARING]: { label: "Preparing", color: "#3B82F6" },
   [OrderStatus.READY]: { label: "Ready", color: "#7C5CFC" },
@@ -73,7 +81,7 @@ type Period =
   | "last_year"
   | "all";
 
-const PERIODS: { value: Period; label: string }[] = [
+const PERIODS: { value: Period; label: TranslationKey }[] = [
   { value: "this_week", label: "This Week" },
   { value: "last_week", label: "Last Week" },
   { value: "this_month", label: "This Month" },
@@ -93,6 +101,7 @@ function startOfWeek(d: Date) {
 
 function Dashboard() {
   const { user } = useAuth();
+  const { t } = useT();
   const [period, setPeriod] = useState<Period>("this_week");
   const [chartType, setChartType] = useState<ChartType>("bar");
 
@@ -106,7 +115,7 @@ function Dashboard() {
       return { orders, products, categories };
     },
     [],
-    { fallback: "Failed to load data" },
+    { fallback: t("Failed to load data") },
   );
   const { orders, products, categories } = data ?? {
     orders: [] as Order[],
@@ -208,7 +217,7 @@ function Dashboard() {
         buckets.push({
           label: byDate
             ? String(d.getDate())
-            : d.toLocaleDateString("en-US", { weekday: "short" }),
+            : formatWeekdayShort(d, t),
           value: map.get(key) ?? 0,
           current: key === todayKey,
         });
@@ -223,10 +232,7 @@ function Dashboard() {
       ) {
         const key = `${d.getFullYear()}-${d.getMonth()}`;
         buckets.push({
-          label: d.toLocaleDateString("en-US", {
-            month: "short",
-            ...(multiYear ? { year: "2-digit" } : {}),
-          }),
+          label: formatMonthShort(d, t, multiYear),
           value: map.get(key) ?? 0,
           current: key === curKey,
         });
@@ -238,10 +244,16 @@ function Dashboard() {
       total: buckets.reduce((s, b) => s + b.value, 0),
       max: Math.max(1, ...buckets.map((b) => b.value)),
     };
-  }, [orders, period]);
+  }, [orders, period, t]);
 
-  const periodLabel =
-    PERIODS.find((p) => p.value === period)?.label ?? "This Week";
+  const periodLabel = t(
+    PERIODS.find((p) => p.value === period)?.label ?? "This Week",
+  );
+
+  const chartTypeOptions = useMemo(
+    () => CHART_TYPES.map((o) => ({ ...o, label: t(o.label) })),
+    [t],
+  );
 
   // The chart owns its geometry; the page owns bucketing and labels.
   const chartPoints = useMemo(
@@ -307,10 +319,10 @@ function Dashboard() {
         style={{ animationDelay: "0ms" }}
       >
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Hi, {user?.name ?? "there"}
+          {t("Hi")}, {user?.name ?? t("there")}
         </h1>
         <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-          Admin command center for today&apos;s cafe operations.
+          {t("Admin command center for today's cafe operations.")}
         </p>
       </div>
 
@@ -324,7 +336,7 @@ function Dashboard() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           index={0}
-          label="Revenue"
+          label={t("Revenue")}
           value={formatPrice(stats.revenue)}
           tone="#059669"
           solid
@@ -337,7 +349,7 @@ function Dashboard() {
         />
         <StatCard
           index={1}
-          label="Total Orders"
+          label={t("Total Orders")}
           value={String(stats.total)}
           tone={ACCENT}
           icon={
@@ -350,7 +362,7 @@ function Dashboard() {
         />
         <StatCard
           index={2}
-          label="Active Orders"
+          label={t("Active Orders")}
           value={String(stats.active)}
           tone="#F59E0B"
           icon={
@@ -363,7 +375,7 @@ function Dashboard() {
         />
         <StatCard
           index={3}
-          label="Products"
+          label={t("Products")}
           value={String(stats.products)}
           tone="#3B82F6"
           icon={
@@ -382,25 +394,25 @@ function Dashboard() {
         <Card className="lg:col-span-2" delay={360}>
           <div className="mb-6 flex items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-stone-900 dark:text-stone-100">Revenue</h2>
+              <h2 className="font-semibold text-stone-900 dark:text-stone-100">{t("Revenue")}</h2>
               <p className="text-sm text-stone-400 dark:text-stone-500">{periodLabel}</p>
             </div>
             <div className="flex items-center gap-2">
               <StatusTabs
-                options={CHART_TYPES}
+                options={chartTypeOptions}
                 value={chartType}
                 onChange={setChartType}
-                label="Chart type"
+                label={t("Chart type")}
               />
               <PeriodMenu value={period} onChange={setPeriod} />
               <span className="hidden rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 sm:inline dark:bg-stone-800 dark:text-stone-400">
-                {formatPrice(chart.total)} total
+                {formatPrice(chart.total)} {t("total")}
               </span>
             </div>
           </div>
           {chart.buckets.length === 0 ? (
             <p className="flex h-48 items-center justify-center text-sm text-stone-400 dark:text-stone-500">
-              No revenue in this period.
+              {t("No revenue in this period.")}
             </p>
           ) : (
             <RevenueChart
@@ -414,8 +426,8 @@ function Dashboard() {
 
         {/* Status donut */}
         <Card delay={460}>
-          <h2 className="mb-1 font-semibold text-stone-900 dark:text-stone-100">Order Status</h2>
-          <p className="text-sm text-stone-400 dark:text-stone-500">All orders</p>
+          <h2 className="mb-1 font-semibold text-stone-900 dark:text-stone-100">{t("Order Status")}</h2>
+          <p className="text-sm text-stone-400 dark:text-stone-500">{t("All orders")}</p>
           <div className="mt-4 flex items-center justify-center">
             <div
               className="relative grid h-40 w-40 place-items-center rounded-full transition-transform duration-500 hover:scale-105"
@@ -426,7 +438,7 @@ function Dashboard() {
                   <p className="text-2xl font-bold text-stone-900 dark:text-stone-100">
                     {orders.length}
                   </p>
-                  <p className="text-xs text-stone-400 dark:text-stone-500">Orders</p>
+                  <p className="text-xs text-stone-400 dark:text-stone-500">{t("Orders")}</p>
                 </div>
               </div>
             </div>
@@ -442,13 +454,13 @@ function Dashboard() {
                     className="h-2.5 w-2.5 rounded-full"
                     style={{ background: b.color }}
                   />
-                  {b.label}
+                  {t(b.label)}
                 </span>
                 <span className="font-medium text-stone-900 dark:text-stone-100">{b.count}</span>
               </li>
             ))}
             {breakdown.length === 0 && (
-              <li className="text-sm text-stone-400 dark:text-stone-500">No orders yet.</li>
+              <li className="text-sm text-stone-400 dark:text-stone-500">{t("No orders yet.")}</li>
             )}
           </ul>
         </Card>
@@ -459,22 +471,22 @@ function Dashboard() {
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-              Popular Categories
+              {t("Popular Categories")}
             </h2>
             <p className="text-sm text-stone-400 dark:text-stone-500">
-              Items sold by category (paid orders)
+              {t("Items sold by category (paid orders)")}
             </p>
           </div>
           {sortedCats.length > 0 && (
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-              {totalCupsSold} sold
+              {totalCupsSold} {t("sold")}
             </span>
           )}
         </div>
 
         {sortedCats.length === 0 ? (
           <p className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
-            No paid sales yet.
+            {t("No paid sales yet.")}
           </p>
         ) : (
           <ul className="space-y-3">
@@ -495,7 +507,7 @@ function Dashboard() {
                       {c.name}
                       {i === 0 && (
                         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                          Most popular
+                          {t("Most popular")}
                         </span>
                       )}
                     </span>
@@ -523,17 +535,17 @@ function Dashboard() {
       {/* Recent orders */}
       <Card className="mt-6" delay={620}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-semibold text-stone-900 dark:text-stone-100">Recent Orders</h2>
+          <h2 className="font-semibold text-stone-900 dark:text-stone-100">{t("Recent Orders")}</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">
-                <th className="pb-3 font-medium">Order</th>
-                <th className="pb-3 font-medium">Items</th>
-                <th className="pb-3 font-medium">Total</th>
-                <th className="pb-3 font-medium">Status</th>
-                <th className="pb-3 font-medium">Time</th>
+                <th className="pb-3 font-medium">{t("Order")}</th>
+                <th className="pb-3 font-medium">{t("Items")}</th>
+                <th className="pb-3 font-medium">{t("Total")}</th>
+                <th className="pb-3 font-medium">{t("Status")}</th>
+                <th className="pb-3 font-medium">{t("Time")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
@@ -560,14 +572,11 @@ function Dashboard() {
                           background: `${meta.color}1A`,
                         }}
                       >
-                        {meta.label}
+                        {t(meta.label)}
                       </span>
                     </td>
                     <td className="py-3 text-stone-400 dark:text-stone-500">
-                      {new Date(o.createdAt).toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
+                      {formatTimeShort(new Date(o.createdAt), t)}
                     </td>
                   </tr>
                 );
@@ -575,7 +584,7 @@ function Dashboard() {
               {!loading && recent.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-stone-400 dark:text-stone-500">
-                    No orders yet.
+                    {t("No orders yet.")}
                   </td>
                 </tr>
               )}
@@ -594,9 +603,12 @@ function PeriodMenu({
   value: Period;
   onChange: (p: Period) => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const current = PERIODS.find((p) => p.value === value)?.label ?? "This Week";
+  const current = t(
+    PERIODS.find((p) => p.value === value)?.label ?? "This Week",
+  );
 
   // Close on outside click or Escape.
   useClickOutside(ref, () => setOpen(false), open, { escape: true });
@@ -641,7 +653,7 @@ function PeriodMenu({
                     : "text-stone-600 hover:bg-stone-100/70 dark:text-stone-300 dark:hover:bg-stone-700/40"
                 }`}
               >
-                {p.label}
+                {t(p.label)}
                 {active && (
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" {...sw}>
                     <path d="m5 13 4 4L19 7" />

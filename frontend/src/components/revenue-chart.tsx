@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { TranslationKey } from "@/lib/i18n";
 import { formatPrice } from "@/lib/pricing";
 
 export type ChartType = "bar" | "line" | "area";
 
-export const CHART_TYPES: { label: string; value: ChartType }[] = [
+// Labels are translation keys — render them through `t()`.
+export const CHART_TYPES: { label: TranslationKey; value: ChartType }[] = [
   { label: "Bar", value: "bar" },
   { label: "Line", value: "line" },
   { label: "Area", value: "area" },
