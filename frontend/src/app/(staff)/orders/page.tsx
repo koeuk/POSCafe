@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { StaffShell } from "@/components/staff-shell";
@@ -12,8 +13,10 @@ import {
   type Translate,
   type TranslationKey,
 } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
 import { ORDER_STATUS_LABEL, STATUS_FILTERS } from "@/lib/orders";
-import { OrderStatus, type OrderWithUser } from "@/lib/types";
+import { resolveCashierPages } from "@/lib/permissions";
+import { OrderStatus, PaymentStatus, type OrderWithUser } from "@/lib/types";
 import { GLASS } from "@/lib/ui";
 
 // Same host the app was opened from — see getApiUrl(). An explicit
@@ -49,6 +52,11 @@ function byNewest(a: OrderWithUser, b: OrderWithUser) {
 
 function OrdersQueue() {
   const { t } = useT();
+  // The Pay shortcut only makes sense for staff who may open the Payments
+  // page; a cashier without that page would land on the no-access screen.
+  const { isAdmin, user } = useAuth();
+  const canTakePayment =
+    isAdmin || resolveCashierPages(user?.allowedPages).includes("payments");
   const [orders, setOrders] = useState<OrderWithUser[]>([]);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [loading, setLoading] = useState(true);
@@ -246,6 +254,14 @@ function OrdersQueue() {
                 order.status === OrderStatus.PENDING ||
                 order.status === OrderStatus.PREPARING;
               const busy = updatingId === order.id;
+              // Completing an unpaid order is refused by the API, so offer the
+              // way forward — take the payment — instead of the dead end.
+              const needsPayment =
+                order.paymentStatus !== PaymentStatus.PAID &&
+                order.status !== OrderStatus.CANCELLED &&
+                order.status !== OrderStatus.COMPLETED;
+              const blockedOnPayment =
+                needsPayment && next?.status === OrderStatus.COMPLETED;
 
               return (
                 <li
@@ -311,11 +327,30 @@ function OrdersQueue() {
                           {t("Cancel")}
                         </button>
                       )}
+                      {canTakePayment && needsPayment && (
+                        <Link
+                          href={`/pay?orderId=${order.id}`}
+                          className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
+                            blockedOnPayment
+                              ? "bg-pos-button text-pos-button-fg hover:brightness-110"
+                              : "border border-stone-300 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800"
+                          }`}
+                        >
+                          {t("Pay")}
+                        </Link>
+                      )}
                       {next && (
                         <button
                           onClick={() => changeStatus(order.id, next.status)}
-                          disabled={busy}
-                          className="rounded-lg bg-pos-button px-4 py-1.5 text-sm font-medium text-pos-button-fg transition hover:brightness-110 disabled:opacity-50"
+                          disabled={busy || blockedOnPayment}
+                          title={
+                            blockedOnPayment ? t("Take payment first") : undefined
+                          }
+                          className={`rounded-lg px-4 py-1.5 text-sm font-medium transition disabled:opacity-50 ${
+                            blockedOnPayment
+                              ? "border border-stone-300 text-stone-600 dark:border-stone-700 dark:text-stone-400"
+                              : "bg-pos-button text-pos-button-fg hover:brightness-110"
+                          }`}
                         >
                           {busy ? "…" : t(next.label)}
                         </button>

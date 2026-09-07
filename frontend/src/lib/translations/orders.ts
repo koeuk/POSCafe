@@ -40,4 +40,5 @@ export const orders = {
   "Switch to dark mode": "ប្តូរទៅរបៀបងងឹត",
   "Light mode": "របៀបភ្លឺ",
   "Dark mode": "របៀបងងឹត",
+  "Take payment first": "សូមទទួលការទូទាត់ជាមុនសិន",
 } as const;
