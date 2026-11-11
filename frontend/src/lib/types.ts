@@ -67,6 +67,8 @@ export interface Product {
   archivedAt?: string | null;
   categoryId: number;
   category?: Category;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface RecipeAvailability {
@@ -91,6 +93,8 @@ export interface ProductVariant {
   // DECIMAL-as-string, like Product.price.
   price: string;
   sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Units sold per product (GET /products/sold, non-cancelled orders).
@@ -110,6 +114,7 @@ export interface StockMovement {
   userId: number | null;
   user?: { id: number; name: string } | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Raw materials, packaging supplies (cups, lids, straws) & ingredients
@@ -136,6 +141,7 @@ export interface InventoryMovement {
   userId?: number | null;
   user?: { id: number; name: string } | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface RecipeItem {
@@ -147,6 +153,8 @@ export interface RecipeItem {
   unit: string | null; // null = the inventory item's unit; else same family (g/kg, ml/L)
   // Customer's choice: offered at checkout instead of always deducted.
   optional: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Recipe {
@@ -220,6 +228,8 @@ export interface OrderItem {
   stockSource?: "recipe" | "stock";
   unitPrice: string;
   subtotal: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Order {
@@ -231,6 +241,7 @@ export interface Order {
   userId: number;
   items: OrderItem[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Order joined with the cashier who created it (GET /orders includes `user`).

@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { Role } from '../common/enums/role.enum';
+import { Order } from '../orders/entities/order.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 
@@ -17,8 +18,8 @@ export interface CreateUserData {
   password: string; // already hashed
   email?: string | null;
   role?: Role;
-  avatar?: string;
-  allowedPages?: string[];
+  avatar?: string | null;
+  allowedPages?: string[] | null;
 }
 
 export interface NewUserInput {
@@ -27,8 +28,8 @@ export interface NewUserInput {
   password: string; // plain text — hashed here
   email?: string | null;
   role: Role;
-  avatar?: string;
-  allowedPages?: string[];
+  avatar?: string | null;
+  allowedPages?: string[] | null;
 }
 
 /**
@@ -215,6 +216,14 @@ export class UsersService {
     const user = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+    const orders = await this.repo.manager.count(Order, {
+      where: { userId: id },
+    });
+    if (orders > 0) {
+      throw new ConflictException(
+        `This user has ${orders} past order${orders === 1 ? '' : 's'} and cannot be deleted`,
+      );
     }
     await this.repo.delete(id);
   }

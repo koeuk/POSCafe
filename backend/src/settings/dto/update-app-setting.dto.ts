@@ -16,7 +16,9 @@ export class UpdateAppSettingDto {
   // Trim before validation so a whitespace-only name (e.g. "   ") is rejected
   // by MinLength instead of slipping through and being stored as empty.
   @IsOptional()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MinLength(1)
   @MaxLength(60)
