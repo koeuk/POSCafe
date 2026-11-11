@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
+import { StandardNamingStrategy } from './common/database/standard-naming.strategy';
 
 /**
  * DataSource for the TypeORM CLI (migration:generate / migration:run).
@@ -13,6 +14,8 @@ export default new DataSource({
   username: process.env.DB_USER ?? 'root',
   password: process.env.DB_PASSWORD ?? '',
   database: process.env.DB_NAME ?? 'poscafe',
+  charset: 'utf8mb4',
+  namingStrategy: new StandardNamingStrategy(),
   entities: [`${__dirname}/**/*.entity{.ts,.js}`],
   migrations: [`${__dirname}/migrations/*{.ts,.js}`],
 });

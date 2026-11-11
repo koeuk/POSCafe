@@ -28,6 +28,7 @@ async function resetClean() {
       'product_variants',
       'products',
       'categories',
+      'password_resets',
       'users',
     ];
 

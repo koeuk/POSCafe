@@ -13,16 +13,19 @@ import { Product } from '../../products/entities/product.entity';
 import { RecipeItem } from './recipe-item.entity';
 
 @Entity('recipes')
-@Index(['productId', 'size'], { unique: true })
+@Index('UQ_recipes_productId_size', ['productId', 'size'], { unique: true })
 export class Recipe {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'int' })
   productId: number;
 
   @ManyToOne(() => Product, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'productId' })
+  @JoinColumn({
+    name: 'productId',
+    foreignKeyConstraintName: 'FK_recipes_productId',
+  })
   product: Product;
 
   // null for sizeless drinks/items, or '12oz', '16oz', '22oz', 'S', 'M', 'L', etc.
@@ -32,9 +35,9 @@ export class Recipe {
   @OneToMany(() => RecipeItem, (item) => item.recipe, { cascade: true })
   items: RecipeItem[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime', precision: 6 })
   updatedAt: Date;
 }

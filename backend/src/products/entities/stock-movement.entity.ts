@@ -6,6 +6,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Product } from './product.entity';
@@ -17,24 +18,27 @@ import { Product } from './product.entity';
  * hand-entered changes that orders can't explain.
  */
 @Entity('stock_movements')
-@Index(['productId', 'createdAt'])
+@Index('IDX_stock_movements_productId_createdAt', ['productId', 'createdAt'])
 export class StockMovement {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'int' })
   productId: number;
 
   @ManyToOne(() => Product, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'productId' })
+  @JoinColumn({
+    name: 'productId',
+    foreignKeyConstraintName: 'FK_stock_movements_productId',
+  })
   product: Product;
 
   // Signed change to the stock level (+ = restock, − = correction/waste).
-  @Column()
+  @Column({ type: 'int' })
   delta: number;
 
   // Stock level right after this change, so the feed can show "→ 30".
-  @Column()
+  @Column({ type: 'int' })
   stockAfter: number;
 
   // Who made the change. Kept when the user is deleted (SET NULL).
@@ -42,9 +46,15 @@ export class StockMovement {
   userId: number | null;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({
+    name: 'userId',
+    foreignKeyConstraintName: 'FK_stock_movements_userId',
+  })
   user: User | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;
+
+  @UpdateDateColumn({ type: 'datetime', precision: 6 })
+  updatedAt: Date;
 }

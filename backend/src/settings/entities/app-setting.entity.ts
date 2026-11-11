@@ -1,4 +1,10 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 /**
  * App-wide branding, stored as a single row (id = 1). Holds the shop name and
@@ -8,10 +14,10 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 @Entity('app_settings')
 export class AppSetting {
   // Fixed at 1 — there is only ever one settings row.
-  @PrimaryColumn()
+  @PrimaryColumn({ type: 'int' })
   id: number;
 
-  @Column({ default: 'POSCAFE' })
+  @Column({ type: 'varchar', length: 100, default: 'POSCAFE' })
   appName: string;
 
   // Absolute URL to the uploaded logo, or null to fall back to the ☕ mark.
@@ -19,7 +25,7 @@ export class AppSetting {
   logoUrl: string | null;
 
   // KHR per 1 USD, used to show riel amounts alongside dollar prices.
-  @Column({ default: 4100 })
+  @Column({ type: 'int', default: 4100 })
   khrPerUsd: number;
 
   // Bakong account the KHQR pays into, e.g. "koeuk@aclb". null = QR payment
@@ -39,6 +45,12 @@ export class AppSetting {
   // How the pay screen builds its KHQR. true = dynamic (the order amount is
   // embedded and the code expires); false = static (one reusable code, the
   // customer types the amount). The printable poster is always static.
-  @Column({ default: true })
+  @Column({ type: 'boolean', default: true })
   khqrDynamic: boolean;
+
+  @CreateDateColumn({ type: 'datetime', precision: 6 })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'datetime', precision: 6 })
+  updatedAt: Date;
 }

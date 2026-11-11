@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
+import { StandardNamingStrategy } from './common/database/standard-naming.strategy';
 import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -32,6 +33,8 @@ import { RecipesModule } from './recipes/recipes.module';
         username: config.get<string>('DB_USER', 'root'),
         password: config.get<string>('DB_PASSWORD', ''),
         database: config.get<string>('DB_NAME', 'poscafe'),
+        charset: 'utf8mb4',
+        namingStrategy: new StandardNamingStrategy(),
         autoLoadEntities: true,
         // Schema changes go through migrations (src/migrations), applied
         // automatically on boot. DB_SYNCHRONIZE=true remains as an escape

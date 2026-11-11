@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -15,33 +16,40 @@ export type StockMode = 'count' | 'recipe';
 export const STOCK_MODES: StockMode[] = ['count', 'recipe'];
 
 @Entity('products')
+@Index('IDX_products_categoryId_archivedAt_isAvailable', [
+  'categoryId',
+  'archivedAt',
+  'isAvailable',
+])
+@Index('IDX_products_archivedAt_isAvailable', ['archivedAt', 'isAvailable'])
+@Index('IDX_products_name', ['name'])
 export class Product {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ nullable: true })
-  description: string;
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 
   // Base price. For sized products (any `variants` rows) each variant carries
   // its own price and this acts only as a fallback/default.
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
   // Percentage off the price (0–100). 0 = no discount.
   @Column({ type: 'int', default: 0 })
   discountPercent: number;
 
-  @Column({ nullable: true })
-  image: string;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  image: string | null;
 
   // Additional gallery images (URLs or uploaded paths). null = none.
   @Column({ type: 'json', nullable: true })
   gallery: string[] | null;
 
-  @Column({ default: true })
+  @Column({ type: 'boolean', default: true })
   isAvailable: boolean;
 
   // How the product's availability is tracked — one rule per product:
@@ -49,11 +57,11 @@ export class Product {
   //              Sizes only differ by price.
   //  - 'recipe': made to order. Each sale deducts the consumables in the
   //              product's recipe(s) and `stock` is ignored (kept at 0).
-  @Column({ type: 'varchar', length: 10, default: 'count' })
+  @Column({ type: 'enum', enum: STOCK_MODES, default: 'count' })
   stockMode: StockMode;
 
   // Units on hand for a 'count' product. Always 0 for a 'recipe' product.
-  @Column({ default: 0 })
+  @Column({ type: 'int', default: 0 })
   stock: number;
 
   // Set when a product with sales history is "deleted": it leaves the menu,
@@ -75,12 +83,15 @@ export class Product {
     nullable: true,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'categoryId' })
+  @JoinColumn({
+    name: 'categoryId',
+    foreignKeyConstraintName: 'FK_products_categoryId',
+  })
   category: Category | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime', precision: 6 })
   updatedAt: Date;
 }
