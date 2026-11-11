@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -22,6 +23,7 @@ export class RecipeItemDto {
   // in the same family as the item's unit (g/kg, ml/L, pcs).
   @IsString()
   @IsOptional()
+  @MaxLength(50)
   unit?: string | null;
 
   // Customer's choice: offered at checkout instead of always deducted.
@@ -36,6 +38,7 @@ export class CreateRecipeDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(50)
   size?: string | null;
 
   @IsArray()

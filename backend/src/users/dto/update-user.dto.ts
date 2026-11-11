@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -15,11 +16,13 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(255)
   name?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(3)
+  @MaxLength(255)
   username?: string;
 
   @IsOptional()
@@ -31,6 +34,7 @@ export class UpdateUserDto {
   @IsOptional()
   @ValidateIf((_, value) => value !== null && value !== '')
   @IsEmail()
+  @MaxLength(255)
   email?: string | null;
 
   @IsOptional()
@@ -41,6 +45,7 @@ export class UpdateUserDto {
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsString()
+  @MaxLength(500)
   avatar?: string | null;
 
   // Sidebar pages a cashier may see (ignored for admins). Omit/null = default

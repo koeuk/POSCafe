@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class RestockInventoryItemDto {
   // Positive number to add, negative to correct/subtract
@@ -7,5 +7,6 @@ export class RestockInventoryItemDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   reason?: string;
 }

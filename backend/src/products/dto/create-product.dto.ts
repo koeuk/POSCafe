@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -18,6 +19,7 @@ import { STOCK_MODES, type StockMode } from '../entities/product.entity';
 export class ProductSizeDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50)
   size: string;
 
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -28,6 +30,7 @@ export class ProductSizeDto {
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(255)
   name: string;
 
   @IsOptional()
@@ -56,6 +59,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   image?: string;
 
   @IsOptional()

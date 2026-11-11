@@ -32,6 +32,7 @@ export class CreateOrderItemDto {
   // Required when the product has size options (e.g. "S" | "M" | "L").
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   size?: string;
 
   // Free-text preparation note, e.g. "less sugar, no ice".

@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -14,11 +15,13 @@ import { Role } from '../../common/enums/role.enum';
 export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(255)
   name: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
+  @MaxLength(255)
   username: string;
 
   @IsString()
@@ -30,6 +33,7 @@ export class CreateUserDto {
   @IsOptional()
   @ValidateIf((_, value) => value !== null && value !== '')
   @IsEmail()
+  @MaxLength(255)
   email?: string | null;
 
   @IsEnum(Role)
@@ -37,6 +41,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   avatar?: string;
 
   // Sidebar pages a cashier may see (ignored for admins). Omit/null = default

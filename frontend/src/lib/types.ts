@@ -17,6 +17,8 @@ export interface User {
   // Sidebar pages a cashier may see (keys from lib/permissions).
   // null/undefined = default cashier pages. Ignored for admins.
   allowedPages?: string[] | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Response shape from POST /auth/login and /auth/register.
@@ -31,6 +33,8 @@ export interface Category {
   description: string | null;
   image: string | null;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type StockMode = "count" | "recipe";
@@ -160,6 +164,8 @@ export interface Size {
   id: number;
   name: string;
   sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Shape returned by the public GET /menu endpoint: active categories,
@@ -245,6 +251,7 @@ export interface Payment {
   refundedAt: string | null;
   refundedById: number | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Bakong/KHQR configuration (GET /settings/payment, admin only).
