@@ -39,13 +39,13 @@ export class PasswordReset {
   @Column({ type: 'varchar', length: 255 })
   codeHash: string;
 
-  @Column({ type: 'datetime', precision: 6 })
-  expiresAt: Date;
-
   // Wrong guesses so far. At MAX_ATTEMPTS the code is burned, so a 6-digit
   // space (1e6) can't be walked by brute force.
   @Column({ type: 'int', default: 0 })
   attempts: number;
+
+  @Column({ type: 'datetime', precision: 6 })
+  expiresAt: Date;
 
   // Set once the code has been exchanged for a reset token, so the same code
   // can't be verified twice.

@@ -24,8 +24,19 @@ export class Order {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // The cashier who created the order.
+  @Column({ type: 'int' })
+  userId: number;
+
+  @ManyToOne(() => User, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'userId', foreignKeyConstraintName: 'FK_orders_userId' })
+  user: User;
+
   @Column({ type: 'varchar', length: 64 })
   orderNumber: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  total: number;
 
   @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.PENDING })
   status: OrderStatus;
@@ -37,17 +48,6 @@ export class Order {
     default: PaymentStatus.UNPAID,
   })
   paymentStatus: PaymentStatus;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  total: number;
-
-  // The cashier who created the order.
-  @Column({ type: 'int' })
-  userId: number;
-
-  @ManyToOne(() => User, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'userId', foreignKeyConstraintName: 'FK_orders_userId' })
-  user: User;
 
   @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
   items: OrderItem[];

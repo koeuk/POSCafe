@@ -45,12 +45,19 @@ export class OrderItem {
   })
   product: Product;
 
-  @Column({ type: 'int' })
-  quantity: number;
-
   // Chosen size (e.g. S/M/L), null for items without size options.
   @Column({ type: 'varchar', length: 50, nullable: true })
   size: string | null;
+
+  @Column({ type: 'int' })
+  quantity: number;
+
+  // Price snapshot at order time (product price may change later).
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  unitPrice: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  subtotal: number;
 
   // Free-text preparation note from the cashier ("less sugar, no ice").
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -68,13 +75,6 @@ export class OrderItem {
   // count). Cancel/refund reverses exactly this — see order-stock.service.
   @Column({ type: 'enum', enum: [...STOCK_SOURCES], default: 'stock' })
   stockSource: 'recipe' | 'stock';
-
-  // Price snapshot at order time (product price may change later).
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  unitPrice: number;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  subtotal: number;
 
   @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;

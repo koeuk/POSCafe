@@ -27,6 +27,20 @@ export class Product {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // null only for an archived product whose category was force-deleted.
+  @Column({ type: 'int', nullable: true })
+  categoryId: number | null;
+
+  @ManyToOne(() => Category, (category) => category.products, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({
+    name: 'categoryId',
+    foreignKeyConstraintName: 'FK_products_categoryId',
+  })
+  category: Category | null;
+
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
@@ -49,9 +63,6 @@ export class Product {
   @Column({ type: 'json', nullable: true })
   gallery: string[] | null;
 
-  @Column({ type: 'boolean', default: true })
-  isAvailable: boolean;
-
   // How the product's availability is tracked — one rule per product:
   //  - 'count':  `stock` is the number of units on hand, whatever the size.
   //              Sizes only differ by price.
@@ -64,6 +75,9 @@ export class Product {
   @Column({ type: 'int', default: 0 })
   stock: number;
 
+  @Column({ type: 'boolean', default: true })
+  isAvailable: boolean;
+
   // Set when a product with sales history is "deleted": it leaves the menu,
   // POS, catalog and stock reports, but stays for order history and reports.
   // See product-removal.ts.
@@ -74,20 +88,6 @@ export class Product {
     cascade: true,
   })
   variants: ProductVariant[];
-
-  // null only for an archived product whose category was force-deleted.
-  @Column({ type: 'int', nullable: true })
-  categoryId: number | null;
-
-  @ManyToOne(() => Category, (category) => category.products, {
-    nullable: true,
-    onDelete: 'RESTRICT',
-  })
-  @JoinColumn({
-    name: 'categoryId',
-    foreignKeyConstraintName: 'FK_products_categoryId',
-  })
-  category: Category | null;
 
   @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;

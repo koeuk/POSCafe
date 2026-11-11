@@ -33,14 +33,6 @@ export class StockMovement {
   })
   product: Product;
 
-  // Signed change to the stock level (+ = restock, − = correction/waste).
-  @Column({ type: 'int' })
-  delta: number;
-
-  // Stock level right after this change, so the feed can show "→ 30".
-  @Column({ type: 'int' })
-  stockAfter: number;
-
   // Who made the change. Kept when the user is deleted (SET NULL).
   @Column({ type: 'int', nullable: true })
   userId: number | null;
@@ -51,6 +43,14 @@ export class StockMovement {
     foreignKeyConstraintName: 'FK_stock_movements_userId',
   })
   user: User | null;
+
+  // Signed change to the stock level (+ = restock, − = correction/waste).
+  @Column({ type: 'int' })
+  delta: number;
+
+  // Stock level right after this change, so the feed can show "→ 30".
+  @Column({ type: 'int' })
+  stockAfter: number;
 
   @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;

@@ -32,17 +32,6 @@ export class InventoryMovement {
   })
   inventoryItem: InventoryItem;
 
-  // Signed change (+ = restock, - = deduction)
-  @Column({ type: 'decimal', precision: 12, scale: 3 })
-  delta: number;
-
-  @Column({ type: 'decimal', precision: 12, scale: 3 })
-  stockAfter: number;
-
-  // e.g. 'restock', 'order_deduction', 'order_refund', 'correction'
-  @Column({ type: 'varchar', length: 100, default: 'restock' })
-  reason: string;
-
   @Column({ type: 'int', nullable: true })
   orderId: number | null;
 
@@ -62,6 +51,17 @@ export class InventoryMovement {
     foreignKeyConstraintName: 'FK_inventory_movements_userId',
   })
   user: User | null;
+
+  // Signed change (+ = restock, - = deduction)
+  @Column({ type: 'decimal', precision: 12, scale: 3 })
+  delta: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 3 })
+  stockAfter: number;
+
+  // e.g. 'restock', 'order_deduction', 'order_refund', 'correction'
+  @Column({ type: 'varchar', length: 100, default: 'restock' })
+  reason: string;
 
   @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;

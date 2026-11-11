@@ -24,11 +24,11 @@ export class AddConsumableInventoryAndRecipes1787000000000 implements MigrationI
       CREATE TABLE IF NOT EXISTS \`inventory_movements\` (
         \`id\` int NOT NULL AUTO_INCREMENT,
         \`inventoryItemId\` int NOT NULL,
+        \`orderId\` int NULL,
+        \`userId\` int NULL,
         \`delta\` decimal(12,3) NOT NULL,
         \`stockAfter\` decimal(12,3) NOT NULL,
         \`reason\` varchar(100) NOT NULL DEFAULT 'restock',
-        \`orderId\` int NULL,
-        \`userId\` int NULL,
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`),

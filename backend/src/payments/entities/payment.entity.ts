@@ -31,6 +31,17 @@ export class Payment {
   })
   order: Order;
 
+  // The admin who issued the refund. Kept when the user is deleted (SET NULL).
+  @Column({ type: 'int', nullable: true })
+  refundedById: number | null;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({
+    name: 'refundedById',
+    foreignKeyConstraintName: 'FK_payments_refundedById',
+  })
+  refundedBy: User | null;
+
   @Column({ type: 'enum', enum: PaymentMethod })
   method: PaymentMethod;
 
@@ -49,17 +60,6 @@ export class Payment {
   // Set when an admin refunds this payment (order goes to CANCELLED/REFUNDED).
   @Column({ type: 'datetime', precision: 6, nullable: true })
   refundedAt: Date | null;
-
-  // The admin who issued the refund. Kept when the user is deleted (SET NULL).
-  @Column({ type: 'int', nullable: true })
-  refundedById: number | null;
-
-  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({
-    name: 'refundedById',
-    foreignKeyConstraintName: 'FK_payments_refundedById',
-  })
-  refundedBy: User | null;
 
   @CreateDateColumn({ type: 'datetime', precision: 6 })
   createdAt: Date;

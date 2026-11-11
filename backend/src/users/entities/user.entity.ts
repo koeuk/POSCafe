@@ -22,15 +22,15 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   username: string;
 
-  // select: false → password is never returned by default queries.
-  @Column({ type: 'varchar', length: 255, select: false })
-  password: string;
-
   // Recovery address for the forgot-password OTP. Nullable and unique: MySQL
   // allows many NULLs in a unique index, so accounts without an email (every
   // cashier, by default) don't collide with each other.
   @Column({ type: 'varchar', length: 255, nullable: true })
   email: string | null;
+
+  // select: false → password is never returned by default queries.
+  @Column({ type: 'varchar', length: 255, select: false })
+  password: string;
 
   // Profile picture URL (uploaded via /uploads/image). null = use initial.
   // Explicit type: TypeORM can't infer a column type from a `string | null` union.
