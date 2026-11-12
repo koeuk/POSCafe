@@ -242,7 +242,15 @@ async function adopt(): Promise<void> {
       throw new Error(
         'Already adopted; generate a normal migration instead of changing the baseline.',
       );
-    for (const statement of statements)
+    // Rename existing indexes before rebuilding foreign keys: MySQL can drop
+    // an implicit old FK index when a replacement key is created.
+    const renames = statements.filter((statement) =>
+      /\bRENAME INDEX\b/i.test(statement),
+    );
+    const changes = statements.filter(
+      (statement) => !/\bRENAME INDEX\b/i.test(statement),
+    );
+    for (const statement of [...renames, ...changes])
       await prisma.$executeRawUnsafe(statement);
     if (!baselined)
       prismaCommand(['migrate', 'resolve', '--applied', '0_init']);

@@ -74,20 +74,34 @@ function localTransaction(tx: Transaction): Transaction {
   return {
     ...localQueryable(tx),
     options: tx.options,
-    commit: tx.commit.bind(tx),
-    rollback: tx.rollback.bind(tx),
-    createSavepoint: tx.createSavepoint?.bind(tx),
-    rollbackToSavepoint: tx.rollbackToSavepoint?.bind(tx),
-    releaseSavepoint: tx.releaseSavepoint?.bind(tx),
+    commit: () => tx.commit(),
+    rollback: () => tx.rollback(),
+    createSavepoint: tx.createSavepoint
+      ? async (name) => {
+          await tx.createSavepoint?.(name);
+        }
+      : undefined,
+    rollbackToSavepoint: tx.rollbackToSavepoint
+      ? async (name) => {
+          await tx.rollbackToSavepoint?.(name);
+        }
+      : undefined,
+    releaseSavepoint: tx.releaseSavepoint
+      ? async (name) => {
+          await tx.releaseSavepoint?.(name);
+        }
+      : undefined,
   };
 }
 
 function localAdapter(driver: SqlDriverAdapter): SqlDriverAdapter {
   return {
     ...localQueryable(driver),
-    executeScript: driver.executeScript.bind(driver),
-    dispose: driver.dispose.bind(driver),
-    getConnectionInfo: driver.getConnectionInfo?.bind(driver),
+    executeScript: (script) => driver.executeScript(script),
+    dispose: () => driver.dispose(),
+    getConnectionInfo: driver.getConnectionInfo
+      ? () => driver.getConnectionInfo!()
+      : undefined,
     startTransaction: async (isolation) =>
       localTransaction(await driver.startTransaction(isolation)),
   };
