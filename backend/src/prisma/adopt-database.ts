@@ -1,7 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 
 function prismaCommand(args: string[]): string {
@@ -12,6 +11,45 @@ function prismaCommand(args: string[]): string {
   return result.stdout;
 }
 const quote = (name: string) => '`' + name.replace(/`/g, '``') + '`';
+
+interface SchemaField {
+  name: string;
+  type: string;
+  dbName?: string;
+  kind: 'scalar' | 'enum' | 'object';
+  isUnique: boolean;
+  relationFromFields: string[];
+  relationToFields: string[];
+}
+
+/** Read full schema metadata; Prisma 7's runtime DMMF omits enum/key details. */
+function schemaMetadata() {
+  const schema = readFileSync(resolve(__dirname, '../../prisma/schema.prisma'), 'utf8');
+  const enums = [...schema.matchAll(/enum (\w+) \{([^}]+)\}/g)].map(match => ({
+    name: match[1], values: match[2].split('\n').map(line => line.trim()).filter(Boolean).map(line => ({
+      name: line.split(/\s/)[0], dbName: /@map\("([^"]+)"\)/.exec(line)?.[1],
+    })),
+  }));
+  const blocks = [...schema.matchAll(/model (\w+) \{([^}]+)\}/g)];
+  const names = new Set(blocks.map(block => block[1]));
+  const enumNames = new Set(enums.map(value => value.name));
+  const models = blocks.map(block => ({
+    name: block[1], dbName: /@@map\("([^"]+)"\)/.exec(block[2])?.[1],
+    uniqueFields: [...block[2].matchAll(/@@unique\(\[([^\]]+)\]/g)].map(match => match[1].split(',').map(name => name.trim())),
+    fields: block[2].split('\n').flatMap(line => {
+      const match = /^\s*(\w+)\s+(\w+)[?\[\]]*/.exec(line);
+      if (!match || line.trim().startsWith('//')) return [];
+      const [name, type] = [match[1], match[2]];
+      return [{ name, type, dbName: /(?<!@)@map\("([^"]+)"\)/.exec(line)?.[1],
+        kind: names.has(type) ? 'object' : enumNames.has(type) ? 'enum' : 'scalar',
+        isUnique: line.includes('@unique'),
+        relationFromFields: /fields:\s*\[([^\]]+)\]/.exec(line)?.[1].split(',').map(name => name.trim()) ?? [],
+        relationToFields: /references:\s*\[([^\]]+)\]/.exec(line)?.[1].split(',').map(name => name.trim()) ?? [],
+      } as SchemaField];
+    }),
+  }));
+  return { models, enums };
+}
 
 /** Validate conversions and constraints before MySQL's non-transactional DDL. */
 async function checkData(prisma: PrismaService, sql: string): Promise<void> {
@@ -28,7 +66,7 @@ async function checkData(prisma: PrismaService, sql: string): Promise<void> {
     const rows = await prisma.$queryRawUnsafe<{ count: bigint }[]>(query);
     if (Number(rows[0]?.count ?? 0) > 0) throw new Error(reason);
   };
-  const models = Prisma.dmmf.datamodel.models;
+  const { models, enums } = schemaMetadata();
   for (const model of models) {
     const table = model.dbName ?? model.name;
     if (!present.has(table)) continue;
@@ -43,7 +81,7 @@ async function checkData(prisma: PrismaService, sql: string): Promise<void> {
         await assertEmpty(`SELECT COUNT(*) AS count FROM ${quote(table)} WHERE ${ref} NOT IN (0, 1)`, `Non-boolean values in ${table}.${column}.`);
       }
       if (field.kind === 'enum') {
-        const values = Prisma.dmmf.datamodel.enums.find(e => e.name === field.type)!.values.map(v => "'" + (v.dbName ?? v.name).replace(/'/g, "''") + "'").join(',');
+        const values = enums.find(e => e.name === field.type)!.values.map(v => "'" + (v.dbName ?? v.name).replace(/'/g, "''") + "'").join(',');
         await assertEmpty(`SELECT COUNT(*) AS count FROM ${quote(table)} WHERE ${ref} NOT IN (${values})`, `Invalid enum values in ${table}.${column}.`);
       }
     }

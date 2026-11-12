@@ -23,7 +23,7 @@ A full-stack **Point-of-Sale system for a coffee shop**. Cashiers take orders, a
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | NestJS 11 · TypeORM · MySQL |
+| Backend | NestJS 11 · Prisma ORM · MySQL |
 | Auth | JWT (Passport) · bcrypt |
 | Realtime | Socket.IO |
 | Frontend | Next.js 16 (App Router, React 19) |
@@ -53,7 +53,7 @@ POSCAFE/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22.12+
 - MySQL running locally (default `localhost:3306`)
 
 ### 1. Backend
@@ -62,10 +62,11 @@ POSCAFE/
 cd backend
 npm install
 cp .env.example .env      # set DB credentials + JWT_SECRET
+npm run migration:run    # fresh, empty database only
 npm run start:dev         # http://localhost:3001
 ```
 
-The database schema is created automatically (`synchronize: true` in development).
+For an existing database, follow [the Prisma adoption steps](backend/PRISMA_MIGRATION.md) before starting the backend. Schema changes are applied explicitly through Prisma migrations.
 
 ### 2. Frontend
 
@@ -77,7 +78,7 @@ npm run dev               # http://localhost:3000
 ```
 
 ### First user
-The **first** account registered becomes the **admin**; subsequent accounts default to `cashier`. Admins create and manage other staff (and their page permissions) under **Settings**.
+The **first** account registered becomes the **admin**; public registration then closes. Admins create and manage other staff (and their page permissions) under **Settings**.
 
 ---
 
@@ -95,7 +96,7 @@ The **first** account registered becomes the **admin**; subsequent accounts defa
 ```bash
 npm run start:dev    # watch mode
 npm run build        # compile
-npm run start:prod   # run dist
+npm run start:prod   # run build/main
 ```
 
 **Frontend**
