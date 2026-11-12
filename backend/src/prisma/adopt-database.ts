@@ -25,6 +25,7 @@ interface SchemaField {
   dbName?: string;
   kind: 'scalar' | 'enum' | 'object';
   isUnique: boolean;
+  isRequired: boolean;
   relationFromFields: string[];
   relationToFields: string[];
 }
@@ -57,8 +58,8 @@ function schemaMetadata() {
     uniqueFields: [...block[2].matchAll(/@@unique\(\[([^\]]+)\]/g)].map(
       (match) => match[1].split(',').map((name) => name.trim()),
     ),
-    fields: block[2].split('\n').flatMap((line) => {
-      const match = /^\s*(\w+)\s+(\w+)[?\[\]]*/.exec(line);
+    fields: block[2].split('\n').flatMap((line): SchemaField[] => {
+      const match = /^\s*(\w+)\s+(\w+)(\??)/.exec(line);
       if (!match || line.trim().startsWith('//')) return [];
       const [name, type] = [match[1], match[2]];
       return [
@@ -72,6 +73,7 @@ function schemaMetadata() {
               ? 'enum'
               : 'scalar',
           isUnique: line.includes('@unique'),
+          isRequired: match[3] !== '?',
           relationFromFields:
             /fields:\s*\[([^\]]+)\]/
               .exec(line)?.[1]
@@ -82,7 +84,7 @@ function schemaMetadata() {
               .exec(line)?.[1]
               .split(',')
               .map((name) => name.trim()) ?? [],
-        } as SchemaField,
+        },
       ];
     }),
   }));
@@ -115,6 +117,12 @@ async function checkData(prisma: PrismaService, sql: string): Promise<void> {
       const column = field.dbName ?? field.name;
       if (field.kind === 'object' || !hasColumn(table, column)) continue;
       const ref = `${quote(table)}.${quote(column)}`;
+      if (field.isRequired) {
+        await assertEmpty(
+          `SELECT COUNT(*) AS count FROM ${quote(table)} WHERE ${ref} IS NULL`,
+          `NULL values in required field ${table}.${column}; backfill before adopting.`,
+        );
+      }
       if (field.type === 'Json') {
         await assertEmpty(
           `SELECT COUNT(*) AS count FROM ${quote(table)} WHERE ${ref} IS NOT NULL AND NOT JSON_VALID(${ref})`,
@@ -160,10 +168,10 @@ async function checkData(prisma: PrismaService, sql: string): Promise<void> {
     )) {
       const target = models.find((m) => m.name === field.type)!;
       const from = model.fields.find(
-        (f) => f.name === field.relationFromFields![0],
+        (f) => f.name === field.relationFromFields[0],
       )!;
       const to = target.fields.find(
-        (f) => f.name === field.relationToFields![0],
+        (f) => f.name === field.relationToFields[0],
       )!;
       const targetTable = target.dbName ?? target.name;
       const fromName = from.dbName ?? from.name;

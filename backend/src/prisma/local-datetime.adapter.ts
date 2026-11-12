@@ -2,6 +2,8 @@ import type {
   SqlDriverAdapterFactory,
   SqlQueryable,
   SqlQuery,
+  SqlDriverAdapter,
+  Transaction,
 } from '@prisma/driver-adapter-utils';
 import { ColumnTypeEnum } from '@prisma/driver-adapter-utils';
 
@@ -17,7 +19,13 @@ function localArguments(query: SqlQuery): SqlQuery {
     args: query.args.map((value, index) => {
       if (value === null || query.argTypes[index]?.scalarType !== 'datetime')
         return value;
-      const date = value instanceof Date ? value : new Date(String(value));
+      if (
+        !(value instanceof Date) &&
+        typeof value !== 'string' &&
+        typeof value !== 'number'
+      )
+        return value;
+      const date = value instanceof Date ? value : new Date(value);
       if (!Number.isFinite(date.getTime())) return value;
       return new Date(
         Date.UTC(
@@ -34,40 +42,55 @@ function localArguments(query: SqlQuery): SqlQuery {
   };
 }
 
-function localResults<T extends SqlQueryable>(driver: T): T {
-  return new Proxy(driver, {
-    get(target, property) {
-      if (property === 'queryRaw')
-        return async (query: SqlQuery) => {
-          const result = await target.queryRaw(localArguments(query));
-          return {
-            ...result,
-            rows: result.rows.map((row) =>
-              row.map((value, index) => {
-                if (
-                  value === null ||
-                  result.columnTypes[index] !== ColumnTypeEnum.DateTime ||
-                  typeof value !== 'string'
-                )
-                  return value;
-                // Remove the UTC marker that the adapter attached to local wall time.
-                return new Date(
-                  value.replace(/(?:Z|[+-]\d{2}:\d{2})$/, ''),
-                ).toISOString();
-              }),
-            ),
-          };
-        };
-      if (property === 'executeRaw')
-        return (query: SqlQuery) => target.executeRaw(localArguments(query));
-      const value: unknown = Reflect.get(target, property, target);
-      if (property === 'startTransaction' && typeof value === 'function') {
-        return async (...args: unknown[]) =>
-          localResults(await value.apply(target, args));
-      }
-      return typeof value === 'function' ? value.bind(target) : value;
+function localQueryable(driver: SqlQueryable): SqlQueryable {
+  return {
+    provider: driver.provider,
+    adapterName: driver.adapterName,
+    async queryRaw(query) {
+      const result = await driver.queryRaw(localArguments(query));
+      return {
+        ...result,
+        rows: result.rows.map((row) =>
+          row.map((value, index) => {
+            if (
+              value === null ||
+              result.columnTypes[index] !== ColumnTypeEnum.DateTime ||
+              typeof value !== 'string'
+            )
+              return value;
+            // Remove the UTC marker attached by the adapter to local wall time.
+            return new Date(
+              value.replace(/(?:Z|[+-]\d{2}:\d{2})$/, ''),
+            ).toISOString();
+          }),
+        ),
+      };
     },
-  });
+    executeRaw: (query) => driver.executeRaw(localArguments(query)),
+  };
+}
+
+function localTransaction(tx: Transaction): Transaction {
+  return {
+    ...localQueryable(tx),
+    options: tx.options,
+    commit: tx.commit.bind(tx),
+    rollback: tx.rollback.bind(tx),
+    createSavepoint: tx.createSavepoint?.bind(tx),
+    rollbackToSavepoint: tx.rollbackToSavepoint?.bind(tx),
+    releaseSavepoint: tx.releaseSavepoint?.bind(tx),
+  };
+}
+
+function localAdapter(driver: SqlDriverAdapter): SqlDriverAdapter {
+  return {
+    ...localQueryable(driver),
+    executeScript: driver.executeScript.bind(driver),
+    dispose: driver.dispose.bind(driver),
+    getConnectionInfo: driver.getConnectionInfo?.bind(driver),
+    startTransaction: async (isolation) =>
+      localTransaction(await driver.startTransaction(isolation)),
+  };
 }
 
 export function preserveLocalDateTime(
@@ -76,6 +99,6 @@ export function preserveLocalDateTime(
   return {
     provider: factory.provider,
     adapterName: factory.adapterName,
-    connect: async () => localResults(await factory.connect()),
+    connect: async () => localAdapter(await factory.connect()),
   };
 }

@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { toNumber } from '../common/money';
 import { recipeServings } from '../recipes/recipe-servings';
 
 type Aggregate = number | bigint | string | Prisma.Decimal;
