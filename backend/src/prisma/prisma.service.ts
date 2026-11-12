@@ -2,6 +2,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { databaseUrl, loadDatabaseEnv } from './database.config';
+import { preserveLocalDateTime } from './local-datetime.adapter';
 
 @Injectable()
 export class PrismaService
@@ -11,7 +12,7 @@ export class PrismaService
   constructor() {
     loadDatabaseEnv();
     super({
-      adapter: new PrismaMariaDb(databaseUrl()),
+      adapter: preserveLocalDateTime(new PrismaMariaDb(databaseUrl())),
       // Also applies to nested user relations (orders and movement feeds).
       // Login queries explicitly opt in to the password field.
       omit: { user: { password: true } },

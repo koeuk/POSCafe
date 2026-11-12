@@ -79,7 +79,7 @@ model Category {
 
 model Size {
   id        Int      @id @default(autoincrement())
-  name      String   @unique(map: "UQ_sizes_name") @db.VarChar(50)
+  name      String   @unique(map: "UQ_sizes_name") @db.VarChar(255)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now()) @db.DateTime(6)
   updatedAt DateTime @default(now()) @updatedAt @db.DateTime(6)
@@ -90,7 +90,7 @@ model Size {
 
 model AppSetting {
   id                 Int      @id
-  appName            String   @default("POSCAFE") @db.VarChar(100)
+  appName            String   @default("POSCAFE") @db.VarChar(255)
   logoUrl            String?  @db.Text
   khrPerUsd          Int      @default(4100)
   bakongAccountId    String?  @db.VarChar(64)
@@ -133,7 +133,7 @@ model Product {
 model ProductVariant {
   id        Int      @id @default(autoincrement())
   productId Int
-  size      String   @db.VarChar(50)
+  size      String   @db.VarChar(255)
   price     Decimal  @default(0) @db.Decimal(10, 2)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now()) @db.DateTime(6)
@@ -163,7 +163,7 @@ model StockMovement {
 model Order {
   id                 Int                 @id @default(autoincrement())
   userId             Int
-  orderNumber        String              @unique(map: "UQ_orders_orderNumber") @db.VarChar(64)
+  orderNumber        String              @unique(map: "UQ_orders_orderNumber") @db.VarChar(255)
   total              Decimal             @db.Decimal(10, 2)
   status             OrderStatus         @default(pending)
   paymentStatus      PaymentStatus       @default(unpaid)
@@ -185,7 +185,7 @@ model OrderItem {
   id          Int         @id @default(autoincrement())
   orderId     Int
   productId   Int
-  size        String?     @db.VarChar(50)
+  size        String?     @db.VarChar(255)
   quantity    Int
   unitPrice   Decimal     @db.Decimal(10, 2)
   subtotal    Decimal     @db.Decimal(10, 2)
@@ -263,7 +263,7 @@ model InventoryMovement {
   userId          Int?
   delta           Decimal       @db.Decimal(12, 3)
   stockAfter      Decimal       @db.Decimal(12, 3)
-  reason          String        @default("restock") @db.VarChar(100)
+  reason          String        @default("restock") @db.VarChar(255)
   createdAt       DateTime      @default(now()) @db.DateTime(6)
   updatedAt       DateTime      @default(now()) @updatedAt @db.DateTime(6)
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK_inventory_movements_inventoryItemId")
@@ -304,4 +304,15 @@ model RecipeItem {
   @@unique([recipeId, inventoryItemId], map: "UQ_recipe_items_recipeId_inventoryItemId")
   @@index([inventoryItemId], map: "FK_recipe_items_inventoryItemId")
   @@map("recipe_items")
+}
+
+// Preserve historical migration records when adopting a legacy database.
+// The application never reads or writes this table.
+model LegacyMigration {
+  id        Int    @id @default(autoincrement())
+  timestamp BigInt
+  name      String @db.VarChar(255)
+
+  @@map("migrations")
+  @@ignore
 }

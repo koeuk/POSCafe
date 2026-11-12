@@ -70,7 +70,11 @@ export class SettingsService implements OnModuleInit {
     }
     return this.prisma.appSetting.update({
       where: { id: SETTINGS_ID },
-      data: settings,
+      data: {
+        appName: settings.appName, logoUrl: settings.logoUrl, khrPerUsd: settings.khrPerUsd,
+        bakongAccountId: settings.bakongAccountId, bakongMerchantName: settings.bakongMerchantName,
+        bakongMerchantCity: settings.bakongMerchantCity, khqrDynamic: settings.khqrDynamic,
+      },
     });
   }
 }
