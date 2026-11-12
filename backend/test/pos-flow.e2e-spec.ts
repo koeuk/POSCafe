@@ -1,3 +1,4 @@
+import { applyTestSchema } from './database';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment,
    @typescript-eslint/no-unsafe-member-access,
    @typescript-eslint/no-unsafe-argument,
@@ -11,10 +12,9 @@
 //
 // Runs against a throwaway MySQL database (poscafe_test_pos) that is dropped and
 // recreated on every run (one database per suite so parallel Jest
-// workers never clobber each other); the app builds its schema there via synchronize.
+// workers never clobber each other); the schema is applied from the Prisma SQL baseline.
 process.env.DB_NAME = 'poscafe_test_pos';
-process.env.DB_SYNCHRONIZE = 'true';
-process.env.DB_MIGRATIONS_RUN = 'false';
+process.env.DATABASE_URL = ''; // Tests always use their isolated DB_NAME.
 
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -42,6 +42,7 @@ describe('POS flow (e2e)', () => {
     });
     await conn.query('DROP DATABASE IF EXISTS poscafe_test_pos');
     await conn.query('CREATE DATABASE poscafe_test_pos CHARACTER SET utf8mb4');
+    await applyTestSchema(conn);
     await conn.end();
 
     const moduleRef = await Test.createTestingModule({

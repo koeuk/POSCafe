@@ -1,60 +1,33 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
-import { Category } from '../categories/entities/category.entity';
-import { Product } from '../products/entities/product.entity';
+import { PrismaService } from '../prisma/prisma.service';
 
-/**
- * Public, read-only view of the menu for customers (scan-to-view).
- * Returns active categories that have at least one available product.
- */
 @Injectable()
 export class MenuService {
-  constructor(
-    @InjectRepository(Category)
-    private readonly categoryRepo: Repository<Category>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
-  ) {}
-
+  constructor(private readonly prisma: PrismaService) {}
   async getMenu() {
-    // Only active categories that have at least one available product
-    // (inner join drops empties), with available products attached and
-    // everything ordered in SQL — no JS post-filtering/sorting.
-    const categories = await this.categoryRepo
-      .createQueryBuilder('c')
-      .innerJoinAndSelect(
-        'c.products',
-        'p',
-        'p.isAvailable = :available AND p.archivedAt IS NULL',
-        { available: true },
-      )
-      .leftJoinAndSelect('p.variants', 'v')
-      .where('c.isActive = :active', { active: true })
-      .orderBy('c.name', 'ASC')
-      .addOrderBy('p.name', 'ASC')
-      .addOrderBy('v.sortOrder', 'ASC')
-      .getMany();
-
-    return categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      description: category.description,
-      image: category.image,
-      products: category.products,
-    }));
-  }
-
-  /** A single available product with its category, for the detail page. */
-  async getProduct(id: number): Promise<Product> {
-    const product = await this.productRepo.findOne({
-      where: { id, isAvailable: true, archivedAt: IsNull() },
-      relations: { category: true, variants: true },
-      order: { variants: { sortOrder: 'ASC' } },
+    const available = { isAvailable: true, archivedAt: null };
+    return this.prisma.category.findMany({
+      where: { isActive: true, products: { some: available } },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        image: true,
+        products: {
+          where: available,
+          include: { variants: { orderBy: { sortOrder: 'asc' } } },
+          orderBy: { name: 'asc' },
+        },
+      },
+      orderBy: { name: 'asc' },
     });
-    if (!product) {
-      throw new NotFoundException(`Product #${id} not found`);
-    }
+  }
+  async getProduct(id: number) {
+    const product = await this.prisma.product.findFirst({
+      where: { id, isAvailable: true, archivedAt: null },
+      include: { category: true, variants: { orderBy: { sortOrder: 'asc' } } },
+    });
+    if (!product) throw new NotFoundException(`Product #${id} not found`);
     return product;
   }
 }

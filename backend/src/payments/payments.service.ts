@@ -5,25 +5,22 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { PrismaService } from '../prisma/prisma.service';
+import { lockOrder } from '../prisma/locks';
 import { PaymentMethod } from '../common/enums/payment-method.enum';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
-import { Order } from '../orders/entities/order.entity';
 import { OrdersService } from '../orders/orders.service';
 import { roundCents, toNumber } from '../common/money';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { Payment } from './entities/payment.entity';
+import type { Payment } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
   constructor(
-    @InjectRepository(Payment)
-    private readonly repo: Repository<Payment>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
   ) {}
 
@@ -35,13 +32,10 @@ export class PaymentsService {
    * One payment per order.
    */
   async create(dto: CreatePaymentDto): Promise<Payment> {
-    const saved = await this.dataSource.transaction(async (manager) => {
+    const saved = await this.prisma.$transaction(async (manager) => {
       // Lock the order for the duration of the transaction so a concurrent
       // payment for the same order serializes behind us and sees our insert.
-      const order = await manager.findOne(Order, {
-        where: { id: dto.orderId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const order = await lockOrder(manager, dto.orderId);
       if (!order) {
         throw new NotFoundException(`Order #${dto.orderId} not found`);
       }
@@ -49,7 +43,7 @@ export class PaymentsService {
         throw new BadRequestException('Cannot pay for a cancelled order');
       }
 
-      const existing = await manager.findOne(Payment, {
+      const existing = await manager.payment.findUnique({
         where: { orderId: dto.orderId },
       });
       if (existing) {
@@ -73,19 +67,24 @@ export class PaymentsService {
         change = roundCents(tendered - amount);
       }
 
-      const payment = manager.create(Payment, {
-        orderId: order.id,
-        method: dto.method,
-        amount,
-        tendered,
-        change,
+      const savedPayment = await manager.payment.create({
+        data: {
+          orderId: order.id,
+          method: dto.method,
+          amount,
+          tendered,
+          change,
+        },
       });
-      const savedPayment = await manager.save(payment);
 
       // Paid + completed atomically with the payment insert.
-      order.paymentStatus = PaymentStatus.PAID;
-      order.status = OrderStatus.COMPLETED;
-      await manager.save(order);
+      await manager.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: PaymentStatus.PAID,
+          status: OrderStatus.COMPLETED,
+        },
+      });
 
       return savedPayment;
     });
@@ -107,6 +106,6 @@ export class PaymentsService {
   }
 
   findByOrder(orderId: number): Promise<Payment | null> {
-    return this.repo.findOne({ where: { orderId } });
+    return this.prisma.payment.findUnique({ where: { orderId } });
   }
 }

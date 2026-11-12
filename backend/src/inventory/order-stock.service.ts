@@ -1,15 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
-import { EntityManager, IsNull } from 'typeorm';
-import {
-  OrderItem,
+import type { Prisma, Product } from '@prisma/client';
+import type {
   OrderItemExtra,
-} from '../orders/entities/order-item.entity';
-import { Product } from '../products/entities/product.entity';
-import { RecipeItem } from '../recipes/entities/recipe-item.entity';
-import { Recipe } from '../recipes/entities/recipe.entity';
+  RecipeWithIngredients,
+  RecipeLineWithIngredient,
+} from '../prisma/models';
+import { lockProduct, lockInventoryItem } from '../prisma/locks';
 import { lineQuantityInStockUnit } from '../recipes/recipe-servings';
-import { InventoryItem } from './entities/inventory-item.entity';
-import { InventoryMovement } from './entities/inventory-movement.entity';
 import { convertQuantity, formatQuantity } from './units';
 
 /**
@@ -53,24 +50,24 @@ interface IngredientNeed {
  * no usable recipe for that size.
  */
 export async function findRecipe(
-  manager: EntityManager,
+  manager: Prisma.TransactionClient,
   productId: number,
   size: string | null,
-): Promise<Recipe | null> {
+): Promise<RecipeWithIngredients | null> {
   // Ingredients come along so recipe amounts can be converted into each
   // item's stock unit (a 10 g line against coffee kept in kg).
-  const relations = { items: { inventoryItem: true } } as const;
-  let recipe: Recipe | null = null;
+  const include = { items: { include: { inventoryItem: true } } } as const;
+  let recipe: RecipeWithIngredients | null = null;
   if (size) {
-    recipe = await manager.findOne(Recipe, {
+    recipe = await manager.recipe.findFirst({
       where: { productId, size },
-      relations,
+      include,
     });
   }
   if (!recipe) {
-    recipe = await manager.findOne(Recipe, {
-      where: { productId, size: IsNull() },
-      relations,
+    recipe = await manager.recipe.findFirst({
+      where: { productId, size: null },
+      include,
     });
   }
   return recipe && recipe.items.length > 0 ? recipe : null;
@@ -91,7 +88,7 @@ export async function findRecipe(
 export class OrderStockDeduction {
   private readonly needs = new Map<number, IngredientNeed>();
 
-  constructor(private readonly manager: EntityManager) {}
+  constructor(private readonly manager: Prisma.TransactionClient) {}
 
   async reserveLine(line: OrderLine): Promise<ReservedLine> {
     const { product, size, quantity } = line;
@@ -147,7 +144,10 @@ export class OrderStockDeduction {
       );
     }
     product.stock -= quantity;
-    await this.manager.save(product);
+    await this.manager.product.update({
+      where: { id: product.id },
+      data: { stock: product.stock },
+    });
     // Measured in the supply's own unit here, so no conversion is needed.
     for (const extra of appliedExtras) {
       this.addNeed(extra.inventoryItemId, extra.quantity * quantity, label);
@@ -165,7 +165,7 @@ export class OrderStockDeduction {
    */
   private async describeExtras(
     extras: { inventoryItemId: number; quantity: number }[],
-    optional: Map<number, RecipeItem>,
+    optional: Map<number, RecipeLineWithIngredient>,
     label: string,
   ): Promise<OrderItemExtra[]> {
     const applied: OrderItemExtra[] = [];
@@ -173,7 +173,7 @@ export class OrderStockDeduction {
       const line = optional.get(extra.inventoryItemId);
       const item =
         line?.inventoryItem ??
-        (await this.manager.findOne(InventoryItem, {
+        (await this.manager.inventoryItem.findUnique({
           where: { id: extra.inventoryItemId },
         }));
       if (!item) {
@@ -209,10 +209,7 @@ export class OrderStockDeduction {
     const ids = [...this.needs.keys()].sort((a, b) => a - b);
     for (const id of ids) {
       const need = this.needs.get(id)!;
-      const item = await this.manager.findOne(InventoryItem, {
-        where: { id },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const item = await lockInventoryItem(this.manager, id);
       if (!item) {
         throw new BadRequestException(
           `An ingredient used by ${[...need.products].join(', ')} no longer exists — update the recipe`,
@@ -225,18 +222,21 @@ export class OrderStockDeduction {
           `Insufficient stock: ${item.name} — required ${formatQuantity(required, item.unit)}, available ${formatQuantity(have, item.unit)} (for ${[...need.products].join(', ')})`,
         );
       }
-      item.stockQuantity = round3(have - required);
-      await this.manager.save(item);
-      await this.manager.save(
-        this.manager.create(InventoryMovement, {
+      const stockAfter = round3(have - required);
+      await this.manager.inventoryItem.update({
+        where: { id },
+        data: { stockQuantity: stockAfter },
+      });
+      await this.manager.inventoryMovement.create({
+        data: {
           inventoryItemId: item.id,
           delta: -required,
-          stockAfter: item.stockQuantity,
+          stockAfter,
           reason: MOVEMENT_ORDER_DEDUCTION,
           orderId,
           userId,
-        }),
-      );
+        },
+      });
     }
   }
 }
@@ -249,54 +249,57 @@ export class OrderStockDeduction {
  * for the same order is a no-op.
  */
 export async function reverseOrderStock(
-  manager: EntityManager,
+  manager: Prisma.TransactionClient,
   orderId: number,
   userId: number | null,
 ): Promise<void> {
-  const items = await manager.find(OrderItem, { where: { orderId } });
+  const items = await manager.orderItem.findMany({
+    where: { orderId },
+    orderBy: { productId: 'asc' },
+  });
 
   for (const item of items) {
     if (item.stockSource !== 'stock') continue;
     // The product may have been removed since the order was placed — nothing
     // to restock, and that shouldn't block the cancellation.
-    const product = await manager.findOne(Product, {
-      where: { id: item.productId },
-      lock: { mode: 'pessimistic_write' },
-    });
+    const product = await lockProduct(manager, item.productId);
     if (product) {
       product.stock += item.quantity;
-      await manager.save(product);
+      await manager.product.update({
+        where: { id: product.id },
+        data: { stock: product.stock },
+      });
     }
   }
 
-  const alreadyReversed = await manager.exists(InventoryMovement, {
+  const alreadyReversed = await manager.inventoryMovement.findFirst({
     where: { orderId, reason: MOVEMENT_ORDER_REVERSAL },
   });
   if (alreadyReversed) return;
 
-  const deductions = await manager.find(InventoryMovement, {
+  const deductions = await manager.inventoryMovement.findMany({
     where: { orderId, reason: MOVEMENT_ORDER_DEDUCTION },
-    order: { inventoryItemId: 'ASC' },
+    orderBy: { inventoryItemId: 'asc' },
   });
   for (const deduction of deductions) {
-    const item = await manager.findOne(InventoryItem, {
-      where: { id: deduction.inventoryItemId },
-      lock: { mode: 'pessimistic_write' },
-    });
+    const item = await lockInventoryItem(manager, deduction.inventoryItemId);
     if (!item) continue; // ingredient deleted since — nothing to return
     const returned = -Number(deduction.delta);
-    item.stockQuantity = round3(Number(item.stockQuantity) + returned);
-    await manager.save(item);
-    await manager.save(
-      manager.create(InventoryMovement, {
+    const stockAfter = round3(Number(item.stockQuantity) + returned);
+    await manager.inventoryItem.update({
+      where: { id: item.id },
+      data: { stockQuantity: stockAfter },
+    });
+    await manager.inventoryMovement.create({
+      data: {
         inventoryItemId: item.id,
         delta: returned,
-        stockAfter: item.stockQuantity,
+        stockAfter,
         reason: MOVEMENT_ORDER_REVERSAL,
         orderId,
         userId,
-      }),
-    );
+      },
+    });
   }
 }
 

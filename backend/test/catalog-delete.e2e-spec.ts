@@ -1,11 +1,11 @@
+import { applyTestSchema } from './database';
 /**
  * Deleting products and categories (e2e): nothing with sales history is
  * ever destroyed — it is archived out of the catalog instead, and only when
  * the caller asks for it with ?force=true.
  */
 process.env.DB_NAME = 'poscafe_test_catalog';
-process.env.DB_SYNCHRONIZE = 'true';
-process.env.DB_MIGRATIONS_RUN = 'false';
+process.env.DATABASE_URL = ''; // Tests always use their isolated DB_NAME.
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
 
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -38,6 +38,7 @@ describe('Catalog delete (e2e)', () => {
     await conn.query(
       'CREATE DATABASE poscafe_test_catalog CHARACTER SET utf8mb4',
     );
+    await applyTestSchema(conn);
     await conn.end();
 
     const moduleRef = await Test.createTestingModule({

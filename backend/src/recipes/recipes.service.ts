@@ -3,207 +3,119 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
-import { InventoryItem } from '../inventory/entities/inventory-item.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { lockProduct } from '../prisma/locks';
 import { normalizeUnit, unitsCompatible } from '../inventory/units';
-import { Product } from '../products/entities/product.entity';
-import { StockMovement } from '../products/entities/stock-movement.entity';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
-import { RecipeItem } from './entities/recipe-item.entity';
-import { Recipe } from './entities/recipe.entity';
+
+const include = {
+  product: true,
+  items: { include: { inventoryItem: true } },
+} as const;
 
 @Injectable()
 export class RecipesService {
-  constructor(
-    @InjectRepository(Recipe)
-    private readonly recipeRepo: Repository<Recipe>,
-    @InjectRepository(RecipeItem)
-    private readonly recipeItemRepo: Repository<RecipeItem>,
-    private readonly dataSource: DataSource,
-  ) {}
-
-  async findAll(): Promise<Recipe[]> {
-    return this.recipeRepo.find({
-      relations: {
-        product: true,
-        items: {
-          inventoryItem: true,
-        },
-      },
-      order: { productId: 'ASC', size: 'ASC' },
+  constructor(private readonly prisma: PrismaService) {}
+  findAll() {
+    return this.prisma.recipe.findMany({
+      include,
+      orderBy: [{ productId: 'asc' }, { size: 'asc' }],
     });
   }
-
-  async findByProduct(productId: number): Promise<Recipe[]> {
-    return this.recipeRepo.find({
+  findByProduct(productId: number) {
+    return this.prisma.recipe.findMany({
       where: { productId },
-      relations: {
-        items: {
-          inventoryItem: true,
-        },
-      },
-      order: { size: 'ASC' },
+      include: { items: include.items },
+      orderBy: { size: 'asc' },
     });
   }
-
-  async findOne(id: number): Promise<Recipe> {
-    const recipe = await this.recipeRepo.findOne({
+  async findOne(id: number) {
+    const recipe = await this.prisma.recipe.findUnique({
       where: { id },
-      relations: {
-        product: true,
-        items: {
-          inventoryItem: true,
-        },
-      },
+      include,
     });
-    if (!recipe) {
-      throw new NotFoundException(`Recipe #${id} not found`);
-    }
+    if (!recipe) throw new NotFoundException(`Recipe #${id} not found`);
     return recipe;
   }
-
-  /**
-   * Create or update the recipe for a product + size combination. The size
-   * must be one the product actually sells (or none for a sizeless product)
-   * so every recipe is reachable from the POS and visible in the editor.
-   *
-   * Saving a recipe makes the product made to order: its stock mode flips to
-   * 'recipe' and any finished-stock count is cleared (journaled) so the
-   * Inventory page never shows a stale number next to the servings.
-   */
-  async createOrUpdate(
-    dto: CreateRecipeDto,
-    userId: number | null = null,
-  ): Promise<Recipe> {
-    return this.dataSource.transaction(async (manager) => {
-      const sizeParam = dto.size?.trim() || null;
-
-      const product = await manager.findOne(Product, {
-        where: { id: dto.productId },
-        relations: { variants: true },
-      });
-      if (!product) {
+  async createOrUpdate(dto: CreateRecipeDto, userId: number | null = null) {
+    return this.prisma.$transaction(async (tx) => {
+      const size = dto.size?.trim() || null;
+      const product = await lockProduct(tx, dto.productId);
+      if (!product)
         throw new NotFoundException(`Product #${dto.productId} not found`);
-      }
-      const sizes = product.variants.map((v) => v.size);
-      if (sizes.length > 0 && (!sizeParam || !sizes.includes(sizeParam))) {
+      const variants = await tx.productVariant.findMany({
+        where: { productId: product.id },
+      });
+      const sizes = variants.map((v) => v.size);
+      if (sizes.length && (!size || !sizes.includes(size))) {
         throw new BadRequestException(
           `"${product.name}" is sold in sizes ${sizes.join(', ')} — pick one of them for the recipe`,
         );
       }
-      if (sizes.length === 0 && sizeParam) {
+      if (!sizes.length && size)
         throw new BadRequestException(
           `"${product.name}" has no sizes — save the recipe without a size`,
         );
-      }
-
-      const seen = new Set<number>();
-      for (const item of dto.items) {
-        if (seen.has(item.inventoryItemId)) {
-          throw new BadRequestException(
-            'Each ingredient can appear only once in a recipe',
-          );
-        }
-        seen.add(item.inventoryItemId);
-      }
-
-      // Every line's unit must convert into its ingredient's stock unit
-      // (kg ↔ g, L ↔ ml); the deduction relies on that at sale time.
-      const ingredients = await manager.find(InventoryItem, {
-        where: { id: In([...seen]) },
+      const ids = dto.items.map((i) => i.inventoryItemId);
+      if (new Set(ids).size !== ids.length)
+        throw new BadRequestException(
+          'Each ingredient can appear only once in a recipe',
+        );
+      const ingredients = await tx.inventoryItem.findMany({
+        where: { id: { in: ids } },
       });
-      const byId = new Map(ingredients.map((i) => [i.id, i]));
-      const lineUnits = new Map<number, string | null>();
-      for (const item of dto.items) {
-        const ingredient = byId.get(item.inventoryItemId);
-        if (!ingredient) {
+      const items = dto.items.map((item) => {
+        const ingredient = ingredients.find(
+          (i) => i.id === item.inventoryItemId,
+        );
+        if (!ingredient)
           throw new NotFoundException(
             `Inventory item #${item.inventoryItemId} not found`,
           );
-        }
         const unit = item.unit?.trim() ? normalizeUnit(item.unit) : null;
         if (unit && !unitsCompatible(unit, ingredient.unit)) {
           throw new BadRequestException(
             `"${ingredient.name}" is stocked in ${ingredient.unit} — a recipe cannot take it in ${unit}`,
           );
         }
-        lineUnits.set(
-          item.inventoryItemId,
-          unit && unit !== normalizeUnit(ingredient.unit) ? unit : null,
-        );
-      }
-
-      let recipe = await manager.findOne(Recipe, {
-        where: {
-          productId: dto.productId,
-          size: sizeParam === null ? IsNull() : sizeParam,
-        },
-        relations: { items: true },
-      });
-
-      if (recipe) {
-        // Remove existing items first
-        await manager.delete(RecipeItem, { recipeId: recipe.id });
-      } else {
-        recipe = manager.create(Recipe, {
-          productId: dto.productId,
-          size: sizeParam,
-        });
-        recipe = await manager.save(recipe);
-      }
-
-      const items = dto.items.map((item) =>
-        manager.create(RecipeItem, {
-          recipeId: recipe.id,
+        return {
           inventoryItemId: item.inventoryItemId,
           quantity: item.quantity,
-          unit: lineUnits.get(item.inventoryItemId) ?? null,
+          unit: unit && unit !== normalizeUnit(ingredient.unit) ? unit : null,
           optional: item.optional ?? false,
-        }),
-      );
-      await manager.save(RecipeItem, items);
-
-      await this.makeToOrder(manager, product, userId);
-
-      return manager.findOneOrFail(Recipe, {
-        where: { id: recipe.id },
-        relations: {
-          product: true,
-          items: {
-            inventoryItem: true,
-          },
-        },
+        };
       });
+      // Locking the parent serializes sizeless recipes too: MySQL allows duplicate NULLs in unique indexes.
+      let recipe = await tx.recipe.findFirst({
+        where: { productId: product.id, size },
+      });
+      if (recipe)
+        await tx.recipeItem.deleteMany({ where: { recipeId: recipe.id } });
+      else
+        recipe = await tx.recipe.create({
+          data: { productId: product.id, size },
+        });
+      await tx.recipeItem.createMany({
+        data: items.map((item) => ({ ...item, recipeId: recipe.id })),
+      });
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stockMode: 'recipe', stock: 0 },
+      });
+      if (product.stock > 0)
+        await tx.stockMovement.create({
+          data: {
+            productId: product.id,
+            delta: -product.stock,
+            stockAfter: 0,
+            userId,
+          },
+        });
+      return tx.recipe.findUniqueOrThrow({ where: { id: recipe.id }, include });
     });
   }
-
-  /** Flip a product to 'recipe' mode, clearing its counted stock (journaled). */
-  private async makeToOrder(
-    manager: EntityManager,
-    product: Product,
-    userId: number | null,
-  ): Promise<void> {
-    if (product.stockMode === 'recipe' && product.stock === 0) return;
-    const stock = product.stock;
-    await manager.update(Product, product.id, {
-      stockMode: 'recipe',
-      stock: 0,
-    });
-    if (stock > 0) {
-      await manager.save(
-        manager.create(StockMovement, {
-          productId: product.id,
-          delta: -stock,
-          stockAfter: 0,
-          userId,
-        }),
-      );
-    }
-  }
-
   async remove(id: number): Promise<void> {
-    const recipe = await this.findOne(id);
-    await this.recipeRepo.remove(recipe);
+    await this.findOne(id);
+    await this.prisma.recipe.delete({ where: { id } });
   }
 }

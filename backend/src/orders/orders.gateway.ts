@@ -12,9 +12,9 @@ import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { corsOrigin } from '../common/cors';
 import { DEFAULT_CASHIER_PAGES } from '../common/decorators/requires-page.decorator';
 import { Role } from '../common/enums/role.enum';
-import { User } from '../users/entities/user.entity';
+import type { PublicUser } from '../prisma/models';
 import { UsersService } from '../users/users.service';
-import { Order } from './entities/order.entity';
+import type { OrderWithDetails } from '../prisma/models';
 
 /** What we stash on `socket.data` once a connection is authenticated. */
 interface SocketData {
@@ -90,7 +90,9 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: user.id,
         username: user.username,
         role: user.role,
-        allowedPages: user.allowedPages,
+        allowedPages: Array.isArray(user.allowedPages)
+          ? user.allowedPages.filter((p): p is string => typeof p === 'string')
+          : null,
       };
       this.logger.log(`Client connected: ${client.id} (${user.username})`);
     } catch (err) {
@@ -105,12 +107,12 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /** Broadcast a newly-created order to every connected screen. */
-  emitOrderCreated(order: Order) {
+  emitOrderCreated(order: OrderWithDetails) {
     this.emit('order.created', order);
   }
 
   /** Broadcast a status change (pending → preparing → ready → ...). */
-  emitOrderUpdated(order: Order) {
+  emitOrderUpdated(order: OrderWithDetails) {
     this.emit('order.updated', order);
   }
 
@@ -119,7 +121,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * never throw back into the caller and fail an otherwise successful request.
    * `server` is also undefined until Socket.IO finishes initialising.
    */
-  private emit(event: string, order: Order) {
+  private emit(event: string, order: OrderWithDetails) {
     if (!this.server) {
       this.logger.warn(`Dropped "${event}": socket server not ready yet`);
       return;
@@ -135,11 +137,13 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /** Admins always pass; cashiers need one of the order-feed pages. */
-  private static mayWatchOrders(user: User): boolean {
+  private static mayWatchOrders(user: PublicUser): boolean {
     if (user.role === Role.ADMIN) {
       return true;
     }
-    const allowed = user.allowedPages ?? DEFAULT_CASHIER_PAGES;
+    const allowed = Array.isArray(user.allowedPages)
+      ? user.allowedPages
+      : DEFAULT_CASHIER_PAGES;
     return OrdersGateway.ORDER_FEED_PAGES.some((page) =>
       allowed.includes(page),
     );

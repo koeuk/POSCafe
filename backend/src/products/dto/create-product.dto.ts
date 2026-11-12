@@ -14,7 +14,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { STOCK_MODES, type StockMode } from '../entities/product.entity';
+import { STOCK_MODES, type StockMode } from '../../prisma/models';
 
 export class ProductSizeDto {
   @IsString()

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequiresPage } from '../common/decorators/requires-page.decorator';
-import { User } from '../users/entities/user.entity';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { RecipesService } from './recipes.service';
 
@@ -35,7 +35,7 @@ export class RecipesController {
   }
 
   @Post()
-  createOrUpdate(@Body() dto: CreateRecipeDto, @CurrentUser() user: User) {
+  createOrUpdate(@Body() dto: CreateRecipeDto, @CurrentUser() user: AuthUser) {
     return this.recipesService.createOrUpdate(dto, user?.id ?? null);
   }
 

@@ -3,113 +3,71 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { RecipeItem } from '../recipes/entities/recipe-item.entity';
-import { Recipe } from '../recipes/entities/recipe.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { lockInventoryItem } from '../prisma/locks';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { RestockInventoryItemDto } from './dto/restock-inventory-item.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
-import { InventoryItem } from './entities/inventory-item.entity';
-import { InventoryMovement } from './entities/inventory-movement.entity';
 
 @Injectable()
 export class InventoryService {
-  constructor(
-    @InjectRepository(InventoryItem)
-    private readonly itemRepo: Repository<InventoryItem>,
-    @InjectRepository(InventoryMovement)
-    private readonly movementRepo: Repository<InventoryMovement>,
-    private readonly dataSource: DataSource,
-  ) {}
-
-  async findAll(category?: string): Promise<InventoryItem[]> {
-    const where = category ? { category } : {};
-    return this.itemRepo.find({
-      where,
-      order: { category: 'ASC', name: 'ASC' },
+  constructor(private readonly prisma: PrismaService) {}
+  findAll(category?: string) {
+    return this.prisma.inventoryItem.findMany({
+      where: category ? { category } : {},
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
   }
-
-  async findLowStock(): Promise<InventoryItem[]> {
-    return this.itemRepo
-      .createQueryBuilder('item')
-      .where('item.stockQuantity <= item.minThreshold')
-      .orderBy('item.stockQuantity', 'ASC')
-      .getMany();
+  findLowStock() {
+    return this.prisma.inventoryItem.findMany({
+      where: {
+        stockQuantity: { lte: this.prisma.inventoryItem.fields.minThreshold },
+      },
+      orderBy: { stockQuantity: 'asc' },
+    });
   }
-
-  async findOne(id: number): Promise<InventoryItem> {
-    const item = await this.itemRepo.findOne({ where: { id } });
-    if (!item) {
-      throw new NotFoundException(`Inventory item #${id} not found`);
-    }
+  async findOne(id: number) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
     return item;
   }
-
-  async create(dto: CreateInventoryItemDto): Promise<InventoryItem> {
-    const item = this.itemRepo.create({
-      name: dto.name,
-      category: dto.category,
-      unit: dto.unit,
-      stockQuantity: dto.stockQuantity,
-      minThreshold: dto.minThreshold ?? 0,
-      costPerUnit: dto.costPerUnit ?? 0,
-    });
-    return this.itemRepo.save(item);
+  create(dto: CreateInventoryItemDto) {
+    return this.prisma.inventoryItem.create({ data: dto });
   }
-
-  /**
-   * Edits an item's details. A changed quantity is journaled as a correction
-   * so the movement feed explains every number, not just restocks.
-   */
   async update(
     id: number,
     dto: UpdateInventoryItemDto,
     userId: number | null = null,
-  ): Promise<InventoryItem> {
-    return this.dataSource.transaction(async (manager) => {
-      const item = await manager.findOne(InventoryItem, {
-        where: { id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!item) {
-        throw new NotFoundException(`Inventory item #${id} not found`);
-      }
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await lockInventoryItem(tx, id);
+      if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
       const before = Number(item.stockQuantity);
-      Object.assign(item, dto);
-      const saved = await manager.save(item);
+      const saved = await tx.inventoryItem.update({ where: { id }, data: dto });
       const after = Number(saved.stockQuantity);
       if (dto.stockQuantity !== undefined && after !== before) {
-        await manager.save(
-          manager.create(InventoryMovement, {
-            inventoryItemId: item.id,
+        await tx.inventoryMovement.create({
+          data: {
+            inventoryItemId: id,
             delta: after - before,
             stockAfter: after,
             reason: 'correction',
             userId,
-          }),
-        );
+          },
+        });
       }
       return saved;
     });
   }
-
-  /**
-   * Deletes an item. Refused while a recipe still uses it — otherwise the
-   * cascade would silently empty that recipe and flip its product back to
-   * stock counting. With `force`, the item is first removed from those
-   * recipes (a recipe left with no lines is deleted, so the product becomes
-   * stock-counted explicitly rather than by accident).
-   */
   async remove(id: number, force = false): Promise<void> {
-    const item = await this.findOne(id);
-    await this.dataSource.transaction(async (manager) => {
-      const uses = await manager.find(RecipeItem, {
+    await this.prisma.$transaction(async (tx) => {
+      const item = await lockInventoryItem(tx, id);
+      if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
+      const uses = await tx.recipeItem.findMany({
         where: { inventoryItemId: id },
-        relations: { recipe: { product: true, items: true } },
+        include: { recipe: { include: { product: true, items: true } } },
       });
-      if (uses.length > 0 && !force) {
+      if (uses.length && !force) {
         const names = [
           ...new Set(
             uses.map((u) =>
@@ -124,56 +82,39 @@ export class InventoryService {
         );
       }
       for (const use of uses) {
-        const remaining = use.recipe.items.filter((i) => i.id !== use.id);
-        if (remaining.length === 0) {
-          await manager.remove(Recipe, use.recipe);
-        } else {
-          await manager.remove(RecipeItem, use);
-        }
+        if (use.recipe.items.length === 1)
+          await tx.recipe.delete({ where: { id: use.recipeId } });
+        else await tx.recipeItem.delete({ where: { id: use.id } });
       }
-      await manager.remove(InventoryItem, item);
+      await tx.inventoryItem.delete({ where: { id } });
     });
   }
-
-  async restock(
-    id: number,
-    userId: number,
-    dto: RestockInventoryItemDto,
-  ): Promise<InventoryItem> {
-    return this.dataSource.transaction(async (manager) => {
-      const item = await manager.findOne(InventoryItem, {
-        where: { id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!item) {
-        throw new NotFoundException(`Inventory item #${id} not found`);
-      }
-
-      // Stock can't go negative; journal the change actually applied, not
-      // the one requested, so delta and stockAfter always agree.
+  async restock(id: number, userId: number, dto: RestockInventoryItemDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await lockInventoryItem(tx, id);
+      if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
       const before = Number(item.stockQuantity);
       const after = Math.max(0, before + dto.delta);
-      item.stockQuantity = after;
-
-      const saved = await manager.save(item);
-
-      const movement = manager.create(InventoryMovement, {
-        inventoryItemId: item.id,
-        delta: after - before,
-        stockAfter: saved.stockQuantity,
-        reason: dto.reason || (dto.delta >= 0 ? 'restock' : 'correction'),
-        userId,
+      const saved = await tx.inventoryItem.update({
+        where: { id },
+        data: { stockQuantity: after },
       });
-      await manager.save(movement);
-
+      await tx.inventoryMovement.create({
+        data: {
+          inventoryItemId: id,
+          delta: Number(saved.stockQuantity) - before,
+          stockAfter: saved.stockQuantity,
+          reason: dto.reason || (dto.delta >= 0 ? 'restock' : 'correction'),
+          userId,
+        },
+      });
       return saved;
     });
   }
-
-  async findMovements(limit = 50): Promise<InventoryMovement[]> {
-    return this.movementRepo.find({
-      relations: { inventoryItem: true, user: true },
-      order: { createdAt: 'DESC' },
+  findMovements(limit = 50) {
+    return this.prisma.inventoryMovement.findMany({
+      include: { inventoryItem: true, user: { omit: { password: true } } },
+      orderBy: { createdAt: 'desc' },
       take: limit,
     });
   }

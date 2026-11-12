@@ -3,80 +3,58 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { countOrderLines, removeProduct } from './product-removal';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { Prisma, ProductVariant } from '@prisma/client';
 import { CategoriesService } from '../categories/categories.service';
 import { OrderStatus } from '../common/enums/order-status.enum';
-import { toNumber } from '../common/money';
-import { OrderItem } from '../orders/entities/order-item.entity';
-import { Recipe } from '../recipes/entities/recipe.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { lockProduct } from '../prisma/locks';
+import type { ProductWithDetails } from '../prisma/models';
 import { recipeServings } from '../recipes/recipe-servings';
 import { CreateProductDto, ProductSizeDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ProductVariant } from './entities/product-variant.entity';
-import { Product } from './entities/product.entity';
-import { StockMovement } from './entities/stock-movement.entity';
+import { countOrderLines, removeProduct } from './product-removal';
 
-// Units sold per product (across all non-cancelled orders).
 export interface SoldCount {
   productId: number;
   sold: number;
 }
-
-/**
- * Servings a 'recipe' product can make for one size (null size = the recipe
- * that covers every size). Returned on every product so the POS and the
- * Inventory page never have to compute it themselves.
- */
-export interface RecipeAvailability {
-  size: string | null;
-  servings: number;
-  // Customer's-choice lines (sugar, straw…) the POS offers at checkout.
-  options: RecipeOption[];
-}
-
 export interface RecipeOption {
   inventoryItemId: number;
   name: string;
-  // Per portion, in the line's unit (10 g, 1 pcs).
   quantity: number;
   unit: string;
 }
-
-export type ProductWithAvailability = Product & {
+export interface RecipeAvailability {
+  size: string | null;
+  servings: number;
+  options: RecipeOption[];
+}
+export type ProductWithAvailability = ProductWithDetails & {
   recipes: RecipeAvailability[];
 };
+const include = {
+  category: true,
+  variants: { orderBy: { sortOrder: 'asc' } },
+} as const;
 
 @Injectable()
 export class ProductsService {
   constructor(
-    @InjectRepository(Product)
-    private readonly repo: Repository<Product>,
-    @InjectRepository(ProductVariant)
-    private readonly variantRepo: Repository<ProductVariant>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(OrderItem)
-    private readonly orderItemRepo: Repository<OrderItem>,
-    @InjectRepository(Recipe)
-    private readonly recipeRepo: Repository<Recipe>,
+    private readonly prisma: PrismaService,
     private readonly categoriesService: CategoriesService,
   ) {}
 
-  /**
-   * Attaches recipe availability to each product. Only 'recipe' products
-   * get entries — a 'count' product's availability is simply its `stock`.
-   */
   private async withAvailability(
-    products: Product[],
+    products: ProductWithDetails[],
   ): Promise<ProductWithAvailability[]> {
-    const recipeProducts = products.filter((p) => p.stockMode === 'recipe');
+    const ids = products
+      .filter((p) => p.stockMode === 'recipe')
+      .map((p) => p.id);
     const byProduct = new Map<number, RecipeAvailability[]>();
-    if (recipeProducts.length > 0) {
-      const recipes = await this.recipeRepo.find({
-        where: { productId: In(recipeProducts.map((p) => p.id)) },
-        relations: { items: { inventoryItem: true } },
+    if (ids.length) {
+      const recipes = await this.prisma.recipe.findMany({
+        where: { productId: { in: ids } },
+        include: { items: { include: { inventoryItem: true } } },
       });
       for (const recipe of recipes) {
         const list = byProduct.get(recipe.productId) ?? [];
@@ -84,7 +62,7 @@ export class ProductsService {
           size: recipe.size,
           servings: recipeServings(recipe),
           options: recipe.items
-            .filter((i) => i.optional && i.inventoryItem)
+            .filter((i) => i.optional)
             .map((i) => ({
               inventoryItemId: i.inventoryItemId,
               name: i.inventoryItem.name,
@@ -95,279 +73,209 @@ export class ProductsService {
         byProduct.set(recipe.productId, list);
       }
     }
-    return products.map((p) =>
-      Object.assign(p, { recipes: byProduct.get(p.id) ?? [] }),
-    );
+    return products.map((p) => ({ ...p, recipes: byProduct.get(p.id) ?? [] }));
   }
-
-  /**
-   * Units sold per product, straight from order_items (excluding cancelled
-   * orders) — the orders table is the source of truth for sales, so this is
-   * accurate over the product's whole history.
-   */
   async findSoldCounts(): Promise<SoldCount[]> {
-    const rows = await this.orderItemRepo
-      .createQueryBuilder('item')
-      .innerJoin('item.order', 'o', 'o.status != :cancelled', {
-        cancelled: OrderStatus.CANCELLED,
-      })
-      .select('item.productId', 'productId')
-      .addSelect('SUM(item.quantity)', 'sold')
-      .groupBy('item.productId')
-      .getRawMany<{ productId: number; sold: string }>();
+    const rows = await this.prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: { order: { status: { not: OrderStatus.CANCELLED } } },
+      _sum: { quantity: true },
+    });
     return rows.map((r) => ({
-      productId: Number(r.productId),
-      sold: toNumber(r.sold),
+      productId: r.productId,
+      sold: r._sum.quantity ?? 0,
     }));
   }
-
-  /** Recent manual stock changes (restocks/corrections), newest first. */
-  findMovements(limit = 50): Promise<StockMovement[]> {
-    return this.movementRepo.find({
-      relations: { product: true, user: true },
-      order: { createdAt: 'DESC', id: 'DESC' },
+  findMovements(limit = 50) {
+    return this.prisma.stockMovement.findMany({
+      include: { product: true, user: { omit: { password: true } } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: Math.min(Math.max(limit, 1), 200),
     });
   }
-
-  /** Log a manual stock change (no row for a no-op delta). */
   private async recordMovement(
+    tx: Prisma.TransactionClient,
     productId: number,
     delta: number,
     stockAfter: number,
     userId: number | null,
-  ): Promise<void> {
-    if (delta === 0) return;
-    await this.movementRepo.save(
-      this.movementRepo.create({ productId, delta, stockAfter, userId }),
-    );
+  ) {
+    if (delta)
+      await tx.stockMovement.create({
+        data: { productId, delta, stockAfter, userId },
+      });
   }
-
   async findAll(categoryId?: number): Promise<ProductWithAvailability[]> {
-    const products = await this.repo.find({
-      where: { ...(categoryId ? { categoryId } : {}), archivedAt: IsNull() },
-      relations: { category: true, variants: true },
-      order: { name: 'ASC', variants: { sortOrder: 'ASC' } },
+    const products = await this.prisma.product.findMany({
+      where: { ...(categoryId ? { categoryId } : {}), archivedAt: null },
+      include,
+      orderBy: { name: 'asc' },
     });
     return this.withAvailability(products);
   }
-
   async findOne(id: number): Promise<ProductWithAvailability> {
-    const product = await this.repo.findOne({
+    const product = await this.prisma.product.findUnique({
       where: { id },
-      relations: { category: true, variants: true },
-      order: { variants: { sortOrder: 'ASC' } },
+      include,
     });
-    if (!product) {
-      throw new NotFoundException(`Product #${id} not found`);
-    }
-    const [withAvailability] = await this.withAvailability([product]);
-    return withAvailability;
+    if (!product) throw new NotFoundException(`Product #${id} not found`);
+    return (await this.withAvailability([product]))[0];
   }
-
-  async create(dto: CreateProductDto, userId?: number): Promise<Product> {
-    // Ensure the category exists (throws NotFound otherwise).
+  async create(dto: CreateProductDto, userId?: number) {
     await this.categoriesService.findOne(dto.categoryId);
-    const { sizes, ...productFields } = dto;
+    const { sizes, gallery, ...fields } = dto;
     const stockMode = dto.stockMode ?? 'count';
-    // A made-to-order product never holds finished stock.
     const stock = stockMode === 'recipe' ? 0 : (dto.stock ?? 0);
-    const product = this.repo.create({ ...productFields, stockMode, stock });
-    const saved = await this.repo.save(product);
-    if (stock > 0) {
-      await this.recordMovement(saved.id, stock, stock, userId ?? null);
-    }
-    await this.syncVariants(saved.id, sizes ?? null);
-    return this.findOne(saved.id);
-  }
-
-  async update(
-    id: number,
-    dto: UpdateProductDto,
-    userId?: number,
-  ): Promise<Product> {
-    const product = await this.findOne(id);
-    if (dto.categoryId !== undefined) {
-      await this.categoriesService.findOne(dto.categoryId);
-    }
-    const previousStock = product.stock;
-    const previousMode = product.stockMode;
-    const { sizes, ...productFields } = dto;
-    Object.assign(product, productFields);
-
-    // Switching to made-to-order: the finished-stock count no longer means
-    // anything, so it is cleared (journaled) rather than left to confuse.
-    if (product.stockMode === 'recipe') {
-      product.stock = 0;
-    }
-
-    // `findOne` eager-loads `category`, and TypeORM resolves the join column
-    // from that relation object in preference to the raw `categoryId` — so
-    // leaving a stale relation attached would silently undo a category move.
-    if (dto.categoryId !== undefined) {
-      Reflect.deleteProperty(product, 'category');
-    }
-    Reflect.deleteProperty(product, 'recipes');
-    await this.repo.save(product);
-
-    if (product.stock !== previousStock) {
-      await this.recordMovement(
-        id,
-        product.stock - previousStock,
-        product.stock,
-        userId ?? null,
-      );
-    }
-    // Back to counting: the recipes are no longer used, so they go too —
-    // hidden data that silently comes back later is exactly the confusion
-    // the one-mode rule exists to avoid.
-    if (previousMode === 'recipe' && product.stockMode === 'count') {
-      await this.recipeRepo.delete({ productId: id });
-    }
-    // Only reconcile size variants when sizes were part of the update.
-    if (sizes !== undefined) {
-      await this.syncVariants(id, sizes);
-    }
+    const id = await this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          ...fields,
+          stockMode,
+          stock,
+          gallery: gallery === null ? Prisma.DbNull : gallery,
+        },
+      });
+      await this.recordMovement(tx, product.id, stock, stock, userId ?? null);
+      await this.syncVariants(tx, product.id, sizes ?? null);
+      return product.id;
+    });
     return this.findOne(id);
   }
-
-  /**
-   * Deletes a product. One that appears in past orders can't simply vanish
-   * (order lines reference it), so without `force` that is refused with a
-   * 409; with `force` it is archived instead — see product-removal.ts.
-   */
-  async remove(id: number, force = false): Promise<void> {
-    const product = await this.findOne(id);
-    if (product.archivedAt) return; // already out of the catalog
-    const lines = await countOrderLines(this.repo.manager, id);
-    if (lines > 0 && !force) {
-      throw new ConflictException(
-        `"${product.name}" appears in ${lines} past order line${lines === 1 ? '' : 's'}, so it can't be deleted outright. Deleting anyway archives it: it disappears from the menu, POS and stock reports, while order history keeps it.`,
+  async update(id: number, dto: UpdateProductDto, userId?: number) {
+    if (dto.categoryId !== undefined)
+      await this.categoriesService.findOne(dto.categoryId);
+    await this.prisma.$transaction(async (tx) => {
+      const product = await lockProduct(tx, id);
+      if (!product) throw new NotFoundException(`Product #${id} not found`);
+      const { sizes, gallery, ...fields } = dto;
+      const stockMode = dto.stockMode ?? product.stockMode;
+      const stock = stockMode === 'recipe' ? 0 : (dto.stock ?? product.stock);
+      await tx.product.update({
+        where: { id },
+        data: {
+          ...fields,
+          stockMode,
+          stock,
+          gallery: gallery === null ? Prisma.DbNull : gallery,
+        },
+      });
+      await this.recordMovement(
+        tx,
+        id,
+        stock - product.stock,
+        stock,
+        userId ?? null,
       );
-    }
-    await this.repo.manager.transaction((manager) =>
-      removeProduct(manager, product),
-    );
+      if (product.stockMode === 'recipe' && stockMode === 'count')
+        await tx.recipe.deleteMany({ where: { productId: id } });
+      if (sizes !== undefined) await this.syncVariants(tx, id, sizes);
+    });
+    return this.findOne(id);
+  }
+  async remove(id: number, force = false): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const product = await lockProduct(tx, id);
+      if (!product) throw new NotFoundException(`Product #${id} not found`);
+      if (product.archivedAt) return;
+      const lines = await countOrderLines(tx, id);
+      if (lines > 0 && !force)
+        throw new ConflictException(
+          `"${product.name}" appears in ${lines} past order line${lines === 1 ? '' : 's'}, so it can't be deleted outright. Deleting anyway archives it: it disappears from the menu, POS and stock reports, while order history keeps it.`,
+        );
+      await removeProduct(tx, product);
+    });
   }
 
-  /**
-   * Keeps recipes attached to the sizes a product actually sells, so a size
-   * change never leaves a recipe the POS can't reach or the editor can't show:
-   *
-   *  - renamed size (a removed variant whose position now holds a new name):
-   *    the recipe follows the new name;
-   *  - removed size: its recipe goes too;
-   *  - sizeless → sized: the sizeless recipe is copied to every new size as a
-   *    starting point;
-   *  - sized → sizeless: the first size's recipe becomes the sizeless one.
-   */
+  /** Keep recipes attached when sizes are renamed, added, or removed. */
   private async syncRecipes(
+    tx: Prisma.TransactionClient,
     productId: number,
     existing: ProductVariant[],
     wanted: ProductSizeDto[],
     removed: ProductVariant[],
-  ): Promise<void> {
-    const recipes = await this.recipeRepo.find({
+  ) {
+    const recipes = await tx.recipe.findMany({
       where: { productId },
-      relations: { items: true },
+      include: { items: true },
     });
-    if (recipes.length === 0) return;
-
+    if (!recipes.length) return;
     const existingSizes = new Set(existing.map((v) => v.size));
     const added = wanted.filter((s) => !existingSizes.has(s.size));
     const recipeFor = (size: string | null) =>
       recipes.find((r) => r.size === size) ?? null;
-    const cloneTo = async (source: Recipe, size: string | null) => {
-      const copy = this.recipeRepo.create({
-        productId,
-        size,
-        items: source.items.map((i) => ({
-          inventoryItemId: i.inventoryItemId,
-          quantity: i.quantity,
-          unit: i.unit,
-          optional: i.optional,
-        })),
+    const cloneTo = async (
+      source: (typeof recipes)[number],
+      size: string | null,
+    ) => {
+      await tx.recipe.create({
+        data: {
+          productId,
+          size,
+          items: {
+            create: source.items.map((i) => ({
+              inventoryItemId: i.inventoryItemId,
+              quantity: i.quantity,
+              unit: i.unit,
+              optional: i.optional,
+            })),
+          },
+        },
       });
-      await this.recipeRepo.save(copy);
     };
-
-    // sized → sizeless
-    if (wanted.length === 0 && existing.length > 0) {
-      const first = [...existing].sort((a, b) => a.sortOrder - b.sortOrder);
-      const keep = first.map((v) => recipeFor(v.size)).find(Boolean) ?? null;
-      const sizeless = recipeFor(null);
-      if (keep && !sizeless) await cloneTo(keep, null);
-      await this.recipeRepo.remove(recipes.filter((r) => r.size !== null));
+    if (!wanted.length && existing.length) {
+      const keep = [...existing]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((v) => recipeFor(v.size))
+        .find(Boolean);
+      if (keep && !recipeFor(null)) await cloneTo(keep, null);
+      await tx.recipe.deleteMany({ where: { productId, size: { not: null } } });
       return;
     }
-
-    // sizeless → sized
-    if (existing.length === 0 && wanted.length > 0) {
+    if (!existing.length && wanted.length) {
       const sizeless = recipeFor(null);
       if (sizeless) {
-        for (const s of wanted) {
+        for (const s of wanted)
           if (!recipeFor(s.size)) await cloneTo(sizeless, s.size);
-        }
-        await this.recipeRepo.remove(sizeless);
+        await tx.recipe.delete({ where: { id: sizeless.id } });
       }
       return;
     }
-
-    // Renames and removals among an already-sized product.
     for (const variant of removed) {
       const recipe = recipeFor(variant.size);
       if (!recipe) continue;
       const replacement = wanted[variant.sortOrder];
       const isRename =
-        replacement !== undefined &&
+        replacement &&
         added.some((s) => s.size === replacement.size) &&
         !recipeFor(replacement.size);
       if (isRename) {
+        await tx.recipe.update({
+          where: { id: recipe.id },
+          data: { size: replacement.size },
+        });
         recipe.size = replacement.size;
-        await this.recipeRepo.save(recipe);
-      } else {
-        await this.recipeRepo.remove(recipe);
-      }
+      } else await tx.recipe.delete({ where: { id: recipe.id } });
     }
   }
-
-  /**
-   * Reconciles the variant rows (size name + price, in display order) to
-   * match the submitted size options, removing variants for sizes that no
-   * longer exist.
-   */
   private async syncVariants(
+    tx: Prisma.TransactionClient,
     productId: number,
     sizes: ProductSizeDto[] | null,
-  ): Promise<void> {
-    const existing = await this.variantRepo.find({ where: { productId } });
+  ) {
+    const existing = await tx.productVariant.findMany({ where: { productId } });
     const wanted = sizes ?? [];
     const wantedSizes = new Set(wanted.map((s) => s.size));
-
-    // Delete variants whose size was removed (or all, if sizes cleared).
-    const toRemove = existing.filter((v) => !wantedSizes.has(v.size));
-    await this.syncRecipes(productId, existing, wanted, toRemove);
-    if (toRemove.length) {
-      await this.variantRepo.remove(toRemove);
-    }
-
-    // Upsert each wanted size; the array position drives display order.
-    for (const [index, s] of wanted.entries()) {
-      const current = existing.find((v) => v.size === s.size);
-      if (current) {
-        current.price = s.price;
-        current.sortOrder = index;
-        await this.variantRepo.save(current);
-      } else {
-        await this.variantRepo.save(
-          this.variantRepo.create({
-            productId,
-            size: s.size,
-            price: s.price,
-            sortOrder: index,
-          }),
-        );
-      }
+    const removed = existing.filter((v) => !wantedSizes.has(v.size));
+    await this.syncRecipes(tx, productId, existing, wanted, removed);
+    await tx.productVariant.deleteMany({
+      where: { id: { in: removed.map((v) => v.id) } },
+    });
+    for (const [sortOrder, s] of wanted.entries()) {
+      await tx.productVariant.upsert({
+        where: { productId_size: { productId, size: s.size } },
+        create: { productId, size: s.size, price: s.price, sortOrder },
+        update: { price: s.price, sortOrder },
+      });
     }
   }
 }

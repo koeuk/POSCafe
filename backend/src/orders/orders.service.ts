@@ -3,21 +3,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { lockProduct, lockOrder } from '../prisma/locks';
+import type { OrderWithDetails } from '../prisma/models';
 import { OrderStatus } from '../common/enums/order-status.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { roundCents, toNumber } from '../common/money';
-import { Payment } from '../payments/entities/payment.entity';
-import { Product } from '../products/entities/product.entity';
-import { ProductVariant } from '../products/entities/product-variant.entity';
 import {
   OrderStockDeduction,
   reverseOrderStock,
 } from '../inventory/order-stock.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderItem } from './entities/order-item.entity';
-import { Order } from './entities/order.entity';
 import { OrdersGateway } from './orders.gateway';
 
 export interface FindOrdersFilter {
@@ -30,9 +27,7 @@ export interface FindOrdersFilter {
 @Injectable()
 export class OrdersService {
   constructor(
-    @InjectRepository(Order)
-    private readonly repo: Repository<Order>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly gateway: OrdersGateway,
   ) {}
 
@@ -41,43 +36,45 @@ export class OrdersService {
    * decrements stock, and computes the total — all in one transaction so
    * concurrent orders can't oversell.
    */
-  async create(userId: number, dto: CreateOrderDto): Promise<Order> {
-    const orderId = await this.dataSource.transaction(async (manager) => {
+  async create(userId: number, dto: CreateOrderDto): Promise<OrderWithDetails> {
+    const orderId = await this.prisma.$transaction(async (manager) => {
       let total = 0;
-      const items: OrderItem[] = [];
+      const items: Prisma.OrderItemUncheckedCreateWithoutOrderInput[] = [];
       const deduction = new OrderStockDeduction(manager);
+      for (const id of [
+        ...new Set(dto.items.map((line) => line.productId)),
+      ].sort((a, b) => a - b)) {
+        await lockProduct(manager, id);
+      }
 
       for (const line of dto.items) {
         // Lock the product row for the duration of the transaction so two
         // concurrent orders can't both read the same stock and oversell.
-        const product = await manager.findOne(Product, {
-          where: { id: line.productId },
-          lock: { mode: 'pessimistic_write' },
-        });
+        const product = await lockProduct(manager, line.productId);
         if (!product) {
           throw new NotFoundException(`Product #${line.productId} not found`);
         }
-        if (!product.isAvailable) {
+        if (!product.isAvailable || product.archivedAt) {
           throw new BadRequestException(`"${product.name}" is not available`);
         }
 
         // A product is "sized" when it has variant rows — each carries its
         // own price. Sizeless products price from the product row itself.
         const hasSizes =
-          (await manager.count(ProductVariant, {
+          (await manager.productVariant.count({
             where: { productId: product.id },
           })) > 0;
 
         let basePrice = toNumber(product.price);
         let size: string | null = null;
-        let variant: ProductVariant | null = null;
+
         if (hasSizes) {
           if (!line.size) {
             throw new BadRequestException(
               `Size is required for "${product.name}"`,
             );
           }
-          variant = await manager.findOne(ProductVariant, {
+          const variant = await manager.productVariant.findFirst({
             where: { productId: product.id, size: line.size },
           });
           if (!variant) {
@@ -110,34 +107,40 @@ export class OrdersService {
           extras: line.extras,
         });
 
-        items.push(
-          manager.create(OrderItem, {
-            productId: product.id,
-            quantity: line.quantity,
-            size,
-            note: line.note?.trim() || null,
-            extras,
-            unitPrice,
-            subtotal,
-            stockSource,
-          }),
-        );
+        items.push({
+          productId: product.id,
+          quantity: line.quantity,
+          size,
+          note: line.note?.trim() || null,
+          extras:
+            extras === null
+              ? Prisma.DbNull
+              : extras.map((extra) => ({ ...extra })),
+          unitPrice,
+          subtotal,
+          stockSource,
+        });
       }
 
       // Derive the order number from the auto-increment id so it's always
       // unique — a timestamp collides when two orders are created in the same
       // millisecond and trips the unique constraint. Insert with a temporary
       // placeholder first, then set the final number once the id is known.
-      const order = manager.create(Order, {
-        orderNumber: `TMP-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
-        status: OrderStatus.PENDING,
-        total: roundCents(total),
-        userId,
-        items, // cascade-inserted
+      const saved = await manager.order.create({
+        data: {
+          orderNumber: `TMP-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+          status: OrderStatus.PENDING,
+          total: roundCents(total),
+          userId,
+          items: { create: items },
+        },
       });
-      const saved = await manager.save(order);
-      saved.orderNumber = `ORD-${String(saved.id).padStart(6, '0')}`;
-      await manager.save(saved);
+      await manager.order.update({
+        where: { id: saved.id },
+        data: {
+          orderNumber: `ORD-${String(saved.id).padStart(6, '0')}`,
+        },
+      });
 
       // Consumables last: any shortfall throws and rolls the whole order back.
       await deduction.commitIngredients(saved.id, userId);
@@ -151,54 +154,35 @@ export class OrdersService {
     return order;
   }
 
-  findAll(filter: FindOrdersFilter = {}): Promise<Order[]> {
-    // Unpaid orders: no payment row yet, and not cancelled. Used by the
-    // "Take Payment" screen so paid/cancelled orders never show up there.
+  findAll(filter: FindOrdersFilter = {}): Promise<OrderWithDetails[]> {
+    const where: Prisma.OrderWhereInput = {};
+    if (filter.status !== undefined) where.status = filter.status;
+    if (filter.userId !== undefined) where.userId = filter.userId;
     if (filter.unpaid) {
-      const qb = this.repo
-        .createQueryBuilder('o')
-        .leftJoinAndSelect('o.items', 'items')
-        .leftJoinAndSelect('items.product', 'product')
-        .leftJoinAndSelect('o.user', 'user')
-        .where('o.status != :cancelled', { cancelled: OrderStatus.CANCELLED })
-        .andWhere('o.paymentStatus = :unpaid', {
-          unpaid: PaymentStatus.UNPAID,
-        })
-        .orderBy('o.createdAt', 'DESC');
-      if (filter.status !== undefined) {
-        qb.andWhere('o.status = :status', { status: filter.status });
-      }
-      if (filter.userId !== undefined) {
-        qb.andWhere('o.userId = :userId', { userId: filter.userId });
-      }
-      return qb.getMany();
+      where.AND = [
+        { status: { not: OrderStatus.CANCELLED } },
+        { paymentStatus: PaymentStatus.UNPAID },
+      ];
     }
-
-    // Build the where clause with only defined keys — TypeORM throws on
-    // undefined values in a where condition.
-    const where: { status?: OrderStatus; userId?: number } = {};
-    if (filter.status !== undefined) {
-      where.status = filter.status;
-    }
-    if (filter.userId !== undefined) {
-      where.userId = filter.userId;
-    }
-
-    return this.repo.find({
+    return this.prisma.order.findMany({
       where,
-      relations: { items: { product: true }, user: true },
-      order: { createdAt: 'DESC' },
+      include: {
+        items: { include: { product: true } },
+        user: { omit: { password: true } },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: number): Promise<Order> {
-    const order = await this.repo.findOne({
+  async findOne(id: number): Promise<OrderWithDetails> {
+    const order = await this.prisma.order.findUnique({
       where: { id },
-      relations: { items: { product: true }, user: true },
+      include: {
+        items: { include: { product: true } },
+        user: { omit: { password: true } },
+      },
     });
-    if (!order) {
-      throw new NotFoundException(`Order #${id} not found`);
-    }
+    if (!order) throw new NotFoundException(`Order #${id} not found`);
     return order;
   }
 
@@ -229,17 +213,14 @@ export class OrdersService {
     id: number,
     status: OrderStatus,
     userId: number | null = null,
-  ): Promise<Order> {
-    await this.dataSource.transaction(async (manager) => {
+  ): Promise<OrderWithDetails> {
+    await this.prisma.$transaction(async (manager) => {
       // Lock the order row for the whole transaction. Without this, a status
       // change racing a payment does a read-modify-write over the payment's
       // committed status and can leave the order CANCELLED but PAID.
       // Locked without relations — a pessimistic lock over a join would also
       // lock the joined item rows, which isn't what we want here.
-      const order = await manager.findOne(Order, {
-        where: { id },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const order = await lockOrder(manager, id);
       if (!order) {
         throw new NotFoundException(`Order #${id} not found`);
       }
@@ -287,8 +268,7 @@ export class OrdersService {
         await reverseOrderStock(manager, order.id, userId);
       }
 
-      order.status = status;
-      await manager.save(order);
+      await manager.order.update({ where: { id }, data: { status } });
     });
 
     // Broadcast the status change so every screen stays in sync.
@@ -302,12 +282,9 @@ export class OrdersService {
    * the order and returns its items to stock — atomically. Refunded orders
    * drop out of revenue because reports only count paymentStatus = PAID.
    */
-  async refund(id: number, adminUserId: number): Promise<Order> {
-    await this.dataSource.transaction(async (manager) => {
-      const order = await manager.findOne(Order, {
-        where: { id },
-        lock: { mode: 'pessimistic_write' },
-      });
+  async refund(id: number, adminUserId: number): Promise<OrderWithDetails> {
+    await this.prisma.$transaction(async (manager) => {
+      const order = await lockOrder(manager, id);
       if (!order) {
         throw new NotFoundException(`Order #${id} not found`);
       }
@@ -319,14 +296,14 @@ export class OrdersService {
         );
       }
 
-      const payment = await manager.findOne(Payment, {
+      const payment = await manager.payment.findUnique({
         where: { orderId: order.id },
-        lock: { mode: 'pessimistic_write' },
       });
       if (payment) {
-        payment.refundedAt = new Date();
-        payment.refundedById = adminUserId;
-        await manager.save(payment);
+        await manager.payment.update({
+          where: { id: payment.id },
+          data: { refundedAt: new Date(), refundedById: adminUserId },
+        });
       }
 
       // Return the units to inventory unless the order was already cancelled
@@ -336,9 +313,13 @@ export class OrdersService {
         await reverseOrderStock(manager, order.id, adminUserId);
       }
 
-      order.paymentStatus = PaymentStatus.REFUNDED;
-      order.status = OrderStatus.CANCELLED;
-      await manager.save(order);
+      await manager.order.update({
+        where: { id },
+        data: {
+          paymentStatus: PaymentStatus.REFUNDED,
+          status: OrderStatus.CANCELLED,
+        },
+      });
     });
 
     const updated = await this.findOne(id);
@@ -351,7 +332,7 @@ export class OrdersService {
    * (e.g. payments) that mutate an order inside their own transaction and just
    * need the live update pushed out after the commit.
    */
-  async broadcastUpdate(id: number): Promise<Order> {
+  async broadcastUpdate(id: number): Promise<OrderWithDetails> {
     const order = await this.findOne(id);
     this.gateway.emitOrderUpdated(order);
     return order;

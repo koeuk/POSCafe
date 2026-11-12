@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
-import { StandardNamingStrategy } from './common/database/standard-naming.strategy';
 import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -24,27 +23,7 @@ import { RecipesModule } from './recipes/recipes.module';
       // .env lives at the project root; also support a local backend/.env.
       envFilePath: ['.env', '../.env'],
     }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'mysql',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: Number(config.get<string>('DB_PORT', '3306')),
-        username: config.get<string>('DB_USER', 'root'),
-        password: config.get<string>('DB_PASSWORD', ''),
-        database: config.get<string>('DB_NAME', 'poscafe'),
-        charset: 'utf8mb4',
-        namingStrategy: new StandardNamingStrategy(),
-        autoLoadEntities: true,
-        // Schema changes go through migrations (src/migrations), applied
-        // automatically on boot. DB_SYNCHRONIZE=true remains as an escape
-        // hatch for throwaway databases — it can silently drop columns, so
-        // never enable it against real data.
-        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
-        migrations: [`${__dirname}/migrations/*{.ts,.js}`],
-        migrationsRun: config.get<string>('DB_MIGRATIONS_RUN') !== 'false',
-      }),
-    }),
+    PrismaModule,
     UsersModule,
     AuthModule,
     CategoriesModule,

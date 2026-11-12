@@ -5,20 +5,19 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
+import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
-import { IsNull, LessThan, Repository } from 'typeorm';
 import { MailService } from '../common/mail/mail.service';
 import { Role } from '../common/enums/role.enum';
-import { User } from '../users/entities/user.entity';
+import type { PublicUser } from '../prisma/models';
 import { UsersService } from '../users/users.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
-import { PasswordReset } from './entities/password-reset.entity';
+import type { PasswordReset } from '@prisma/client';
 
 /** How long a mailed OTP stays valid. */
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -48,8 +47,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
-    @InjectRepository(PasswordReset)
-    private readonly resets: Repository<PasswordReset>,
+    private readonly prisma: PrismaService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -127,17 +125,17 @@ export class AuthService {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
 
     // Only the newest code may be used: retire anything still outstanding.
-    await this.resets.update(
-      { userId: user.id, consumedAt: IsNull() },
-      { consumedAt: new Date() },
-    );
-    await this.resets.save(
-      this.resets.create({
+    await this.prisma.passwordReset.updateMany({
+      where: { userId: user.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+    await this.prisma.passwordReset.create({
+      data: {
         userId: user.id,
         codeHash: await bcrypt.hash(code, 10),
         expiresAt: new Date(Date.now() + CODE_TTL_MS),
-      }),
-    );
+      },
+    });
 
     const minutes = Math.round(CODE_TTL_MS / 60000);
     try {
@@ -192,16 +190,22 @@ export class AuthService {
 
     if (!(await bcrypt.compare(dto.code, reset.codeHash))) {
       const attempts = reset.attempts + 1;
-      await this.resets.update(reset.id, {
-        attempts,
-        // Out of guesses: burn the code so the attacker has to request a new
-        // one (which re-arms the cooldown and re-alerts the mailbox owner).
-        consumedAt: attempts >= MAX_ATTEMPTS ? new Date() : undefined,
+      await this.prisma.passwordReset.update({
+        where: { id: reset.id },
+        data: {
+          attempts,
+          // Out of guesses: burn the code so the attacker has to request a new
+          // one (which re-arms the cooldown and re-alerts the mailbox owner).
+          consumedAt: attempts >= MAX_ATTEMPTS ? new Date() : undefined,
+        },
       });
       throw invalid();
     }
 
-    await this.resets.update(reset.id, { consumedAt: new Date() });
+    await this.prisma.passwordReset.update({
+      where: { id: reset.id },
+      data: { consumedAt: new Date() },
+    });
 
     return {
       resetToken: this.jwtService.sign(
@@ -234,8 +238,8 @@ export class AuthService {
     }
 
     // The row is the one-time guard — a replayed token finds it completed.
-    const reset = await this.resets.findOne({
-      where: { id: payload.rid, userId: payload.sub, completedAt: IsNull() },
+    const reset = await this.prisma.passwordReset.findFirst({
+      where: { id: payload.rid, userId: payload.sub, completedAt: null },
     });
     if (!reset) {
       throw expired();
@@ -247,7 +251,10 @@ export class AuthService {
     }
 
     await this.usersService.setPassword(user.id, dto.password);
-    await this.resets.update(reset.id, { completedAt: new Date() });
+    await this.prisma.passwordReset.update({
+      where: { id: reset.id },
+      data: { completedAt: new Date() },
+    });
 
     // NOTE: JWTs already issued to this account stay valid until they expire —
     // there is no token blocklist. A reset locks the thief out of *logging in
@@ -259,17 +266,19 @@ export class AuthService {
   private latestOutstandingReset(
     userId: number,
   ): Promise<PasswordReset | null> {
-    return this.resets.findOne({
-      where: { userId, consumedAt: IsNull() },
-      order: { id: 'DESC' },
+    return this.prisma.passwordReset.findFirst({
+      where: { userId, consumedAt: null },
+      orderBy: { id: 'desc' },
     });
   }
 
   /** Housekeeping so the table doesn't grow forever. Failures are non-fatal. */
   private async pruneOldResets(): Promise<void> {
     try {
-      await this.resets.delete({
-        createdAt: LessThan(new Date(Date.now() - PRUNE_AFTER_MS)),
+      await this.prisma.passwordReset.deleteMany({
+        where: {
+          createdAt: { lt: new Date(Date.now() - PRUNE_AFTER_MS) },
+        },
       });
     } catch (err) {
       this.logger.warn(
@@ -278,7 +287,7 @@ export class AuthService {
     }
   }
 
-  private buildAuthResponse(user: User) {
+  private buildAuthResponse(user: PublicUser) {
     const payload = { sub: user.id, username: user.username, role: user.role };
     return {
       accessToken: this.jwtService.sign(payload),

@@ -4,63 +4,54 @@ import {
   NotFoundException,
   type OnModuleInit,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateSizeDto } from './dto/create-size.dto';
 import { UpdateSizeDto } from './dto/update-size.dto';
-import { Size } from './entities/size.entity';
-
-// Defaults seeded on first run (when the table is empty).
-const DEFAULT_SIZES = ['Small', 'Medium', 'Large'];
 
 @Injectable()
 export class SizesService implements OnModuleInit {
-  constructor(
-    @InjectRepository(Size)
-    private readonly repo: Repository<Size>,
-  ) {}
-
-  // Seed Small / Medium / Large the first time, so the list isn't empty.
+  constructor(private readonly prisma: PrismaService) {}
   async onModuleInit() {
-    if ((await this.repo.count()) === 0) {
-      await this.repo.save(
-        DEFAULT_SIZES.map((name, i) =>
-          this.repo.create({ name, sortOrder: i }),
-        ),
-      );
+    if ((await this.prisma.size.count()) === 0) {
+      await this.prisma.size.createMany({
+        data: ['Small', 'Medium', 'Large'].map((name, sortOrder) => ({
+          name,
+          sortOrder,
+        })),
+        skipDuplicates: true,
+      });
     }
   }
-
-  findAll(): Promise<Size[]> {
-    return this.repo.find({ order: { sortOrder: 'ASC', name: 'ASC' } });
+  findAll() {
+    return this.prisma.size.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
   }
-
-  async create(dto: CreateSizeDto): Promise<Size> {
+  async create(dto: CreateSizeDto) {
     const name = dto.name.trim();
-    if (await this.repo.findOne({ where: { name } })) {
+    if (await this.prisma.size.findUnique({ where: { name } }))
       throw new ConflictException(`Size "${name}" already exists`);
-    }
-    return this.repo.save(
-      this.repo.create({ name, sortOrder: dto.sortOrder ?? 0 }),
-    );
+    return this.prisma.size.create({
+      data: { name, sortOrder: dto.sortOrder ?? 0 },
+    });
   }
-
-  async update(id: number, dto: UpdateSizeDto): Promise<Size> {
-    const size = await this.repo.findOne({ where: { id } });
-    if (!size) throw new NotFoundException('Size not found');
-    if (dto.name !== undefined) {
-      const name = dto.name.trim();
-      const clash = await this.repo.findOne({ where: { name, id: Not(id) } });
-      if (clash) throw new ConflictException(`Size "${name}" already exists`);
-      size.name = name;
-    }
-    if (dto.sortOrder !== undefined) size.sortOrder = dto.sortOrder;
-    return this.repo.save(size);
+  async update(id: number, dto: UpdateSizeDto) {
+    if (!(await this.prisma.size.findUnique({ where: { id } })))
+      throw new NotFoundException('Size not found');
+    const name = dto.name?.trim();
+    if (
+      name !== undefined &&
+      (await this.prisma.size.findFirst({ where: { name, id: { not: id } } }))
+    )
+      throw new ConflictException(`Size "${name}" already exists`);
+    return this.prisma.size.update({
+      where: { id },
+      data: { name, sortOrder: dto.sortOrder },
+    });
   }
-
   async remove(id: number): Promise<void> {
-    const size = await this.repo.findOne({ where: { id } });
-    if (!size) throw new NotFoundException('Size not found');
-    await this.repo.remove(size);
+    if (!(await this.prisma.size.findUnique({ where: { id } })))
+      throw new NotFoundException('Size not found');
+    await this.prisma.size.delete({ where: { id } });
   }
 }

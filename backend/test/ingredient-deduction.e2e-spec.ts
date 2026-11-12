@@ -1,3 +1,4 @@
+import { applyTestSchema } from './database';
 /**
  * Ingredient deduction (e2e): the shop's own worked example. Iced Latte M is
  * made from coffee, milks, sugar, cup M, lid M, straw and ice; selling one
@@ -5,8 +6,7 @@
  * is never touched, and a cancel puts everything back.
  */
 process.env.DB_NAME = 'poscafe_test_ingredients';
-process.env.DB_SYNCHRONIZE = 'true';
-process.env.DB_MIGRATIONS_RUN = 'false';
+process.env.DATABASE_URL = ''; // Tests always use their isolated DB_NAME.
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
 
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -69,6 +69,7 @@ describe('Ingredient deduction — Iced Latte M (e2e)', () => {
     await conn.query(
       'CREATE DATABASE poscafe_test_ingredients CHARACTER SET utf8mb4',
     );
+    await applyTestSchema(conn);
     await conn.end();
 
     const moduleRef = await Test.createTestingModule({

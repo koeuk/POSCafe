@@ -1,3 +1,4 @@
+import { applyTestSchema } from './database';
 /**
  * Recipe-driven stock (e2e): a product with a recipe is made to order from
  * consumables; one without draws from its own stock count. Cancel/refund
@@ -6,8 +7,7 @@
  * Needs a local MySQL (same env vars as the app). Uses its own database.
  */
 process.env.DB_NAME = 'poscafe_test_recipes';
-process.env.DB_SYNCHRONIZE = 'true';
-process.env.DB_MIGRATIONS_RUN = 'false';
+process.env.DATABASE_URL = ''; // Tests always use their isolated DB_NAME.
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
 
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -49,6 +49,7 @@ describe('Recipe stock flow (e2e)', () => {
     await conn.query(
       'CREATE DATABASE poscafe_test_recipes CHARACTER SET utf8mb4',
     );
+    await applyTestSchema(conn);
     await conn.end();
 
     const moduleRef = await Test.createTestingModule({

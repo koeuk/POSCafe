@@ -1,34 +1,25 @@
 import { Injectable, type OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { PrismaService } from '../prisma/prisma.service';
 import { UpdateAppSettingDto } from './dto/update-app-setting.dto';
-import { AppSetting } from './entities/app-setting.entity';
+import type { AppSetting } from '@prisma/client';
 
 // The one settings row always lives at this id.
 const SETTINGS_ID = 1;
 
 @Injectable()
 export class SettingsService implements OnModuleInit {
-  constructor(
-    @InjectRepository(AppSetting)
-    private readonly repo: Repository<AppSetting>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  // Seed the single branding row the first time the app boots.
   async onModuleInit() {
-    if (!(await this.repo.findOne({ where: { id: SETTINGS_ID } }))) {
-      await this.repo.save(
-        this.repo.create({ id: SETTINGS_ID, appName: 'POSCAFE' }),
-      );
-    }
+    await this.find();
   }
 
-  async find(): Promise<AppSetting> {
-    // onModuleInit guarantees the row exists; fall back defensively anyway.
-    const settings = await this.repo.findOne({ where: { id: SETTINGS_ID } });
-    return (
-      settings ?? this.repo.create({ id: SETTINGS_ID, appName: 'POSCAFE' })
-    );
+  find(): Promise<AppSetting> {
+    return this.prisma.appSetting.upsert({
+      where: { id: SETTINGS_ID },
+      create: { id: SETTINGS_ID },
+      update: {},
+    });
   }
 
   /**
@@ -77,6 +68,9 @@ export class SettingsService implements OnModuleInit {
     if (dto.khqrDynamic !== undefined) {
       settings.khqrDynamic = dto.khqrDynamic;
     }
-    return this.repo.save(settings);
+    return this.prisma.appSetting.update({
+      where: { id: SETTINGS_ID },
+      data: settings,
+    });
   }
 }

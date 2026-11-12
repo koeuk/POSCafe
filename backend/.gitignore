@@ -19,3 +19,6 @@
 
 # Dev build output (avoids root-owned dist)
 dist-dev
+
+# Nest production output
+/build

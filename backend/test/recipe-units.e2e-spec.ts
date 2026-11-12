@@ -1,3 +1,4 @@
+import { applyTestSchema } from './database';
 /**
  * Recipe deduction with unit conversion (e2e): the shop's worked example.
  * Coffee is stocked in kg, the Iced Coffee recipes take it in g; each sale
@@ -6,8 +7,7 @@
  * deducts its own. A short ingredient blocks the sale and changes nothing.
  */
 process.env.DB_NAME = 'poscafe_test_recipe_units';
-process.env.DB_SYNCHRONIZE = 'true';
-process.env.DB_MIGRATIONS_RUN = 'false';
+process.env.DATABASE_URL = ''; // Tests always use their isolated DB_NAME.
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
 
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -89,6 +89,7 @@ describe('Recipe deduction with unit conversion — Iced Coffee (e2e)', () => {
     await conn.query(
       'CREATE DATABASE poscafe_test_recipe_units CHARACTER SET utf8mb4',
     );
+    await applyTestSchema(conn);
     await conn.end();
 
     const moduleRef = await Test.createTestingModule({

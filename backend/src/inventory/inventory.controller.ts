@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequiresPage } from '../common/decorators/requires-page.decorator';
-import { User } from '../users/entities/user.entity';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { RestockInventoryItemDto } from './dto/restock-inventory-item.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
@@ -55,7 +55,7 @@ export class InventoryController {
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
     @Body() dto: UpdateInventoryItemDto,
   ) {
     return this.inventoryService.update(id, dto, user.id);
@@ -73,7 +73,7 @@ export class InventoryController {
   @Post(':id/restock')
   restock(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
     @Body() dto: RestockInventoryItemDto,
   ) {
     return this.inventoryService.restock(id, user.id, dto);

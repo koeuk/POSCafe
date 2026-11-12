@@ -1,5 +1,5 @@
 /**
- * Money helpers. TypeORM returns DECIMAL columns as strings, so amounts are
+ * Money helpers. Prisma represents DECIMAL columns as Decimal objects, so amounts are
  * coerced at the boundary and all cent-rounding goes through one place to keep
  * stored totals free of floating-point drift.
  */
@@ -10,6 +10,8 @@ export function roundCents(value: number): number {
 }
 
 /** Coerces a DECIMAL-as-string (or number) to a number. */
-export function toNumber(value: number | string): number {
+export function toNumber(
+  value: number | string | { toString(): string },
+): number {
   return Number(value);
 }

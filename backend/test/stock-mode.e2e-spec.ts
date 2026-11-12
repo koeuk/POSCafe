@@ -1,3 +1,4 @@
+import { applyTestSchema } from './database';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment,
    @typescript-eslint/no-unsafe-member-access,
    @typescript-eslint/no-unsafe-argument,
@@ -9,8 +10,7 @@
 // (sizes only carry price), 'recipe' is made to order. Every quantity change
 // is journaled so the shop owner can explain each number.
 process.env.DB_NAME = 'poscafe_test';
-process.env.DB_SYNCHRONIZE = 'true';
-process.env.DB_MIGRATIONS_RUN = 'false';
+process.env.DATABASE_URL = ''; // Tests always use their isolated DB_NAME.
 
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -36,6 +36,7 @@ describe('Stock mode (e2e)', () => {
     });
     await conn.query('DROP DATABASE IF EXISTS poscafe_test');
     await conn.query('CREATE DATABASE poscafe_test CHARACTER SET utf8mb4');
+    await applyTestSchema(conn);
     await conn.end();
 
     const moduleRef = await Test.createTestingModule({
