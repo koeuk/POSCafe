@@ -202,6 +202,7 @@ describe('Ingredient deduction — Iced Latte M (e2e)', () => {
       [3, 'order_refund'],
       [-3, 'order_deduction'],
       [-1, 'order_deduction'],
+      [500, 'opening_balance'],
     ]);
   });
 });

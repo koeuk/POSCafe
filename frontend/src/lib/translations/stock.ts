@@ -1,5 +1,22 @@
 /** Khmer for the Inventory page, consumables and recipes. */
 export const stock = {
+  "Stock history": "ប្រវត្តិស្តុក",
+  "Stock in": "ស្តុកចូល",
+  "Stock out": "ស្តុកចេញ",
+  "Adjustment": "កែតម្រូវស្តុក",
+  "All movements": "ការផ្លាស់ប្តូរទាំងអស់",
+  "From date": "ចាប់ពីកាលបរិច្ឆេទ",
+  "To date": "ដល់កាលបរិច្ឆេទ",
+  "Staff ID": "លេខសម្គាល់បុគ្គលិក",
+  "Balance": "សមតុល្យ",
+  "Previous page": "ទំព័រមុន",
+  "Next page": "ទំព័របន្ទាប់",
+  "No stock movements match.": "មិនមានប្រវត្តិស្តុកត្រូវគ្នាទេ។",
+  "Opening balance": "សមតុល្យដើមគ្រា",
+  "Total stock items": "មុខទំនិញស្តុកសរុប",
+  "Stock value": "តម្លៃស្តុក",
+  "Unit cost (USD per stock unit)": "ថ្លៃដើមមួយឯកតាស្តុក (ដុល្លារ)",
+  "{count} stocked items have no unit cost; stock value is incomplete.": "មុខទំនិញមានស្តុក {count} មុខមិនមានថ្លៃដើម ដូច្នេះតម្លៃស្តុកមិនពេញលេញទេ។",
   // Inventory page (app/(staff)/(manage)/stock/page.tsx)
   "Supplies": "សម្ភារៈ",
   "How each product is tracked and how many can be sold right now.": "របៀបតាមដានផលិតផលនីមួយៗ និងចំនួនដែលអាចលក់បានឥឡូវនេះ។",

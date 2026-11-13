@@ -6,6 +6,25 @@
 
 **Deliverable:** Assessment and implementation backlog. This document does not implement missing features or change database data.
 
+## Implementation progress — first increment
+
+✅ means implemented and verified; 🟡 means partly complete; ⬜ means not started.
+
+- ✅ Added four white summary cards for all inventory items: total items, low stock (positive quantities only), out of stock, and current stock value.
+- ✅ Added unit-cost entry/editing in USD per stock unit and a warning when stocked items have zero/missing costs. These cards currently include ingredients and other supplies together.
+- ✅ New ingredients with opening stock create an atomic `opening_balance` movement; API-created items record the staff member.
+- ✅ Quantity corrections require a nonblank `adjustmentReason`; the actual reason is saved in history. Cost-only edits do not require a stock correction reason.
+- ✅ Adjust/restock requests require a nonblank reason; the UI supplies a required reason field.
+- 🟡 Dashboard: ingredient-only category metrics and normalized categories remain.
+- 🟡 Adjustments/history: document records, retained history on deletion, legacy opening reconciliation, filtering/pagination, and cost snapshots remain.
+- ⬜ Dedicated receiving/stock-out documents and full ingredient reports.
+- ⬜ Completion-time consumption with reservations and snapshots.
+- ⬜ Suppliers, purchasing, physical counts, locations, batches, expiry, and structured waste.
+
+**Verification:** 5 inventory unit tests and 90 backend integration tests passed. Frontend/backend type checks and changed-file lint passed. A browser check with mocked data verified valuation, the missing-cost warning, and cost-only edits preserving live stock.
+
+**API change:** `PATCH /inventory/:id` needs `adjustmentReason` when quantity changes. `POST /inventory/:id/restock` needs a nonblank `reason`. Existing callers and tests must send these fields. No schema migration is needed for this increment. Legacy history is not backfilled or invented.
+
 ## 1. Current position
 
 The application already has the core of ingredient and recipe inventory. It is not yet a complete purchasing, stock control, and batch management system.
@@ -25,21 +44,21 @@ The application already has the core of ingredient and recipe inventory. It is n
 
 | # | Feature | Priority | Status | What exists now | What is missing or needs changing |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Stock Dashboard | High | **Partial** | Products tab shows sellable units, sold-out products, and made-to-order products. Supplies tab shows a low-stock count and ingredient quantities. | Ingredient total, a separate out-of-stock ingredient count, stock valuation, and a consolidated ingredient dashboard. Finished-product servings are not an ingredient stock value. |
-| 2 | Ingredient Management | High | **Implemented — basic** | Add, edit, delete, search, and group supplies/ingredients. Stores stock unit, quantity, minimum threshold, and backend unit cost. Deletion checks recipe usage; force deletion can remove recipe lines. | Basic requested CRUD and categorization are present. A normalized category master and cost entry UI are extensions still needed for the proposed schema and valuation workflow. |
-| 3 | Stock In | High | **Partial** | Positive quantity adjustments add stock and create ingredient movement records. | A receiving document with received date, supplier/source, purchase quantity/unit, unit cost, receipt reference, and posted status. No supplier or purchase order linkage. |
-| 4 | Stock Out | High | **Partial** | Negative adjustments subtract stock and accept a free-text reason. Sales also create ingredient deductions. | A dedicated manual issue/waste action with required reason and explicit usage/damage/waste classification. Insufficient-stock handling currently clamps to zero rather than necessarily rejecting the requested subtraction. |
-| 5 | Recipe Management | High | **Implemented — basic** | Recipes by product and size, ingredient quantities, compatible units, optional add-ons, recipe editing, and calculated servings. Saving a recipe switches a product to recipe stock mode. | The core requirement is present. Recipe/version snapshots become necessary if consumption is moved from order placement to later completion. |
-| 6 | Auto Stock Deduction | High | **Partial — different trigger** | Atomic deduction at order creation; ingredient shortages roll back the order. Locks prevent overselling. Cancellation/refund reverses recorded deductions. | Deduction at completed sale rather than at unpaid order placement. Must separate reservation from consumption and prevent duplicate consumption on retries. |
-| 7 | Low Stock Alerts | High | **Implemented — basic visual alerts** | Per-item thresholds, low-stock badges, a low-stock count, and `GET /inventory/low-stock`. Current comparison is quantity **at or below** the threshold. | No push/email/SMS or persistent notification lifecycle. Those are optional enhancements unless you require an alert outside the inventory screen. Out-of-stock items currently also count as low stock. |
-| 8 | Stock Adjustment | High | **Partial** | Quantity edits are journaled as `correction`; the adjust/restock dialog accepts a note. | A mandatory meaningful reason for every correction, structured adjustment records, and consistent before/after/actor details. Direct quantity edits currently use a generic reason. |
-| 9 | Stock History | High | **Partial** | Ingredient movements store signed quantity, resulting stock, reason, user, order, and timestamps. Separate finished-product manual movements exist. UI shows recent entries. | A complete retained history: opening ingredient quantities are not journaled, ingredient deletion cascades to its movement records, and the UI only requests the latest 30 entries. No complete filtered/paginated history or historical cost/unit snapshots. |
-| 10 | Supplier Management | Medium | **Missing** | No supplier model, API, or management screen found. | Supplier records, contact information, active status, notes, and linked purchasing/receiving history. |
-| 11 | Purchase Orders | Medium | **Missing** | No purchase-order or receiving-document models, APIs, or screens found. Generic restocking is available. | Draft/submitted/partially received/received/cancelled orders, ingredient lines, ordered quantities, costs, and partial receipt handling. |
-| 12 | Stock Count | Medium | **Missing** | Staff can manually overwrite a quantity or apply a delta. | A physical count session, expected quantity snapshot, counted quantity, variance, review/posting, and linked adjustment movements. A quantity edit is not a stock-count workflow. |
-| 13 | Expiration Tracking | Medium | **Missing** | No ingredient batch or expiry fields/workflow found. | Batches, received/expiry dates, remaining batch quantities, expiry alerts, and expired-stock handling. |
-| 14 | Waste Management | Medium | **Missing as a dedicated workflow** | A negative adjustment can carry a note such as “Spoilage.” | Structured expired/spilled/damaged waste records, quantities, cost snapshots, optional batch/location, responsible staff, and waste reporting. Generic subtraction alone is not this feature. |
-| 15 | Stock Reports | High | **Partial** | Product availability/sold-out reporting, product sales counts, sales/revenue reports, and recent movement feeds. | Ingredient consumption, stock valuation, stock in/out, adjustments, and waste/cost reports for a selected period. Existing sales revenue reporting does not provide ingredient consumption costs. |
+| 1 | Stock Dashboard | High | **🟡 Partial** | Products tab shows sellable units, sold-out products, and made-to-order products. Supplies tab shows a low-stock count and ingredient quantities. | Ingredient-only categorization/metrics remain; the first increment now provides total, low, out-of-stock, and valuation cards for the combined supplies inventory. Finished-product servings are not an ingredient stock value. |
+| 2 | Ingredient Management | High | **✅ Implemented — basic** | Add, edit, delete, search, and group supplies/ingredients. Stores stock unit, quantity, minimum threshold, and editable unit cost. Deletion checks recipe usage; force deletion can remove recipe lines. | Basic requested CRUD and categorization are present. A normalized category master is still needed for the proposed schema. |
+| 3 | Stock In | High | **🟡 Partial** | Positive quantity adjustments add stock and create ingredient movement records. | A receiving document with received date, supplier/source, purchase quantity/unit, unit cost, receipt reference, and posted status. No supplier or purchase order linkage. |
+| 4 | Stock Out | High | **🟡 Partial** | Negative adjustments subtract stock and require a free-text reason. Sales also create ingredient deductions. | A dedicated manual issue/waste action with required reason and explicit usage/damage/waste classification. Insufficient-stock handling currently clamps to zero rather than necessarily rejecting the requested subtraction. |
+| 5 | Recipe Management | High | **✅ Implemented — basic** | Recipes by product and size, ingredient quantities, compatible units, optional add-ons, recipe editing, and calculated servings. Saving a recipe switches a product to recipe stock mode. | The core requirement is present. Recipe/version snapshots become necessary if consumption is moved from order placement to later completion. |
+| 6 | Auto Stock Deduction | High | **🟡 Partial — different trigger** | Atomic deduction at order creation; ingredient shortages roll back the order. Locks prevent overselling. Cancellation/refund reverses recorded deductions. | Deduction at completed sale rather than at unpaid order placement. Must separate reservation from consumption and prevent duplicate consumption on retries. |
+| 7 | Low Stock Alerts | High | **✅ Implemented — basic visual alerts** | Per-item thresholds, low-stock badges, a low-stock count, and `GET /inventory/low-stock`. Current comparison is quantity **at or below** the threshold. | No push/email/SMS or persistent notification lifecycle. Those are optional enhancements unless you require an alert outside the inventory screen. Out-of-stock items currently also count as low stock. |
+| 8 | Stock Adjustment | High | **🟡 Partial** | Quantity edits require a reason and journal the actual difference; the adjust/restock dialog requires a note. | Structured adjustment records and consistent before/after/actor presentation remain. |
+| 9 | Stock History | High | **🟡 Partial** | Ingredient movements store signed quantity, resulting stock, reason, user, order, and timestamps. Separate finished-product manual movements exist. UI shows recent entries. | A complete retained history: legacy opening ingredient quantities have not been reconciled, ingredient deletion cascades to its movement records, and the UI only requests the latest 30 entries. No complete filtered/paginated history or historical cost/unit snapshots. |
+| 10 | Supplier Management | Medium | **⬜ Missing** | No supplier model, API, or management screen found. | Supplier records, contact information, active status, notes, and linked purchasing/receiving history. |
+| 11 | Purchase Orders | Medium | **⬜ Missing** | No purchase-order or receiving-document models, APIs, or screens found. Generic restocking is available. | Draft/submitted/partially received/received/cancelled orders, ingredient lines, ordered quantities, costs, and partial receipt handling. |
+| 12 | Stock Count | Medium | **⬜ Missing** | Staff can manually overwrite a quantity or apply a delta. | A physical count session, expected quantity snapshot, counted quantity, variance, review/posting, and linked adjustment movements. A quantity edit is not a stock-count workflow. |
+| 13 | Expiration Tracking | Medium | **⬜ Missing** | No ingredient batch or expiry fields/workflow found. | Batches, received/expiry dates, remaining batch quantities, expiry alerts, and expired-stock handling. |
+| 14 | Waste Management | Medium | **⬜ Missing as a dedicated workflow** | A negative adjustment can carry a note such as “Spoilage.” | Structured expired/spilled/damaged waste records, quantities, cost snapshots, optional batch/location, responsible staff, and waste reporting. Generic subtraction alone is not this feature. |
+| 15 | Stock Reports | High | **🟡 Partial** | Product availability/sold-out reporting, product sales counts, sales/revenue reports, and recent movement feeds. | Ingredient consumption, stock valuation, stock in/out, adjustments, and waste/cost reports for a selected period. Existing sales revenue reporting does not provide ingredient consumption costs. |
 
 ## 3. Your proposed tables compared with the current schema
 
@@ -53,18 +72,18 @@ Names alone do not determine whether a feature exists. Two requested entities al
 | `unit_conversions` | **No table.** Code already converts g ↔ kg and ml ↔ L; pcs and custom identical units are supported. | Keep working conversions and add persisted conversion definitions if configurable conversions are required. Product-specific packaging conversions need their own ingredient context. |
 | `recipes` | **Exists:** `recipes`. | Extend/reuse. It is linked to a product and optional size. |
 | `recipe_ingredients` | **Equivalent exists:** `recipe_items`. | Reuse or map the existing table; preserve recipe and ingredient relationships. |
-| `stock_locations` | **Missing.** Stock currently has one aggregate quantity per item with no location. | Add locations if receiving/counting/batches must distinguish storeroom, bar, or other locations. |
+| `stock_locations` | **⬜ Missing.** Stock currently has one aggregate quantity per item with no location. | Add locations if receiving/counting/batches must distinguish storeroom, bar, or other locations. |
 | `stock_movements` | **Name exists, different purpose:** manual finished-product changes use `stock_movements`. Ingredient movements are in **`inventory_movements`**. | Use/extend `inventory_movements` as the ingredient ledger, or migrate naming deliberately. Do not overwrite or combine the product ledger just to match this name. |
-| `stock_adjustments` | **Missing document table.** Generic corrections exist in ingredient movements. | Add adjustment documents linked to posted ingredient movements. |
-| `stock_counts` | **Missing.** | Add physical count session headers. |
-| `stock_count_items` | **Missing.** | Add expected/count/variance lines linked to a count session. |
-| `suppliers` | **Missing.** | Add supplier records and purchasing relationships. |
-| `purchase_orders` | **Missing.** | Add purchase order headers. |
-| `purchase_order_items` | **Missing.** | Add ordered ingredient, unit, quantity, and cost lines. |
-| `stock_receipts` | **Missing.** | Add receiving documents, optionally linked to a purchase order. |
-| `stock_receipt_items` | **Missing.** | Add received quantities, units, costs, and batch creation references. |
-| `inventory_batches` | **Missing.** | Add batch identity, ingredient/location, receipt reference, expiry date, remaining quantity, and cost information. |
-| `waste_records` | **Missing.** | Add structured waste records linked to ingredient ledger entries. |
+| `stock_adjustments` | **⬜ Missing document table.** Generic corrections exist in ingredient movements. | Add adjustment documents linked to posted ingredient movements. |
+| `stock_counts` | **⬜ Missing.** | Add physical count session headers. |
+| `stock_count_items` | **⬜ Missing.** | Add expected/count/variance lines linked to a count session. |
+| `suppliers` | **⬜ Missing.** | Add supplier records and purchasing relationships. |
+| `purchase_orders` | **⬜ Missing.** | Add purchase order headers. |
+| `purchase_order_items` | **⬜ Missing.** | Add ordered ingredient, unit, quantity, and cost lines. |
+| `stock_receipts` | **⬜ Missing.** | Add receiving documents, optionally linked to a purchase order. |
+| `stock_receipt_items` | **⬜ Missing.** | Add received quantities, units, costs, and batch creation references. |
+| `inventory_batches` | **⬜ Missing.** | Add batch identity, ingredient/location, receipt reference, expiry date, remaining quantity, and cost information. |
+| `waste_records` | **⬜ Missing.** | Add structured waste records linked to ingredient ledger entries. |
 
 **Naming recommendation:** reuse `inventory_items`, `recipe_items`, and `inventory_movements` initially. They already underpin APIs, recipes, orders, refunds, and the UI. Display names such as “Ingredients” can change without renaming database tables.
 
@@ -83,7 +102,7 @@ Add four ingredient-focused cards:
 | Out of stock | Stock quantity is zero. Negative stock should be prevented by posted inventory actions. |
 | Stock value | Sum of on-hand base-unit quantities × applicable cost per base unit. If locations/batches exist, aggregate their balances without counting the same stock twice. |
 
-Add a unit-cost field to the ingredient form. `costPerUnit` already exists in the backend but is not submitted by the current consumables form. Existing/default zero costs must not be presented as a reliable valuation without identifying missing cost data.
+Add a unit-cost field to the ingredient form. `costPerUnit` is now submitted by the consumables form (completed in the first increment). Existing/default zero costs must not be presented as a reliable valuation without identifying missing cost data.
 
 **Acceptance:** adding an ingredient, receiving stock, consuming stock, or posting a correction updates the appropriate metrics. Mixed units are converted before cost calculations.
 
@@ -149,7 +168,7 @@ Extend the ingredient ledger to record, where applicable:
 - Location and batch when those modules are enabled.
 - A duplicate-posting key or unique source reference.
 
-Journal opening stock on new ingredients. For legacy stock, create an explicitly identified migration/opening balance rather than inventing past receipts or consumption. Keep historical costs unknown when they cannot be established.
+✅ Opening stock on new ingredients is now journaled. For legacy stock, create an explicitly identified migration/opening balance rather than inventing past receipts or consumption. Keep historical costs unknown when they cannot be established.
 
 Archive ingredients that have movement history instead of cascading their history away. Correct posted records through linked reversal/correction entries rather than silently editing history.
 
@@ -231,4 +250,4 @@ Existing test files already cover ingredient deduction, shortage rollback, cance
 | Existing report scope | [Reports controller](../backend/src/reports/reports.controller.ts), [reports service](../backend/src/reports/reports.service.ts) |
 | Existing deduction/recipe tests inspected | [Ingredient deduction](../backend/test/ingredient-deduction.e2e-spec.ts), [recipe stock](../backend/test/recipe-stock.e2e-spec.ts), [recipe units](../backend/test/recipe-units.e2e-spec.ts), [stock modes](../backend/test/stock-mode.e2e-spec.ts) |
 
-**Assessment limits:** repository source and test source were reviewed for this audit. No new feature implementation, database migration, or runtime test execution was performed as part of this document request. “Missing” means no supporting implementation was found in the reviewed application source/schema.
+**Assessment limits:** repository source and test source were reviewed for this audit. The original audit was source-only. The implementation progress section records subsequent work; no database schema migration was needed for the first increment. “Missing” means no supporting implementation was found in the reviewed application source/schema.

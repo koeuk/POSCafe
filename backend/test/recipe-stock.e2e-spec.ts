@@ -376,7 +376,7 @@ describe('Recipe stock flow (e2e)', () => {
     expect(Number(movements[0].stockAfter)).toBe(0);
 
     await auth(http().patch(`/inventory/${beansId}`))
-      .send({ stockQuantity: 50 })
+      .send({ stockQuantity: 50, adjustmentReason: 'correction' })
       .expect(200);
     movements = (await auth(http().get('/inventory/movements'))).body;
     expect(movements[0].reason).toBe('correction');

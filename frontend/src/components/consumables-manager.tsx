@@ -1,19 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { StockHistory } from "@/components/stock-history";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PopSelect } from "@/components/pop-select";
+import { formatPrice } from "@/lib/pricing";
 import { api } from "@/lib/api";
 import {
-  formatMonthShort,
-  formatTimeShort,
   useT,
   type Translate,
   type TranslationKey,
 } from "@/lib/i18n";
 import {
   type InventoryItem,
-  type InventoryMovement,
   type Recipe,
 } from "@/lib/types";
 
@@ -30,31 +29,16 @@ const DEFAULT_GROUP: string = SUPPLY_GROUPS[0];
 // Common units of measure; anything else can be typed in.
 const DEFAULT_UNITS = ["pcs", "g", "kg", "ml", "L"];
 
-// Human labels for the journal reasons written by the backend.
-const REASON_LABELS: Record<string, TranslationKey> = {
-  restock: "restock",
-  correction: "correction",
-  order_deduction: "sold",
-  order_refund: "returned (cancel/refund)",
-};
-
 /** Display label for a supply group: the standard groups are translated, custom names pass through. */
 function groupLabel(name: string, t: Translate): string {
   const standard = SUPPLY_GROUPS.find((g) => g.toLowerCase() === name.toLowerCase());
   return standard ? t(standard) : name;
 }
 
-/** "Sep 6, 2:10 PM" with translated month and AM/PM. */
-function formatMovementTime(iso: string, t: Translate): string {
-  const date = new Date(iso);
-  return `${formatMonthShort(date, t)} ${date.getDate()}, ${formatTimeShort(date, t)}`;
-}
-
 export function ConsumablesManager() {
   const { t } = useT();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -69,10 +53,14 @@ export function ConsumablesManager() {
     unit: "pcs",
     stockQuantity: "0",
     minThreshold: "10",
+    costPerUnit: "0",
+    adjustmentReason: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
   // Quick Restock modal state
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [restockMode, setRestockMode] = useState<"in" | "out" | "adjust">("adjust");
   const [restockItem, setRestockItem] = useState<InventoryItem | null>(null);
   const [restockDelta, setRestockDelta] = useState("");
   const [restockReason, setRestockReason] = useState("");
@@ -87,14 +75,13 @@ export function ConsumablesManager() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [itemList, recipeList, movementList] = await Promise.all([
+      const [itemList, recipeList] = await Promise.all([
         api<InventoryItem[]>("/inventory"),
         api<Recipe[]>("/recipes"),
-        api<InventoryMovement[]>("/inventory/movements?limit=30"),
       ]);
       setItems(itemList);
       setRecipes(recipeList);
-      setMovements(movementList);
+      setHistoryVersion(v => v + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("Failed to load inventory"));
     } finally {
@@ -124,6 +111,14 @@ export function ConsumablesManager() {
       return true;
     });
   }, [items, query, categoryFilter]);
+
+  const stockSummary = useMemo(() => ({
+    total: items.length,
+    low: items.filter(i => Number(i.stockQuantity) > 0 && Number(i.stockQuantity) <= Number(i.minThreshold)).length,
+    out: items.filter(i => Number(i.stockQuantity) <= 0).length,
+    value: items.reduce((sum, i) => sum + Number(i.stockQuantity) * Number(i.costPerUnit ?? 0), 0),
+    uncosted: items.filter(i => Number(i.stockQuantity) > 0 && Number(i.costPerUnit ?? 0) === 0).length,
+  }), [items]);
 
   const lowStockCount = useMemo(() => {
     return items.filter((i) => Number(i.stockQuantity) <= Number(i.minThreshold)).length;
@@ -169,6 +164,8 @@ export function ConsumablesManager() {
       unit: "pcs",
       stockQuantity: "100",
       minThreshold: "20",
+      costPerUnit: "0",
+      adjustmentReason: "",
     });
     setShowAddModal(true);
   }
@@ -181,6 +178,8 @@ export function ConsumablesManager() {
       unit: item.unit,
       stockQuantity: String(item.stockQuantity),
       minThreshold: String(item.minThreshold),
+      costPerUnit: String(item.costPerUnit ?? 0),
+      adjustmentReason: "",
     });
     setShowAddModal(true);
   }
@@ -195,8 +194,12 @@ export function ConsumablesManager() {
         name: formData.name.trim(),
         category: formData.category.trim() || DEFAULT_GROUP,
         unit: formData.unit.trim(),
-        stockQuantity: Number(formData.stockQuantity) || 0,
+        ...(!editingItem || Number(formData.stockQuantity) !== Number(editingItem.stockQuantity)
+          ? { stockQuantity: Number(formData.stockQuantity) }
+          : {}),
         minThreshold: Number(formData.minThreshold) || 0,
+        costPerUnit: Number(formData.costPerUnit),
+        ...(editingItem ? { adjustmentReason: formData.adjustmentReason.trim() || undefined } : {}),
       };
 
       if (editingItem) {
@@ -222,8 +225,9 @@ export function ConsumablesManager() {
   async function handleRestock(e: React.FormEvent) {
     e.preventDefault();
     if (!restockItem) return;
-    const delta = Number(restockDelta);
-    if (isNaN(delta) || delta === 0) return;
+    const entered = Number(restockDelta);
+    const delta = restockMode === "out" ? -Math.abs(entered) : restockMode === "in" ? Math.abs(entered) : entered;
+    if (!Number.isFinite(delta) || delta === 0 || (restockMode !== "adjust" && entered <= 0)) return;
 
     setRestocking(true);
     setError(null);
@@ -287,6 +291,25 @@ export function ConsumablesManager() {
       {error && (
         <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-busy={loading}>
+        {[
+          { label: t("Total stock items"), value: String(stockSummary.total) },
+          { label: t("Low stock"), value: String(stockSummary.low) },
+          { label: t("Out of stock"), value: String(stockSummary.out) },
+          { label: t("Stock value"), value: formatPrice(stockSummary.value) },
+        ].map(card => (
+          <div key={card.label} className="rounded-2xl border border-stone-200/70 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+            <p className="text-sm text-stone-500 dark:text-stone-400">{card.label}</p>
+            <p className="mt-2 text-2xl font-bold text-stone-900 dark:text-stone-100">{loading ? "…" : card.value}</p>
+          </div>
+        ))}
+      </div>
+      {!loading && stockSummary.uncosted > 0 && (
+        <p className="text-sm text-amber-700 dark:text-amber-300" role="status">
+          {t("{count} stocked items have no unit cost; stock value is incomplete.", { count: stockSummary.uncosted })}
         </p>
       )}
 
@@ -401,17 +424,13 @@ export function ConsumablesManager() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRestockItem(item);
-                      setRestockDelta("50");
-                      setRestockReason("Restock");
-                    }}
-                    className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 transition hover:bg-green-100 dark:bg-green-500/15 dark:text-green-400 dark:hover:bg-green-500/25"
-                  >
-                    {t("+ Adjust / Restock")}
-                  </button>
+                  <div className="flex flex-wrap gap-1">
+                    {(["in", "out", "adjust"] as const).map(mode => <button key={mode} type="button"
+                      onClick={() => { setRestockMode(mode); setRestockItem(item); setRestockDelta(""); setRestockReason(""); }}
+                      className="rounded-lg border border-stone-200 px-2 py-1.5 text-xs font-semibold text-stone-700 dark:border-stone-700 dark:text-stone-200">
+                      {t(mode === "in" ? "Stock in" : mode === "out" ? "Stock out" : "Adjustment")}
+                    </button>)}
+                  </div>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
@@ -460,45 +479,7 @@ export function ConsumablesManager() {
         </div>
       )}
 
-      {/* Recent Movements Feed */}
-      {movements.length > 0 && (
-        <div className="mt-8">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-stone-500">
-            {t("Recent Consumable Stock Movements")}
-          </h3>
-          <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200/70 bg-white dark:divide-stone-800 dark:border-stone-800 dark:bg-stone-900">
-            {movements.map((m) => {
-              const deltaNum = Number(m.delta);
-              const isPlus = deltaNum > 0;
-              return (
-                <li
-                  key={m.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`font-semibold tabular-nums ${
-                        isPlus
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-amber-600 dark:text-amber-400"
-                      }`}
-                    >
-                      {isPlus ? `+${deltaNum}` : deltaNum}
-                    </span>
-                    <span className="font-medium text-stone-900 dark:text-stone-100">
-                      {m.inventoryItem?.name ?? t("Item #{id}", { id: m.inventoryItemId })}
-                    </span>
-                    <span className="text-stone-400">
-                      ({REASON_LABELS[m.reason] ? t(REASON_LABELS[m.reason]) : m.reason})
-                    </span>
-                  </div>
-                  <div className="text-stone-400">{formatMovementTime(m.createdAt, t)}</div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      <StockHistory ingredients={items} refreshKey={historyVersion} />
 
       {/* Add / Edit Modal */}
       {showAddModal && (
@@ -667,6 +648,21 @@ export function ConsumablesManager() {
                 </div>
               </div>
 
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
+                {t("Unit cost (USD per stock unit)")}
+                <input type="number" min="0" step="0.0001" required value={formData.costPerUnit}
+                  onChange={e => setFormData({ ...formData, costPerUnit: e.target.value })}
+                  className={`${INPUT} mt-1 w-full`} />
+              </label>
+              {editingItem && Number(formData.stockQuantity) !== Number(editingItem.stockQuantity) && (
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
+                  {t("Reason / Note")}
+                  <input required pattern=".*\S.*" maxLength={100} value={formData.adjustmentReason}
+                    onChange={e => setFormData({ ...formData, adjustmentReason: e.target.value })}
+                    className={`${INPUT} mt-1 w-full`} />
+                </label>
+              )}
+
               <div className="mt-6 flex justify-end gap-2">
                 <button
                   type="button"
@@ -693,7 +689,7 @@ export function ConsumablesManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
             <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
-              {t("Adjust Stock: {name}", { name: restockItem.name })}
+              {t(restockMode === "in" ? "Stock in" : restockMode === "out" ? "Stock out" : "Adjustment")} · {restockItem.name}
             </h3>
             <p className="mt-1 text-xs text-stone-500">
               {t("Current stock: {n} {unit}", {
@@ -705,12 +701,13 @@ export function ConsumablesManager() {
             <form onSubmit={handleRestock} className="mt-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-                  {t("Quantity Adjustment (+ to add, - to subtract)")}
+                  {t(restockMode === "adjust" ? "Quantity Adjustment (+ to add, - to subtract)" : "Quantity")}
                 </label>
                 <input
                   type="number"
                   step="any"
                   required
+                  min={restockMode === "adjust" ? undefined : "0.001"}
                   value={restockDelta}
                   onChange={(e) => setRestockDelta(e.target.value)}
                   placeholder={t("e.g. +100 or -10")}
@@ -724,6 +721,9 @@ export function ConsumablesManager() {
                 </label>
                 <input
                   type="text"
+                  required
+                  pattern=".*\S.*"
+                  maxLength={100}
                   value={restockReason}
                   onChange={(e) => setRestockReason(e.target.value)}
                   placeholder={t("e.g. Restock, Spoilage, Correction")}

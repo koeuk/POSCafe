@@ -75,7 +75,7 @@ describe('Recipe deduction with unit conversion — Iced Coffee (e2e)', () => {
     });
   const setStock = (name: string, stockQuantity: number) =>
     auth(http().patch(`/inventory/${ids[name]}`))
-      .send({ stockQuantity })
+      .send({ stockQuantity, adjustmentReason: 'correction' })
       .expect(200);
 
   beforeAll(async () => {

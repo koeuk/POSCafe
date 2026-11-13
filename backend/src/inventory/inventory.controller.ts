@@ -12,6 +12,7 @@ import {
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequiresPage } from '../common/decorators/requires-page.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
+import { StockHistoryDto } from './dto/stock-history.dto';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { RestockInventoryItemDto } from './dto/restock-inventory-item.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
@@ -42,14 +43,19 @@ export class InventoryController {
     return this.inventoryService.findMovements(limit ? Number(limit) : 50);
   }
 
+  @Get('history')
+  history(@Query() filter: StockHistoryDto) {
+    return this.inventoryService.history(filter);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.inventoryService.findOne(id);
   }
 
   @Post()
-  create(@Body() dto: CreateInventoryItemDto) {
-    return this.inventoryService.create(dto);
+  create(@Body() dto: CreateInventoryItemDto, @CurrentUser() user: AuthUser) {
+    return this.inventoryService.create(dto, user.id);
   }
 
   @Patch(':id')
