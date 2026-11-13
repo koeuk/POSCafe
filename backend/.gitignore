@@ -24,3 +24,6 @@ dist-dev
 /build
 
 /prisma/adoption-plan.sql
+
+# Local database recovery copies
+/.backups/
