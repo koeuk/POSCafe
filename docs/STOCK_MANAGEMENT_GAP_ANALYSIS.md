@@ -10,13 +10,18 @@
 
 ✅ means implemented and verified; 🟡 means partly complete; ⬜ means not started.
 
+**Implementation order:** Follow the feature checklist from **1 → 15**. Complete and verify the current feature before starting the next feature. Required shared dependencies may be implemented with the current feature; they do not mark later features complete. Mark a feature ✅ only when its requested behavior is implemented and verified.
+
+**Current focus: 1. Stock Dashboard.** The existing cards cover all supplies together. Finish distinguishing ingredients from packaging/operating supplies and verify ingredient-only totals, low stock, out-of-stock counts, and valuation before proceeding to **2. Ingredient Management**. Keep the archive/restore work already completed.
+
 - ✅ Added four white summary cards for all inventory items: total items, low stock (positive quantities only), out of stock, and current stock value.
 - ✅ Added unit-cost entry/editing in USD per stock unit and a warning when stocked items have zero/missing costs. These cards currently include ingredients and other supplies together.
 - ✅ New ingredients with opening stock create an atomic `opening_balance` movement; API-created items record the staff member.
 - ✅ Quantity corrections require a nonblank `adjustmentReason`; the actual reason is saved in history. Cost-only edits do not require a stock correction reason.
 - ✅ Adjust/restock requests require a nonblank reason; the UI supplies a required reason field.
 - 🟡 Dashboard: ingredient-only category metrics and normalized categories remain.
-- 🟡 Adjustments/history: document records, retained history on deletion, legacy opening reconciliation, filtering/pagination, and cost snapshots remain.
+- ✅ History retention on deletion, archive/restore, and history filtering/pagination are implemented (see increments below).
+- 🟡 Adjustments/history: document records, legacy opening reconciliation, and historical cost/unit/name snapshots remain.
 - ⬜ Dedicated receiving/stock-out documents and full ingredient reports.
 - ⬜ Completion-time consumption with reservations and snapshots.
 - ⬜ Suppliers, purchasing, physical counts, locations, batches, expiry, and structured waste.
