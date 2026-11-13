@@ -33,6 +33,21 @@ export class InventoryController {
     return this.inventoryService.findAll(category);
   }
 
+  @Get('archived')
+  archived() {
+    return this.inventoryService.archived();
+  }
+
+  @Post(':id/archive')
+  archive(@Param('id', ParseIntPipe) id: number) {
+    return this.inventoryService.setArchived(id, true);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id', ParseIntPipe) id: number) {
+    return this.inventoryService.setArchived(id, false);
+  }
+
   @Get('low-stock')
   findLowStock() {
     return this.inventoryService.findLowStock();

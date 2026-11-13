@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { lockProduct } from '../prisma/locks';
+import { lockInventoryItem, lockProduct } from '../prisma/locks';
 import { normalizeUnit, unitsCompatible } from '../inventory/units';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 
@@ -61,8 +61,10 @@ export class RecipesService {
         throw new BadRequestException(
           'Each ingredient can appear only once in a recipe',
         );
+      for (const id of [...ids].sort((a, b) => a - b))
+        await lockInventoryItem(tx, id);
       const ingredients = await tx.inventoryItem.findMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, archivedAt: null },
       });
       const items = dto.items.map((item) => {
         const ingredient = ingredients.find(

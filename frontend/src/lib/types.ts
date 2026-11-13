@@ -119,6 +119,7 @@ export interface StockMovement {
 
 // Raw materials, packaging supplies (cups, lids, straws) & ingredients
 export interface InventoryItem {
+  archivedAt?: string | null;
   id: number;
   name: string;
   category: string; // 'Raw Materials' | 'Packaging' | 'Operating Supplies' | custom

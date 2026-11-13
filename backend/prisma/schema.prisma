@@ -240,6 +240,7 @@ model PasswordReset {
 }
 
 model InventoryItem {
+  archivedAt    DateTime?           @db.DateTime(6)
   id            Int                 @id @default(autoincrement())
   name          String              @db.VarChar(255)
   category      String              @default("Packaging") @db.VarChar(100)
@@ -253,6 +254,7 @@ model InventoryItem {
   recipeItems   RecipeItem[]
 
   @@index([category, name], map: "IDX_inventory_items_category_name")
+  @@index([archivedAt], map: "IDX_inventory_items_archivedAt")
   @@map("inventory_items")
 }
 

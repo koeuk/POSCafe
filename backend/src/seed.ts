@@ -232,7 +232,13 @@ async function seed() {
     }
 
     // 2. Seed inventory items (cups, lids, straws, raw ingredients)
-    const existingInventory = await inventoryService.findAll();
+    const existingInventory = [
+      ...(await inventoryService.archived()),
+      ...(await inventoryService.findAll()),
+    ];
+    const archivedInventoryIds = new Set(
+      existingInventory.filter((i) => i.archivedAt).map((i) => i.id),
+    );
     const inventoryMap = new Map<string, number>();
     for (const item of existingInventory) {
       inventoryMap.set(item.name.toLowerCase(), item.id);
@@ -252,6 +258,7 @@ async function seed() {
         continue;
       }
       const existing = existingInventory.find((i) => i.id === existingId)!;
+      if (existing.archivedAt) continue; // Never recreate, restock, or restore archived demo supplies.
       if (existing.category !== item.category) {
         await inventoryService.update(existingId, { category: item.category });
       }
@@ -329,7 +336,11 @@ async function seed() {
         if (!icedLatte.variants.some((v) => v.size === size)) continue;
         const items = lines
           .map(([name, quantity]) => ({
-            inventoryItemId: inventoryMap.get(name.toLowerCase()),
+            inventoryItemId: archivedInventoryIds.has(
+              inventoryMap.get(name.toLowerCase()) ?? -1,
+            )
+              ? undefined
+              : inventoryMap.get(name.toLowerCase()),
             quantity,
           }))
           .filter(

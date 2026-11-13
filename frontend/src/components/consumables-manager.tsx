@@ -37,6 +37,9 @@ function groupLabel(name: string, t: Translate): string {
 
 export function ConsumablesManager() {
   const { t } = useT();
+  const [archivedItems, setArchivedItems] = useState<InventoryItem[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState<number | null>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,11 +79,13 @@ export function ConsumablesManager() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [itemList, recipeList] = await Promise.all([
+      const [itemList, recipeList, archivedList] = await Promise.all([
         api<InventoryItem[]>("/inventory"),
         api<Recipe[]>("/recipes"),
+        api<InventoryItem[]>("/inventory/archived"),
       ]);
       setItems(itemList);
+      setArchivedItems(archivedList);
       setRecipes(recipeList);
       setHistoryVersion(v => v + 1);
     } catch (err) {
@@ -97,7 +102,7 @@ export function ConsumablesManager() {
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((item) => {
+    return (showArchived ? archivedItems : items).filter((item) => {
       if (
         categoryFilter !== "all" &&
         (item.category || "").toLowerCase() !== categoryFilter.toLowerCase()
@@ -111,7 +116,7 @@ export function ConsumablesManager() {
       }
       return true;
     });
-  }, [items, query, categoryFilter]);
+  }, [items, archivedItems, showArchived, query, categoryFilter]);
 
   const stockSummary = useMemo(() => ({
     total: items.length,
@@ -251,6 +256,16 @@ export function ConsumablesManager() {
     }
   }
 
+  async function toggleArchive(item: InventoryItem) {
+    if (archiveBusy !== null) return;
+    setArchiveBusy(item.id); setError(null);
+    try {
+      await api(`/inventory/${item.id}/${item.archivedAt ? "restore" : "archive"}`, { method: "POST" });
+      await loadData();
+    } catch (e) { setError(e instanceof Error ? e.message : t("Failed to save item")); }
+    finally { setArchiveBusy(null); }
+  }
+
   async function handleDelete() {
     if (!pendingDelete) return;
     setDeleting(true);
@@ -317,6 +332,11 @@ export function ConsumablesManager() {
           {t("{count} stocked items have no unit cost; stock value is incomplete.", { count: stockSummary.uncosted })}
         </p>
       )}
+
+      <button type="button" onClick={() => setShowArchived(value => !value)} aria-pressed={showArchived}
+        className="rounded-lg border border-stone-200 px-3 py-2 text-sm text-pos-page-fg dark:border-stone-700">
+        {t(showArchived ? "Show active items" : "Show archived items")} ({showArchived ? items.length : archivedItems.length})
+      </button>
 
       {/* Category filter & Search bar */}
       <div className="flex flex-wrap items-center gap-3">
@@ -428,7 +448,11 @@ export function ConsumablesManager() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800">
+                <button type="button" disabled={archiveBusy !== null} onClick={() => void toggleArchive(item)}
+                  className="mt-3 rounded-lg border border-stone-200 px-3 py-2 text-sm font-medium text-stone-700 disabled:opacity-50 dark:border-stone-700 dark:text-stone-200">
+                  {t(item.archivedAt ? "Restore item" : "Archive item")}
+                </button>
+                <div className={`mt-4 flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800 ${item.archivedAt ? "hidden" : ""}`}>
                   <div className="flex flex-wrap gap-1">
                     {(["in", "out", "adjust"] as const).map(mode => <button key={mode} type="button"
                       onClick={() => { setError(null); setRestockMode(mode); setRestockItem(item); setRestockDelta(""); setRestockReason(""); }}
@@ -484,7 +508,7 @@ export function ConsumablesManager() {
         </div>
       )}
 
-      <StockHistory ingredients={items} refreshKey={historyVersion} />
+      <StockHistory ingredients={[...items, ...archivedItems]} refreshKey={historyVersion} />
 
       {/* Add / Edit Modal */}
       {showAddModal && (

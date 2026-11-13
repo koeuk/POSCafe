@@ -18,6 +18,13 @@ class Stock(m.Shop):
    if direction=='out':rows=[]
    return self.respond(r,dict(items=rows[(page-1)*25:page*25],total=len(rows),page=page,pageSize=25))
   if path in ['/recipes','/products/sold','/products/movements','/inventory/movements']:return self.respond(r,[])
+  if path=='/inventory/archived':return self.respond(r,self.archived)
+  if path=='/inventory/7/archive' and r.request.method=='POST':
+   item=next(i for i in self.items if i['id']==7);self.items.remove(item);item['archivedAt']='2026-11-13T10:00:00Z';self.archived.append(item)
+   return self.respond(r,item,status=201)
+  if path=='/inventory/7/restore' and r.request.method=='POST':
+   item=self.archived.pop();item['archivedAt']=None;self.items.append(item)
+   return self.respond(r,item,status=201)
   if path=='/inventory':return self.respond(r,self.items)
   if path=='/inventory/7' and r.request.method=='PATCH':
    data=r.request.post_data_json
@@ -28,6 +35,7 @@ class Stock(m.Shop):
   return super().route(r)
  def __init__(self,b,url):
   self.items=[dict(id=7,name='Milk',category='Raw Materials',unit='L',stockQuantity=10,minThreshold=12,costPerUnit=2.5),dict(id=8,name='Coffee',category='Raw Materials',unit='kg',stockQuantity=0,minThreshold=1,costPerUnit=10),dict(id=9,name='Cups',category='Packaging',unit='pcs',stockQuantity=5,minThreshold=2,costPerUnit=0)]
+  self.archived=[]
   self.saved=False
   super().__init__(b,url)
 parser=argparse.ArgumentParser()
@@ -38,7 +46,7 @@ with sync_playwright() as p:
  b=p.chromium.launch(headless=True,executable_path=args.browser_path)
  shop=Stock(b,args.base_url.rstrip('/'))
  try:
-  page=shop.page;page.goto(shop.base_url+'/stock');page.wait_for_load_state('networkidle');page.get_by_role('button',name='Supplies',exact=False).click()
+  page=shop.page;page.goto(shop.base_url+'/stock', timeout=180000);page.wait_for_load_state('networkidle');page.get_by_role('button',name='Supplies',exact=False).click()
   expect(page.get_by_text('Total stock items',exact=True)).to_be_visible()
   expect(page.get_by_text('$25.00',exact=True)).to_be_visible()
   expect(page.get_by_text('1 stocked items have no unit cost; stock value is incomplete.',exact=True)).to_be_visible()
@@ -53,5 +61,14 @@ with sync_playwright() as p:
   page.get_by_label('All movements',exact=True).select_option('out')
   expect(page.get_by_text('No stock movements match.',exact=True)).to_be_visible()
   expect(page.get_by_role('button',name='Previous page',exact=True)).to_be_disabled()
-  print('PASS valuation, missing-cost warning, cost-only edits, history pagination and direction filters')
+  page.get_by_role('button',name='Archive item',exact=True).first.click()
+  expect(page.get_by_role('heading',name='Milk',exact=True)).to_have_count(0)
+  page.get_by_role('button',name='Show archived items',exact=False).click()
+  expect(page.get_by_role('heading',name='Milk',exact=True)).to_be_visible()
+  expect(page.get_by_role('button',name='Stock in',exact=True)).to_have_count(0)
+  page.get_by_role('button',name='Restore item',exact=True).click()
+  page.get_by_role('button',name='Show active items',exact=False).click()
+  expect(page.get_by_role('heading',name='Milk',exact=True)).to_be_visible()
+  expect(page.get_by_text('$30.00',exact=True)).to_be_visible()
+  print('PASS archive/restore, valuation, missing-cost warning, cost-only edits, history pagination and direction filters')
  finally:shop.close();b.close()

@@ -23,7 +23,7 @@ dist-dev
 
 # Nest production output
 /build
-/build.previous/
+/build.previous*/
 
 /prisma/adoption-plan.sql
 

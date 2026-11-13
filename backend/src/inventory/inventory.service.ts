@@ -17,13 +17,14 @@ export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
   findAll(category?: string) {
     return this.prisma.inventoryItem.findMany({
-      where: category ? { category } : {},
+      where: { archivedAt: null, ...(category ? { category } : {}) },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
   }
   findLowStock() {
     return this.prisma.inventoryItem.findMany({
       where: {
+        archivedAt: null,
         stockQuantity: { lte: this.prisma.inventoryItem.fields.minThreshold },
       },
       orderBy: { stockQuantity: 'asc' },
@@ -59,6 +60,10 @@ export class InventoryService {
     return this.prisma.$transaction(async (tx) => {
       const item = await lockInventoryItem(tx, id);
       if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
+      if (item.archivedAt)
+        throw new BadRequestException(
+          'Restore this item before changing stock or details',
+        );
       if (
         dto.unit !== undefined &&
         dto.unit !== item.unit &&
@@ -139,6 +144,10 @@ export class InventoryService {
     return this.prisma.$transaction(async (tx) => {
       const item = await lockInventoryItem(tx, id);
       if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
+      if (item.archivedAt)
+        throw new BadRequestException(
+          'Restore this item before changing stock or details',
+        );
       if (!dto.reason?.trim())
         throw new BadRequestException('A stock adjustment reason is required');
       const before = Number(item.stockQuantity);
@@ -165,6 +174,31 @@ export class InventoryService {
       return saved;
     });
   }
+  archived() {
+    return this.prisma.inventoryItem.findMany({
+      where: { archivedAt: { not: null } },
+      orderBy: { name: 'asc' },
+    });
+  }
+  async setArchived(id: number, archived: boolean) {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await lockInventoryItem(tx, id);
+      if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
+      if (
+        archived &&
+        (await tx.recipeItem.count({ where: { inventoryItemId: id } }))
+      ) {
+        throw new ConflictException(
+          'Remove this item from recipes before archiving it',
+        );
+      }
+      return tx.inventoryItem.update({
+        where: { id },
+        data: { archivedAt: archived ? (item.archivedAt ?? new Date()) : null },
+      });
+    });
+  }
+
   async history(filter: StockHistoryDto) {
     if (filter.from && filter.to && filter.from > filter.to)
       throw new BadRequestException('From date must not be after to date');

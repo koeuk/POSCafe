@@ -1,5 +1,9 @@
 /** Khmer for the Inventory page, consumables and recipes. */
 export const stock = {
+  "Show active items": "បង្ហាញសម្ភារៈសកម្ម",
+  "Show archived items": "បង្ហាញសម្ភារៈដែលទុកក្នុងបណ្ណសារ",
+  "Archive item": "ទុកសម្ភារៈក្នុងបណ្ណសារ",
+  "Restore item": "ស្ដារសម្ភារៈឡើងវិញ",
   "Stock history": "ប្រវត្តិស្តុក",
   "Stock in": "ស្តុកចូល",
   "Stock out": "ស្តុកចេញ",

@@ -430,4 +430,76 @@ describe('Recipe stock flow (e2e)', () => {
       .send({ delta: 0, reason: 'No change' })
       .expect(400);
   });
+  it('archives and restores supplies without losing quantities or movement history', async () => {
+    const item = (
+      await auth(http().post('/inventory'))
+        .send({
+          name: 'Archive sample',
+          category: 'Raw Materials',
+          unit: 'g',
+          stockQuantity: 5,
+        })
+        .expect(201)
+    ).body;
+    await auth(http().post(`/inventory/${item.id}/archive`)).expect(201);
+    const active = (await auth(http().get('/inventory')).expect(200)).body;
+    expect(active.some((i: { id: number }) => i.id === item.id)).toBe(false);
+    const archived = (await auth(http().get('/inventory/archived')).expect(200))
+      .body;
+    expect(
+      Number(
+        archived.find((i: { id: number }) => i.id === item.id).stockQuantity,
+      ),
+    ).toBe(5);
+    const history = (
+      await auth(
+        http().get(`/inventory/history?inventoryItemId=${item.id}`),
+      ).expect(200)
+    ).body;
+    expect(history.total).toBe(1);
+    expect(history.items[0].reason).toBe('opening_balance');
+    await auth(http().patch(`/inventory/${item.id}`))
+      .send({ name: 'No edit' })
+      .expect(400);
+    await auth(http().post(`/inventory/${item.id}/restock`))
+      .send({ delta: 1, reason: 'No restock' })
+      .expect(400);
+    const cat = (await auth(http().get('/categories')).expect(200)).body[0];
+    const drink = (
+      await auth(http().post('/products'))
+        .send({ name: 'Archive drink', categoryId: cat.id, price: 1, stock: 2 })
+        .expect(201)
+    ).body;
+    await auth(http().post('/orders'))
+      .send({
+        items: [
+          {
+            productId: drink.id,
+            quantity: 1,
+            extras: [{ inventoryItemId: item.id, quantity: 1 }],
+          },
+        ],
+      })
+      .expect(400);
+    await auth(http().post('/recipes'))
+      .send({
+        productId: drink.id,
+        items: [{ inventoryItemId: item.id, quantity: 1 }],
+      })
+      .expect(404);
+    await auth(http().post(`/inventory/${item.id}/restore`)).expect(201);
+    expect(
+      Number(
+        (await auth(http().get(`/inventory/${item.id}`)).expect(200)).body
+          .stockQuantity,
+      ),
+    ).toBe(5);
+    await auth(http().post('/recipes'))
+      .send({
+        productId: drink.id,
+        items: [{ inventoryItemId: item.id, quantity: 1 }],
+      })
+      .expect(201);
+    await auth(http().post(`/inventory/${item.id}/archive`)).expect(409);
+  });
 });

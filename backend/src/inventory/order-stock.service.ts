@@ -176,7 +176,7 @@ export class OrderStockDeduction {
         (await this.manager.inventoryItem.findUnique({
           where: { id: extra.inventoryItemId },
         }));
-      if (!item) {
+      if (!item || item.archivedAt) {
         throw new BadRequestException(
           `Add-on #${extra.inventoryItemId} for "${label}" is not a supply`,
         );
@@ -210,7 +210,7 @@ export class OrderStockDeduction {
     for (const id of ids) {
       const need = this.needs.get(id)!;
       const item = await lockInventoryItem(this.manager, id);
-      if (!item) {
+      if (!item || item.archivedAt) {
         throw new BadRequestException(
           `An ingredient used by ${[...need.products].join(', ')} no longer exists — update the recipe`,
         );
