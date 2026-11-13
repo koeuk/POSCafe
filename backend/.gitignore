@@ -1,5 +1,6 @@
 # Dependencies
 /node_modules
+/node_modules.previous/
 
 # Build output
 /dist
@@ -22,6 +23,7 @@ dist-dev
 
 # Nest production output
 /build
+/build.previous/
 
 /prisma/adoption-plan.sql
 
