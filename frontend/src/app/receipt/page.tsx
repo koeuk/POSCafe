@@ -29,6 +29,9 @@ const METHOD_LABELS: Record<string, TranslationKey> = {
 function ReceiptScreen() {
   const params = useSearchParams();
   const orderId = params.get("orderId");
+  const checkoutOrigin = params.get("from");
+  const fromPos = checkoutOrigin === "pos" || checkoutOrigin === "cashier-pos";
+  const posHref = checkoutOrigin === "cashier-pos" ? "/cashier/pos" : "/pos";
   const { appName, logoUrl, khrPerUsd } = useBranding();
   const { t } = useT();
   // Latest `t` for the fetch effect, so switching language doesn't refetch.
@@ -97,10 +100,10 @@ function ReceiptScreen() {
 
       <div className="receipt-chrome mx-auto mb-4 flex max-w-xs items-center justify-between">
         <Link
-          href="/pay"
+          href={fromPos ? posHref : "/pay"}
           className="text-sm text-stone-500 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
         >
-          ← {t("Back")}
+          ← {t(fromPos ? "Back to POS" : "Back")}
         </Link>
         {order && (
           <button
@@ -112,6 +115,12 @@ function ReceiptScreen() {
           </button>
         )}
       </div>
+
+      {fromPos && order?.paymentStatus === PaymentStatus.PAID && (
+        <p role="status" className="receipt-chrome mx-auto mb-4 max-w-xs rounded-xl bg-emerald-50 px-4 py-3 text-center font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
+          ✓ {t("Payment complete")}
+        </p>
+      )}
 
       {loading ? (
         <p className="receipt-chrome text-center text-sm text-stone-500 dark:text-stone-400">

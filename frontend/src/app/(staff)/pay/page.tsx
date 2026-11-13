@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Suspense,
   useCallback,
@@ -31,7 +31,11 @@ const METHOD_LABELS: Record<PaymentMethod, TranslationKey> = {
 
 function PayScreen() {
   const params = useSearchParams();
+  const router = useRouter();
   const orderIdParam = params.get("orderId");
+  const checkoutOrigin = params.get("from");
+  const fromPos = checkoutOrigin === "pos" || checkoutOrigin === "cashier-pos";
+  const posHref = checkoutOrigin === "cashier-pos" ? "/cashier/pos" : "/pos";
   const { khrPerUsd } = useBranding();
   const { t } = useT();
   // Latest `t` for the fetch effect, so switching language doesn't refetch.
@@ -78,6 +82,9 @@ function PayScreen() {
             // The API client returns `undefined` (not `null`) for an empty
             // body, so use a loose check to catch both "no payment" cases.
             setAlreadyPaid(existing);
+            if (existing && !existing.refundedAt && fromPos) {
+              router.replace(`/receipt?orderId=${ord.id}&from=${checkoutOrigin}`);
+            }
           }
         } else {
           const list = await api<Order[]>("/orders?unpaid=true");
@@ -95,7 +102,7 @@ function PayScreen() {
     return () => {
       cancelled = true;
     };
-  }, [orderIdParam]);
+  }, [orderIdParam, fromPos, checkoutOrigin, router]);
 
   const due = order ? Number(order.total) : 0;
   const tenderedNum = Number(tendered || "0");
@@ -121,8 +128,15 @@ function PayScreen() {
     });
   }, []);
 
+  function paymentComplete(payment: Payment) {
+    setPaid(payment);
+    if (fromPos) {
+      router.replace(`/receipt?orderId=${payment.orderId}&from=${checkoutOrigin}`);
+    }
+  }
+
   async function confirm() {
-    if (!order) return;
+    if (!order || !canConfirm) return;
     // `submitting` only disables the button on the next render, so a
     // double-tap on a laggy tablet enters here twice. The backend rejects the
     // second with "already been paid" — but that error would replace the
@@ -140,7 +154,7 @@ function PayScreen() {
           ...(method === PaymentMethod.CASH ? { tendered: tenderedNum } : {}),
         },
       });
-      setPaid(payment);
+      paymentComplete(payment);
     } catch (err) {
       // The payment may well have committed and only the response was lost
       // (WiFi drop, tablet sleep, proxy timeout). Showing "Payment failed"
@@ -152,7 +166,7 @@ function PayScreen() {
           `/payments/order/${order.id}`,
         );
         if (settled) {
-          setPaid(settled);
+          paymentComplete(settled);
           return;
         }
       } catch {
@@ -219,7 +233,7 @@ function PayScreen() {
     return (
       <Shell>
         <ErrorBox>{error}</ErrorBox>
-        <BackLink />
+        <BackLink href={fromPos ? posHref : undefined} label={fromPos ? "Back to POS" : undefined} />
       </Shell>
     );
   }
@@ -251,16 +265,16 @@ function PayScreen() {
         </div>
         <div className="mt-6 flex justify-center gap-3">
           <Link
-            href={`/receipt?orderId=${paid.orderId}`}
+            href={`/receipt?orderId=${paid.orderId}${fromPos ? `&from=${checkoutOrigin}` : ""}`}
             className="rounded-lg border border-stone-300 px-5 py-2.5 font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
           >
             🖨 {t("Print receipt")}
           </Link>
           <Link
-            href="/pay"
+            href={fromPos ? posHref : "/pay"}
             className="rounded-lg bg-stone-900 px-5 py-2.5 font-medium text-white transition hover:bg-stone-800"
           >
-            {t("Next payment")}
+            {t(fromPos ? "Back to POS" : "Next payment")}
           </Link>
         </div>
       </Shell>
@@ -272,7 +286,7 @@ function PayScreen() {
     return (
       <Shell>
         <ErrorBox>{t("This order has already been paid.")}</ErrorBox>
-        <BackLink />
+        <BackLink href={fromPos ? posHref : undefined} label={fromPos ? "Back to POS" : undefined} />
       </Shell>
     );
   }
@@ -313,7 +327,7 @@ function PayScreen() {
               </span>
             </span>
           </div>
-          <BackLink />
+          <BackLink href={fromPos ? posHref : undefined} label={fromPos ? "Back to POS" : undefined} />
         </div>
 
         {/* Payment method */}
@@ -323,6 +337,7 @@ function PayScreen() {
               <button
                 key={option}
                 type="button"
+                disabled={submitting}
                 onClick={() => setMethod(option)}
                 className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                   method === option
@@ -598,14 +613,14 @@ function ErrorBox({ children }: { children: React.ReactNode }) {
   );
 }
 
-function BackLink() {
+function BackLink({ href = "/pay", label = "All unpaid orders" }: { href?: string; label?: TranslationKey }) {
   const { t } = useT();
   return (
     <Link
-      href="/pay"
+      href={href}
       className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
     >
-      ← {t("All unpaid orders")}
+      ← {t(label)}
     </Link>
   );
 }

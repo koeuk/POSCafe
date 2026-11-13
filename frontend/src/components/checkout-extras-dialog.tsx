@@ -28,6 +28,7 @@ export function CheckoutExtrasDialog({
   lines,
   supplies,
   busy,
+  confirmLabel,
   onChange,
   onRemove,
   onCancel,
@@ -35,6 +36,7 @@ export function CheckoutExtrasDialog({
 }: {
   lines: ExtrasLine[];
   busy: boolean;
+  confirmLabel?: string;
   supplies: InventoryItem[];
   onChange: (key: string, inventoryItemId: number, amount: string) => void;
   onRemove: (key: string, inventoryItemId: number) => void;
@@ -115,7 +117,7 @@ export function CheckoutExtrasDialog({
             disabled={busy}
             className="rounded-lg bg-pos-button px-4 py-2 text-sm font-semibold text-pos-button-fg transition hover:brightness-110 disabled:opacity-50"
           >
-            {busy ? t("Placing order…") : t("Place order")}
+            {busy ? t("Placing order…") : (confirmLabel ?? t("Place order"))}
           </button>
         </div>
       </div>

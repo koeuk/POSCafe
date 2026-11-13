@@ -30,7 +30,7 @@ import { StatusTabs } from "@/components/status-tabs";
 
 // The admin-customizable brand accent (globals.css / Settings → Theme colors).
 const ACCENT = "var(--pos-button)";
-// Revenue chart bars — green, matching the Revenue KPI card.
+// Revenue chart bars — green, matching the Revenue KPI icon.
 // BAR is the default; BAR_CURRENT marks today/the current bucket.
 const BAR = "#22C55E";
 const BAR_CURRENT = "#15803D";
@@ -339,7 +339,6 @@ function Dashboard() {
           label={t("Revenue")}
           value={formatPrice(stats.revenue)}
           tone="#059669"
-          solid
           icon={
             <svg viewBox="0 0 24 24" className="h-5 w-5" {...sw}>
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -694,7 +693,6 @@ function StatCard({
   icon,
   loading,
   index,
-  solid = false,
 }: {
   label: string;
   value: string;
@@ -702,54 +700,28 @@ function StatCard({
   icon: ReactNode;
   loading: boolean;
   index: number;
-  /** Fill the card with a deep, saturated gradient of `tone` (white text). */
-  solid?: boolean;
 }) {
   return (
     <div
-      className={`ios-rise rounded-2xl p-5 transition-shadow duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] ${GLASS}`}
+      className="ios-rise rounded-2xl border border-stone-200/70 bg-white p-5 ring-1 ring-black/[0.03] transition-shadow duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-stone-900/70 dark:ring-white/[0.04]"
       style={{
         animationDelay: `${80 + index * 70}ms`,
-        // A background-*image*, not background-color: GLASS owns the colour and
-        // the blur, so the tint layers over the frosted surface instead of
-        // replacing it. The default wash is translucent so it reads correctly
-        // over the light and the dark shell; `solid` swaps it for an opaque
-        // deep gradient of the tone (with white text below).
-        backgroundImage: solid
-          ? `linear-gradient(135deg, ${tone}, color-mix(in srgb, ${tone} 45%, #052e16))`
-          : `linear-gradient(135deg, color-mix(in srgb, ${tone} 14%, transparent), ` +
-            `color-mix(in srgb, ${tone} 3%, transparent))`,
-        borderColor: `color-mix(in srgb, ${tone} 28%, transparent)`,
       }}
     >
       <span
         className="grid h-10 w-10 place-items-center rounded-xl"
-        // color-mix (instead of hex-alpha concat) so `tone` may also be a
-        // CSS variable like var(--pos-button). Kept stronger than the card
-        // wash behind it so the chip still reads as its own element.
-        style={
-          solid
-            ? { color: "#ffffff", background: "rgba(255,255,255,0.22)" }
-            : {
-                color: tone,
-                background: `color-mix(in srgb, ${tone} 22%, transparent)`,
-              }
-        }
+        // color-mix also supports the customizable brand accent variable.
+        style={{
+          color: tone,
+          background: `color-mix(in srgb, ${tone} 22%, transparent)`,
+        }}
       >
         {icon}
       </span>
-      <p
-        className={`mt-4 text-2xl font-bold tracking-tight ${
-          solid ? "text-white" : "text-stone-900 dark:text-stone-100"
-        }`}
-      >
+      <p className="mt-4 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
         {loading ? "…" : value}
       </p>
-      <p
-        className={`mt-0.5 text-sm ${
-          solid ? "text-white/75" : "text-stone-400 dark:text-stone-500"
-        }`}
-      >
+      <p className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
         {label}
       </p>
     </div>

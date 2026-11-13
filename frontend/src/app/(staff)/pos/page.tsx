@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Fraunces } from "next/font/google";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StaffShell } from "@/components/staff-shell";
 import { ProductDetailDrawer } from "@/components/product-detail-drawer";
@@ -10,7 +10,8 @@ import {
   CheckoutExtrasDialog,
   type ExtrasLine,
 } from "@/components/checkout-extras-dialog";
-import { rolePathBase } from "@/lib/permissions";
+import { resolveCashierPages, rolePathBase } from "@/lib/permissions";
+import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { useBranding } from "@/lib/branding-context";
 import { useT } from "@/lib/i18n";
@@ -47,6 +48,8 @@ interface CartLine {
   extras: Record<number, string>;
 }
 
+type CheckoutIntent = "pay" | "later";
+
 /** The recipe covering a cart line, or null when the product is counted. */
 function availabilityFor(line: CartLine) {
   return recipeAvailability(line.product, line.size?.size ?? null);
@@ -58,6 +61,13 @@ function cartKey(productId: number, sizeName: string | null | undefined) {
 
 function POSScreen() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAdmin } = useAuth();
+  const allowedPages = resolveCashierPages(user?.allowedPages);
+  const canTakePayment = isAdmin || allowedPages.includes("payments");
+  const canViewOrders = isAdmin || allowedPages.includes("orders");
+  const checkoutOrigin = rolePathBase(pathname) ? "cashier-pos" : "pos";
+  const paymentHref = (orderId: number) => `/pay?orderId=${orderId}&from=${checkoutOrigin}`;
   const { khrPerUsd } = useBranding();
   const { t } = useT();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -74,6 +84,7 @@ function POSScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [placing, setPlacing] = useState(false);
+  const placingRef = useRef(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   // Set when the post-checkout product refresh failed, so the stock numbers
@@ -151,6 +162,7 @@ function POSScreen() {
   );
 
   const addToCart = useCallback((product: Product, size: ProductVariant | null = null) => {
+    if (placingRef.current) return;
     setLastOrder(null);
     setCheckoutError(null);
     setCart((prev) => {
@@ -181,6 +193,7 @@ function POSScreen() {
 
   const changeQty = useCallback(
     (productId: number, delta: number, sizeName: string | null = null) => {
+      if (placingRef.current) return;
       setCart((prev) =>
         prev.flatMap((l) => {
           if (l.product.id !== productId || (l.size?.size ?? null) !== sizeName) {
@@ -210,6 +223,7 @@ function POSScreen() {
 
   const setNote = useCallback(
     (productId: number, sizeName: string | null, note: string) => {
+      if (placingRef.current) return;
       setCart((prev) =>
         prev.map((l) =>
           l.product.id === productId && (l.size?.size ?? null) === sizeName
@@ -247,6 +261,7 @@ function POSScreen() {
 
   // Checkout pauses on an add-ons dialog when any line offers extras.
   const [choosingExtras, setChoosingExtras] = useState(false);
+  const [checkoutIntent, setCheckoutIntent] = useState<CheckoutIntent>("pay");
   const extrasLines = useMemo<ExtrasLine[]>(
     () =>
       cart
@@ -264,22 +279,22 @@ function POSScreen() {
   // Nothing to ask when there are neither supplies to offer nor suggestions.
   const hasSuggestions = extrasLines.some((l) => l.options.length > 0);
 
-  function startCheckout() {
-    if (cart.length === 0 || placing) return;
+  function startCheckout(intent: CheckoutIntent) {
+    if (cart.length === 0 || placingRef.current) return;
+    setCheckoutIntent(intent);
     if (extrasLines.length > 0 && (supplies.length > 0 || hasSuggestions)) {
       setCheckoutError(null);
       setChoosingExtras(true);
       return;
     }
-    void handleCheckout();
+    void handleCheckout(intent);
   }
 
-  // Synchronous double-submit guard — see handleCheckout.
-  const placingRef = useRef(false);
+  const clearCart = useCallback(() => {
+    if (!placingRef.current) setCart([]);
+  }, []);
 
-  const clearCart = useCallback(() => setCart([]), []);
-
-  async function handleCheckout() {
+  async function handleCheckout(intent: CheckoutIntent) {
     if (cart.length === 0) return;
     // `placing` only disables the button on the NEXT render, so two taps
     // dispatched in the same frame both get past it. Order creation has no
@@ -315,6 +330,10 @@ function POSScreen() {
       setLastOrder(order);
       setCart([]);
       setChoosingExtras(false);
+      if (intent === "pay" && canTakePayment) {
+        router.push(paymentHref(order.id));
+        return;
+      }
       // Refresh products so stock numbers stay accurate. The order itself is
       // already placed, so a failure here isn't fatal — but it must not pass
       // silently either: the cashier would keep building orders against
@@ -476,18 +495,18 @@ function POSScreen() {
                 <div className="mt-1 flex items-center justify-between pl-7">
                   <span>{formatPrice(lastOrder.total)}</span>
                   <div className="flex gap-3">
-                    <Link
-                      href={`/pay?orderId=${lastOrder.id}`}
+                    {canTakePayment && <Link
+                      href={paymentHref(lastOrder.id)}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       {t("Pay")}
-                    </Link>
-                    <Link
+                    </Link>}
+                    {canViewOrders && <Link
                       href={`${rolePathBase(pathname)}/orders`}
                       className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
                     >
                       {t("View")}
-                    </Link>
+                    </Link>}
                   </div>
                 </div>
               </div>
@@ -610,7 +629,7 @@ function POSScreen() {
               </span>
             </div>
             <button
-              onClick={startCheckout}
+              onClick={() => startCheckout(canTakePayment ? "pay" : "later")}
               disabled={cart.length === 0 || placing}
               className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-pos-button py-3.5 font-semibold text-pos-button-fg shadow-lg shadow-amber-900/10 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none"
             >
@@ -618,13 +637,23 @@ function POSScreen() {
                 t("Placing order…")
               ) : (
                 <>
-                  {t("Checkout")}
+                  {canTakePayment ? t("Pay {amount}", { amount: formatPrice(total) }) : t("Place order")}
                   <span className="transition-transform group-hover:translate-x-0.5">
                     →
                   </span>
                 </>
               )}
             </button>
+            {canTakePayment && (
+              <button
+                type="button"
+                onClick={() => startCheckout("later")}
+                disabled={cart.length === 0 || placing}
+                className="mt-3 w-full rounded-xl py-2 text-sm font-medium text-stone-500 transition hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+              >
+                {t("Place Order / Pay Later")}
+              </button>
+            )}
           </div>
         </aside>
       </div>
@@ -640,10 +669,11 @@ function POSScreen() {
           lines={extrasLines}
           supplies={supplies}
           busy={placing}
+          confirmLabel={checkoutIntent === "pay" && canTakePayment ? t("Continue to payment") : t("Place order")}
           onChange={setExtra}
           onRemove={removeExtra}
           onCancel={() => setChoosingExtras(false)}
-          onConfirm={() => void handleCheckout()}
+          onConfirm={() => void handleCheckout(checkoutIntent)}
         />
       )}
     </div>
