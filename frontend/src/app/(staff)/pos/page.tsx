@@ -85,6 +85,7 @@ function POSScreen() {
 
   const [placing, setPlacing] = useState(false);
   const placingRef = useRef(false);
+  const checkoutVersionRef = useRef(0);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   // Set when the post-checkout product refresh failed, so the stock numbers
@@ -93,6 +94,7 @@ function POSScreen() {
 
   // Load the menu (categories + products) once.
   useEffect(() => {
+    checkoutVersionRef.current += 1;
     let cancelled = false;
 
     async function loadMenu() {
@@ -127,6 +129,7 @@ function POSScreen() {
     void loadMenu();
     return () => {
       cancelled = true;
+      checkoutVersionRef.current += 1;
     };
   }, []);
 
@@ -303,6 +306,7 @@ function POSScreen() {
     // orders. A ref flips synchronously, so the second tap returns here.
     if (placingRef.current) return;
     placingRef.current = true;
+    const checkoutVersion = checkoutVersionRef.current;
     setPlacing(true);
     setCheckoutError(null);
     setLastOrder(null);
@@ -327,6 +331,7 @@ function POSScreen() {
           }),
         },
       });
+      if (checkoutVersion !== checkoutVersionRef.current) return;
       setLastOrder(order);
       setCart([]);
       setChoosingExtras(false);
@@ -346,11 +351,14 @@ function POSScreen() {
         setStockStale(true);
       }
     } catch (err) {
+      if (checkoutVersion !== checkoutVersionRef.current) return;
       setCheckoutError(err instanceof Error ? err.message : t("Checkout failed"));
       setChoosingExtras(false);
     } finally {
-      placingRef.current = false;
-      setPlacing(false);
+      if (checkoutVersion === checkoutVersionRef.current) {
+        placingRef.current = false;
+        setPlacing(false);
+      }
     }
   }
 

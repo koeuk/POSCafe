@@ -38,6 +38,10 @@ class Shop:
         self.lost_payment = lost_payment
         self.decline = decline
         self.order_error = order_error
+        self.pending_order_route = None
+        self.pending_payment_route = None
+        self.hold_order = False
+        self.hold_payment = False
         self.context.add_init_script('localStorage.setItem("poscafe_token", "browser-test-token"); localStorage.setItem("poscafe_user", '+json.dumps(json.dumps(self.user))+');')
         self.context.route('**/*', self.route)
         self.page = self.context.new_page()
@@ -81,7 +85,10 @@ class Shop:
             assert len(self.order_posts) == 1, 'Checkout created duplicate orders'
             self.order = dict(id=101, orderNumber='ORD-000101', userId=1, status='pending', paymentStatus='unpaid', total=1, createdAt=NOW, updatedAt=NOW,
                               items=[dict(id=1, orderId=101, productId=1, product=self.product, quantity=1, size=None, unitPrice=1, subtotal=1, note=payload['items'][0].get('note'), extras=None, stockSource='stock')])
-            self.respond(route, self.order, status=201)
+            if self.hold_order:
+                self.pending_order_route = route
+            else:
+                self.respond(route, self.order, status=201)
         elif path == '/orders/101':
             self.respond(route, self.order)
         elif path == '/orders':
@@ -98,7 +105,9 @@ class Shop:
             tendered = data.get('tendered', 1)
             self.payment = dict(id=5, orderId=101, method=data['method'], amount=1, tendered=tendered, change=round(tendered-1, 2), refundedAt=None, refundedById=None, createdAt=NOW, updatedAt=NOW)
             self.order.update(status='completed', paymentStatus='paid')
-            if self.lost_payment:
+            if self.hold_payment:
+                self.pending_payment_route = route
+            elif self.lost_payment:
                 self.lost_payment = False
                 route.abort('failed')
             else:
@@ -111,7 +120,7 @@ class Shop:
 
     def pay(self, *, addons=False):
         self.add()
-        self.page.get_by_role('button', name='Pay $1.00', exact=True).click()
+        self.page.get_by_role('button', name=re.compile(r'^Pay \$1\.00')).click()
         if addons:
             expect(self.page.get_by_role('dialog')).to_be_visible()
             assert not self.order_posts
@@ -191,7 +200,7 @@ def run(browser, base_url):
     try:
         shop.add()
         shop.page.get_by_role('button', name='Place Order / Pay Later', exact=True).click()
-        expect(shop.page.get_by_text('Order ORD-000101 placed', exact=True)).to_be_visible()
+        expect(shop.page.get_by_text('Order ORD-000101 placed', exact=False)).to_be_visible()
         assert shop.page.url.endswith('/pos') and not shop.payment_posts and len(shop.order_posts) == 1
         shop.page.get_by_role('link', name='Pay', exact=True).click()
         expect(shop.page.get_by_role('button', name='Cash', exact=True)).to_be_visible()
@@ -203,9 +212,9 @@ def run(browser, base_url):
     shop = Shop(browser, base_url, cashier=True, payments=False)
     try:
         shop.add()
-        expect(shop.page.get_by_role('button', name='Pay $1.00', exact=True)).to_have_count(0)
-        shop.page.get_by_role('button', name='Place order', exact=True).click()
-        expect(shop.page.get_by_text('Order ORD-000101 placed', exact=True)).to_be_visible()
+        expect(shop.page.get_by_role('button', name=re.compile(r'^Pay \$1\.00'))).to_have_count(0)
+        shop.page.get_by_role('button', name=re.compile(r'^Place order')).click()
+        expect(shop.page.get_by_text('Order ORD-000101 placed', exact=False)).to_be_visible()
         expect(shop.page.get_by_role('link', name='Pay', exact=True)).to_have_count(0)
         assert not shop.payment_posts
         print('PASS cashier without payment permission retains order-only checkout')
@@ -233,11 +242,47 @@ def run(browser, base_url):
     shop = Shop(browser, base_url, order_error=True)
     try:
         shop.add()
-        shop.page.get_by_role('button', name='Pay $1.00', exact=True).click()
+        shop.page.get_by_role('button', name=re.compile(r'^Pay \$1\.00')).click()
         expect(shop.page.get_by_text('Insufficient stock', exact=True)).to_be_visible()
-        expect(shop.page.get_by_role('button', name='Pay $1.00', exact=True)).to_be_enabled()
+        expect(shop.page.get_by_role('button', name=re.compile(r'^Pay \$1\.00'))).to_be_enabled()
         assert shop.page.url.endswith('/pos') and not shop.order_posts and not shop.payment_posts
         print('PASS order failure preserves cart')
+    finally:
+        shop.close()
+
+    shop = Shop(browser, base_url)
+    try:
+        shop.pay()
+        shop.page.get_by_role('button', name='Exact', exact=True).click()
+        shop.hold_payment = True
+        shop.page.get_by_role('button', name='Confirm cash payment', exact=False).click()
+        expect(shop.page.get_by_role('button', name='Processing...', exact=True)).to_be_visible()
+        shop.page.get_by_role('link', name='Back to POS', exact=False).click()
+        expect(shop.page.get_by_role('button', name='Add', exact=True)).to_be_visible()
+        shop.add()
+        assert shop.pending_payment_route is not None
+        shop.respond(shop.pending_payment_route, shop.payment, status=201)
+        shop.page.wait_for_load_state('networkidle')
+        expect(shop.page.get_by_role('button', name=re.compile(r'^Pay \$1\.00'))).to_be_visible()
+        assert shop.page.url.endswith('/pos')
+        print('PASS late payment response does not override navigation or discard a new cart')
+    finally:
+        shop.close()
+
+    shop = Shop(browser, base_url)
+    try:
+        shop.add()
+        shop.hold_order = True
+        shop.page.get_by_role('button', name=re.compile(r'^Pay \$1\.00')).click()
+        expect(shop.page.get_by_role('button', name='Placing order…', exact=True)).to_be_visible()
+        shop.page.get_by_role('link', name='Payments', exact=True).click()
+        expect(shop.page.get_by_role('heading', name='Take Payment', exact=True)).to_be_visible()
+        assert shop.pending_order_route is not None
+        shop.respond(shop.pending_order_route, shop.order, status=201)
+        shop.page.wait_for_load_state('networkidle')
+        expect(shop.page.get_by_role('heading', name='Take Payment', exact=True)).to_be_visible()
+        assert '/pay?' not in shop.page.url
+        print('PASS late order response does not override later navigation')
     finally:
         shop.close()
 

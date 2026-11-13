@@ -55,6 +55,7 @@ function PayScreen() {
   const [alreadyPaid, setAlreadyPaid] = useState<Payment | null>(null);
   // Synchronous double-submit guard — see confirm().
   const submittingRef = useRef(false);
+  const paymentVersionRef = useRef(0);
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [tendered, setTendered] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -62,8 +63,11 @@ function PayScreen() {
 
   // Load either the selected order (+ its payment status) or the pending list.
   useEffect(() => {
+    paymentVersionRef.current += 1;
     let cancelled = false;
     async function run() {
+      submittingRef.current = false;
+      setSubmitting(false);
       setLoading(true);
       setError(null);
       setOrder(null);
@@ -101,6 +105,7 @@ function PayScreen() {
     void run();
     return () => {
       cancelled = true;
+      paymentVersionRef.current += 1;
     };
   }, [orderIdParam, fromPos, checkoutOrigin, router]);
 
@@ -128,7 +133,8 @@ function PayScreen() {
     });
   }, []);
 
-  function paymentComplete(payment: Payment) {
+  function paymentComplete(payment: Payment, version: number) {
+    if (version !== paymentVersionRef.current) return;
     setPaid(payment);
     if (fromPos) {
       router.replace(`/receipt?orderId=${payment.orderId}&from=${checkoutOrigin}`);
@@ -143,6 +149,7 @@ function PayScreen() {
     // success screen and take the change owed with it.
     if (submittingRef.current) return;
     submittingRef.current = true;
+    const paymentVersion = paymentVersionRef.current;
     setSubmitting(true);
     setError(null);
     try {
@@ -154,8 +161,9 @@ function PayScreen() {
           ...(method === PaymentMethod.CASH ? { tendered: tenderedNum } : {}),
         },
       });
-      paymentComplete(payment);
+      paymentComplete(payment, paymentVersion);
     } catch (err) {
+      if (paymentVersion !== paymentVersionRef.current) return;
       // The payment may well have committed and only the response was lost
       // (WiFi drop, tablet sleep, proxy timeout). Showing "Payment failed"
       // then would be a lie that leaves the cashier with the customer's cash
@@ -166,16 +174,20 @@ function PayScreen() {
           `/payments/order/${order.id}`,
         );
         if (settled) {
-          paymentComplete(settled);
+          paymentComplete(settled, paymentVersion);
           return;
         }
       } catch {
         // Still unreachable — fall through to the original error.
       }
-      setError(err instanceof Error ? err.message : t("Payment failed"));
+      if (paymentVersion === paymentVersionRef.current) {
+        setError(err instanceof Error ? err.message : t("Payment failed"));
+      }
     } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
+      if (paymentVersion === paymentVersionRef.current) {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
     }
   }
 
