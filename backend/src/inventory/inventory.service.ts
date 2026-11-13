@@ -59,6 +59,15 @@ export class InventoryService {
     return this.prisma.$transaction(async (tx) => {
       const item = await lockInventoryItem(tx, id);
       if (!item) throw new NotFoundException(`Inventory item #${id} not found`);
+      if (
+        dto.unit !== undefined &&
+        dto.unit !== item.unit &&
+        (await tx.inventoryMovement.count({ where: { inventoryItemId: id } }))
+      ) {
+        throw new BadRequestException(
+          'Stock unit cannot change after movements are recorded; create a new item for a different unit',
+        );
+      }
       const before = Number(item.stockQuantity);
       const { adjustmentReason, ...fields } = dto;
       if (

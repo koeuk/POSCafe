@@ -2,8 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useT, type TranslationKey } from "@/lib/i18n";
 import type { InventoryItem, InventoryMovement } from "@/lib/types";
+
+const REASONS: Record<string, TranslationKey> = {
+  opening_balance: "Opening balance",
+  restock: "restock",
+  correction: "correction",
+  order_deduction: "sold",
+  order_refund: "returned (cancel/refund)",
+};
 
 type History = {
   items: InventoryMovement[];
@@ -76,6 +84,7 @@ export function StockHistory({
           {t("All Items")}
           <select
             className={FIELD}
+            aria-label={t("All Items")}
             value={filter.inventoryItemId}
             onChange={(e) => change("inventoryItemId", e.target.value)}
           >
@@ -91,6 +100,7 @@ export function StockHistory({
           {t("All movements")}
           <select
             className={FIELD}
+            aria-label={t("All movements")}
             value={filter.direction}
             onChange={(e) => change("direction", e.target.value)}
           >
@@ -177,7 +187,7 @@ export function StockHistory({
                       {Number(m.stockAfter)} {m.inventoryItem?.unit}
                     </td>
                     <td className="px-3 py-3">
-                      {m.reason}
+                      {REASONS[m.reason] ? t(REASONS[m.reason]) : m.reason}
                       {m.orderId ? ` · #${m.orderId}` : ""}
                     </td>
                     <td className="px-3 py-3">

@@ -6,7 +6,7 @@
 
 **Deliverable:** Assessment and implementation backlog. This document does not implement missing features or change database data.
 
-## Implementation progress — first increment
+## Implementation progress
 
 ✅ means implemented and verified; 🟡 means partly complete; ⬜ means not started.
 
@@ -21,9 +21,21 @@
 - ⬜ Completion-time consumption with reservations and snapshots.
 - ⬜ Suppliers, purchasing, physical counts, locations, batches, expiry, and structured waste.
 
-**Verification:** 5 inventory unit tests and 90 backend integration tests passed. Frontend/backend type checks and changed-file lint passed. A browser check with mocked data verified valuation, the missing-cost warning, and cost-only edits preserving live stock.
+### Second increment
 
-**API change:** `PATCH /inventory/:id` needs `adjustmentReason` when quantity changes. `POST /inventory/:id/restock` needs a nonblank `reason`. Existing callers and tests must send these fields. No schema migration is needed for this increment. Legacy history is not backfilled or invented.
+- ✅ Added a paginated ingredient history screen and `GET /inventory/history`, filtered by ingredient, staff ID, date range, and stock direction. History shows signed quantity, resulting balance, reason, staff, and order reference.
+- ✅ History results and total count use one consistent database snapshot. Invalid page/date/direction filters are rejected, and stale browser responses are ignored.
+- ✅ Separate Stock In, Stock Out, and Adjustment buttons now open the appropriate signed-quantity action. Notes remain required and stock-out errors are shown inside the dialog.
+- ✅ Oversized stock-out and zero-delta requests are rejected without changing stock; quantities are no longer silently clamped.
+- ✅ Deletion of items with movement history is refused, including forced deletion, before recipes can be changed. History is retained. Archiving is still pending.
+- ✅ Stock units cannot be changed after movements exist, preventing history from being relabeled with a different unit.
+- 🟡 These are basic stock actions, not posted receipt/issue documents. Source documents, idempotency across network retries, typed waste categories, historical cost/unit/name snapshots, archiving, and legacy opening reconciliation remain unfinished.
+
+**Verification:** 5 inventory unit tests and 92 backend integration tests passed. Frontend/backend type checks and changed-file lint passed. A browser check with mocked data verified valuation, the missing-cost warning, cost-only edits preserving live stock, and history pagination/direction filtering.
+
+**History API:** `GET /inventory/history` accepts `page` (default 1), `pageSize` (default 25, maximum 100), `inventoryItemId`, `userId`, `direction` (`all`/`in`/`out`), and inclusive local-calendar `from`/`to` dates (`YYYY-MM-DD`). It returns `{ items, total, page, pageSize }`. Existing `/inventory/movements` array responses are preserved. Deleting an item with history returns 409; oversized/zero stock adjustments return 400.
+
+**API change:** `PATCH /inventory/:id` needs `adjustmentReason` when quantity changes. `POST /inventory/:id/restock` needs a nonblank `reason`. Existing callers and tests must send these fields. No schema migration is needed for these increments. Legacy history is not backfilled or invented.
 
 ## 1. Current position
 
@@ -47,12 +59,12 @@ The application already has the core of ingredient and recipe inventory. It is n
 | 1 | Stock Dashboard | High | **🟡 Partial** | Products tab shows sellable units, sold-out products, and made-to-order products. Supplies tab shows a low-stock count and ingredient quantities. | Ingredient-only categorization/metrics remain; the first increment now provides total, low, out-of-stock, and valuation cards for the combined supplies inventory. Finished-product servings are not an ingredient stock value. |
 | 2 | Ingredient Management | High | **✅ Implemented — basic** | Add, edit, delete, search, and group supplies/ingredients. Stores stock unit, quantity, minimum threshold, and editable unit cost. Deletion checks recipe usage; force deletion can remove recipe lines. | Basic requested CRUD and categorization are present. A normalized category master is still needed for the proposed schema. |
 | 3 | Stock In | High | **🟡 Partial** | Positive quantity adjustments add stock and create ingredient movement records. | A receiving document with received date, supplier/source, purchase quantity/unit, unit cost, receipt reference, and posted status. No supplier or purchase order linkage. |
-| 4 | Stock Out | High | **🟡 Partial** | Negative adjustments subtract stock and require a free-text reason. Sales also create ingredient deductions. | A dedicated manual issue/waste action with required reason and explicit usage/damage/waste classification. Insufficient-stock handling currently clamps to zero rather than necessarily rejecting the requested subtraction. |
+| 4 | Stock Out | High | **🟡 Partial** | Negative adjustments subtract stock and require a free-text reason. Sales also create ingredient deductions. | A dedicated manual issue/waste action with required reason and explicit usage/damage/waste classification. Oversized subtraction is now rejected. Structured source documents and usage/damage/waste types remain. |
 | 5 | Recipe Management | High | **✅ Implemented — basic** | Recipes by product and size, ingredient quantities, compatible units, optional add-ons, recipe editing, and calculated servings. Saving a recipe switches a product to recipe stock mode. | The core requirement is present. Recipe/version snapshots become necessary if consumption is moved from order placement to later completion. |
 | 6 | Auto Stock Deduction | High | **🟡 Partial — different trigger** | Atomic deduction at order creation; ingredient shortages roll back the order. Locks prevent overselling. Cancellation/refund reverses recorded deductions. | Deduction at completed sale rather than at unpaid order placement. Must separate reservation from consumption and prevent duplicate consumption on retries. |
 | 7 | Low Stock Alerts | High | **✅ Implemented — basic visual alerts** | Per-item thresholds, low-stock badges, a low-stock count, and `GET /inventory/low-stock`. Current comparison is quantity **at or below** the threshold. | No push/email/SMS or persistent notification lifecycle. Those are optional enhancements unless you require an alert outside the inventory screen. Out-of-stock items currently also count as low stock. |
 | 8 | Stock Adjustment | High | **🟡 Partial** | Quantity edits require a reason and journal the actual difference; the adjust/restock dialog requires a note. | Structured adjustment records and consistent before/after/actor presentation remain. |
-| 9 | Stock History | High | **🟡 Partial** | Ingredient movements store signed quantity, resulting stock, reason, user, order, and timestamps. Separate finished-product manual movements exist. UI shows recent entries. | A complete retained history: legacy opening ingredient quantities have not been reconciled, ingredient deletion cascades to its movement records, and the UI only requests the latest 30 entries. No complete filtered/paginated history or historical cost/unit snapshots. |
+| 9 | Stock History | High | **🟡 Partial** | Ingredient movements store signed quantity, resulting stock, reason, user, order, and timestamps. Separate finished-product manual movements exist. UI shows recent entries. | A complete retained history: legacy opening ingredient quantities have not been reconciled, movement-history deletion is now blocked and a filtered/paginated screen exists. Archiving and historical cost/unit/name snapshots still remain. |
 | 10 | Supplier Management | Medium | **⬜ Missing** | No supplier model, API, or management screen found. | Supplier records, contact information, active status, notes, and linked purchasing/receiving history. |
 | 11 | Purchase Orders | Medium | **⬜ Missing** | No purchase-order or receiving-document models, APIs, or screens found. Generic restocking is available. | Draft/submitted/partially received/received/cancelled orders, ingredient lines, ordered quantities, costs, and partial receipt handling. |
 | 12 | Stock Count | Medium | **⬜ Missing** | Staff can manually overwrite a quantity or apply a delta. | A physical count session, expected quantity snapshot, counted quantity, variance, review/posting, and linked adjustment movements. A quantity edit is not a stock-count workflow. |
@@ -116,7 +128,7 @@ Replace ambiguity in the generic adjust dialog with actions that clearly express
 | Stock Out | Ingredient, used/damaged/wasted quantity/unit, reason, occurrence date, staff member | Decrease on-hand stock once when posted. |
 | Adjustment | Ingredient, expected/current quantity, corrected quantity or difference, required reason, staff member | Apply the actual difference and record before/after values. |
 
-The current subtraction route clamps shortages to zero. The proposed dedicated actions should reject an excessive subtraction, or explicitly show and confirm the smaller applied quantity; they should not silently record the requested amount as fully used.
+✅ The subtraction route now rejects shortages and zero-delta requests. The proposed dedicated actions should reject an excessive subtraction, or explicitly show and confirm the smaller applied quantity; they should not silently record the requested amount as fully used.
 
 **Acceptance:** duplicate submissions do not double-post stock; invalid quantities and missing reasons are rejected; posting the document and movement is one database transaction.
 
@@ -172,7 +184,7 @@ Extend the ingredient ledger to record, where applicable:
 
 Archive ingredients that have movement history instead of cascading their history away. Correct posted records through linked reversal/correction entries rather than silently editing history.
 
-Add a paginated history screen with date, ingredient, movement type, staff, and source filters. The current latest-30 feed remains useful as a quick summary.
+Add a paginated history screen with date, ingredient, movement type, staff, and source filters. ✅ The supplies screen now uses paginated history rather than a latest-30-only feed.
 
 **Acceptance:** opening balance plus all posted changes reconciles to the current stock; deleting/archiving an ingredient cannot erase its movement history; every manual correction has a nonempty recorded reason.
 

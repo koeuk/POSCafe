@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StockHistory } from "@/components/stock-history";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PopSelect } from "@/components/pop-select";
@@ -64,6 +64,7 @@ export function ConsumablesManager() {
   const [restockItem, setRestockItem] = useState<InventoryItem | null>(null);
   const [restockDelta, setRestockDelta] = useState("");
   const [restockReason, setRestockReason] = useState("");
+  const restockingRef = useRef(false);
   const [restocking, setRestocking] = useState(false);
 
   // Delete confirm modal
@@ -229,6 +230,8 @@ export function ConsumablesManager() {
     const delta = restockMode === "out" ? -Math.abs(entered) : restockMode === "in" ? Math.abs(entered) : entered;
     if (!Number.isFinite(delta) || delta === 0 || (restockMode !== "adjust" && entered <= 0)) return;
 
+    if (restockingRef.current) return;
+    restockingRef.current = true;
     setRestocking(true);
     setError(null);
     try {
@@ -243,6 +246,7 @@ export function ConsumablesManager() {
     } catch (err) {
       setError(err instanceof Error ? err.message : t("Failed to restock item"));
     } finally {
+      restockingRef.current = false;
       setRestocking(false);
     }
   }
@@ -261,6 +265,7 @@ export function ConsumablesManager() {
       setPendingDelete(null);
       await loadData();
     } catch (err) {
+      setPendingDelete(null);
       setError(err instanceof Error ? err.message : t("Failed to delete item"));
     } finally {
       setDeleting(false);
@@ -426,7 +431,7 @@ export function ConsumablesManager() {
                 <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800">
                   <div className="flex flex-wrap gap-1">
                     {(["in", "out", "adjust"] as const).map(mode => <button key={mode} type="button"
-                      onClick={() => { setRestockMode(mode); setRestockItem(item); setRestockDelta(""); setRestockReason(""); }}
+                      onClick={() => { setError(null); setRestockMode(mode); setRestockItem(item); setRestockDelta(""); setRestockReason(""); }}
                       className="rounded-lg border border-stone-200 px-2 py-1.5 text-xs font-semibold text-stone-700 dark:border-stone-700 dark:text-stone-200">
                       {t(mode === "in" ? "Stock in" : mode === "out" ? "Stock out" : "Adjustment")}
                     </button>)}
@@ -699,6 +704,7 @@ export function ConsumablesManager() {
             </p>
 
             <form onSubmit={handleRestock} className="mt-4 space-y-4">
+              {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/15 dark:text-red-300">{error}</p>}
               <div>
                 <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
                   {t(restockMode === "adjust" ? "Quantity Adjustment (+ to add, - to subtract)" : "Quantity")}

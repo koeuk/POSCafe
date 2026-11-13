@@ -279,7 +279,7 @@ describe('Recipe stock flow (e2e)', () => {
           name: 'Cookie Bag',
           category: 'Packaging',
           unit: 'pcs',
-          stockQuantity: 5,
+          stockQuantity: 0,
         })
         .expect(201)
     ).body.id;
@@ -365,22 +365,69 @@ describe('Recipe stock flow (e2e)', () => {
     expect(recipes.map((r: { size: string }) => r.size)).toEqual(['S']);
   });
 
-  it('journals the applied change on a clamped restock and on edits', async () => {
+  it('rejects oversized stock out and journals valid quantity edits', async () => {
     const before = await inventory(beansId);
-    const res = await auth(http().post(`/inventory/${beansId}/restock`))
+    await auth(http().post(`/inventory/${beansId}/restock`))
       .send({ delta: -99999, reason: 'spillage' })
-      .expect(201);
-    expect(Number(res.body.stockQuantity)).toBe(0);
-    let movements = (await auth(http().get('/inventory/movements'))).body;
-    expect(Number(movements[0].delta)).toBe(-before);
-    expect(Number(movements[0].stockAfter)).toBe(0);
+      .expect(400);
+    expect(await inventory(beansId)).toBe(before);
+    let movements;
 
     await auth(http().patch(`/inventory/${beansId}`))
       .send({ stockQuantity: 50, adjustmentReason: 'correction' })
       .expect(200);
     movements = (await auth(http().get('/inventory/movements'))).body;
     expect(movements[0].reason).toBe('correction');
-    expect(Number(movements[0].delta)).toBe(50);
+    expect(Number(movements[0].delta)).toBe(50 - before);
     expect(movements[0].user?.name).toBe('Boss');
+  });
+  it('preserves ingredient history even when force deletion is requested', async () => {
+    await auth(http().patch(`/inventory/${beansId}`))
+      .send({ unit: 'different-unit' })
+      .expect(400);
+    await auth(http().delete(`/inventory/${beansId}?force=true`)).expect(409);
+    await auth(http().get(`/inventory/${beansId}`)).expect(200);
+  });
+
+  it('paginates and filters stock history and rejects invalid queries', async () => {
+    await auth(http().post(`/inventory/${beansId}/restock`))
+      .send({ delta: -1, reason: 'Damaged packaging' })
+      .expect(201);
+    const first = (
+      await auth(
+        http().get(
+          `/inventory/history?inventoryItemId=${beansId}&pageSize=1&page=1`,
+        ),
+      ).expect(200)
+    ).body;
+    const second = (
+      await auth(
+        http().get(
+          `/inventory/history?inventoryItemId=${beansId}&pageSize=1&page=2`,
+        ),
+      ).expect(200)
+    ).body;
+    expect(first.total).toBeGreaterThan(1);
+    expect(first.items).toHaveLength(1);
+    expect(first.items[0].id).not.toBe(second.items[0].id);
+    expect(first.items[0].user).not.toHaveProperty('password');
+    const out = (
+      await auth(
+        http().get(
+          `/inventory/history?inventoryItemId=${beansId}&direction=out`,
+        ),
+      ).expect(200)
+    ).body;
+    expect(out.items.every((m: { delta: string }) => Number(m.delta) < 0)).toBe(
+      true,
+    );
+    await auth(http().get('/inventory/history?page=0')).expect(400);
+    await auth(
+      http().get('/inventory/history?from=2026-12-01&to=2026-01-01'),
+    ).expect(400);
+    await auth(http().get('/inventory/history?from=2026-99-99')).expect(400);
+    await auth(http().post(`/inventory/${beansId}/restock`))
+      .send({ delta: 0, reason: 'No change' })
+      .expect(400);
   });
 });
