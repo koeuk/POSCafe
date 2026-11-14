@@ -18,9 +18,15 @@ describe('Inventory controls', () => {
     },
     inventoryMovement: { create: movement },
   };
-  const service = new InventoryService({
+  const findMany = jest.fn();
+  const prismaMock = {
     $transaction: (callback: (client: typeof tx) => unknown) => callback(tx),
-  } as unknown as PrismaService);
+    inventoryItem: {
+      findMany,
+      fields: { minThreshold: 'minThreshold' },
+    },
+  };
+  const service = new InventoryService(prismaMock as unknown as PrismaService);
   beforeEach(() => jest.clearAllMocks());
   it('journals opening stock with actor', async () => {
     await service.create(
@@ -72,5 +78,98 @@ describe('Inventory controls', () => {
       service.restock(7, 3, { delta: 5, reason: ' ' }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(update).not.toHaveBeenCalled();
+  });
+  it('calculates inventory summary and distinguishes categories', async () => {
+    findMany.mockResolvedValueOnce([
+      {
+        id: 1,
+        category: 'Raw Materials',
+        stockQuantity: 10,
+        minThreshold: 12,
+        costPerUnit: 2.5,
+      },
+      {
+        id: 2,
+        category: 'Raw Materials',
+        stockQuantity: 0,
+        minThreshold: 1,
+        costPerUnit: 10,
+      },
+      {
+        id: 3,
+        category: 'Packaging',
+        stockQuantity: 5,
+        minThreshold: 2,
+        costPerUnit: 0,
+      },
+    ]);
+
+    const res = await service.summary();
+    expect(res.total).toBe(3);
+    expect(res.lowStock).toBe(1);
+    expect(res.outOfStock).toBe(1);
+    expect(res.stockValue).toBe(25);
+    expect(res.uncostedCount).toBe(1);
+    expect(res.byCategory['Raw Materials']).toEqual({
+      total: 2,
+      lowStock: 1,
+      outOfStock: 1,
+      stockValue: 25,
+      uncostedCount: 0,
+    });
+    expect(res.byCategory['Packaging']).toEqual({
+      total: 1,
+      lowStock: 0,
+      outOfStock: 0,
+      stockValue: 0,
+      uncostedCount: 1,
+    });
+  });
+  it('scopes summary to raw ingredients when category is provided', async () => {
+    findMany.mockResolvedValueOnce([
+      {
+        id: 1,
+        category: 'Raw Materials',
+        stockQuantity: 10,
+        minThreshold: 12,
+        costPerUnit: 2.5,
+      },
+      {
+        id: 2,
+        category: 'Raw Materials',
+        stockQuantity: 0,
+        minThreshold: 1,
+        costPerUnit: 10,
+      },
+    ]);
+
+    const res = await service.summary('Raw Materials');
+    expect(findMany).toHaveBeenCalledWith({
+      where: { archivedAt: null, category: 'Raw Materials' },
+      select: {
+        id: true,
+        category: true,
+        stockQuantity: true,
+        minThreshold: true,
+        costPerUnit: true,
+      },
+    });
+    expect(res.total).toBe(2);
+    expect(res.lowStock).toBe(1);
+    expect(res.outOfStock).toBe(1);
+    expect(res.stockValue).toBe(25);
+    expect(res.uncostedCount).toBe(0);
+  });
+  it('finds low stock with optional positive-only filter and category', async () => {
+    findMany.mockResolvedValueOnce([]);
+    await service.findLowStock('Raw Materials', true);
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        archivedAt: null,
+        stockQuantity: { gt: 0, lte: 'minThreshold' },
+        category: 'Raw Materials',
+      },
+      orderBy: { stockQuantity: 'asc' },
+    });
   });
 });

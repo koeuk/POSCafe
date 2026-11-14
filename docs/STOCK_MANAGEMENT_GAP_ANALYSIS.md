@@ -12,14 +12,14 @@
 
 **Implementation order:** Follow the feature checklist from **1 → 15**. Complete and verify the current feature before starting the next feature. Required shared dependencies may be implemented with the current feature; they do not mark later features complete. Mark a feature ✅ only when its requested behavior is implemented and verified.
 
-**Current focus: 1. Stock Dashboard.** The existing cards cover all supplies together. Finish distinguishing ingredients from packaging/operating supplies and verify ingredient-only totals, low stock, out-of-stock counts, and valuation before proceeding to **2. Ingredient Management**. Keep the archive/restore work already completed.
+**Current focus: 2. Ingredient Management.** Stock Dashboard (Feature 1) is completed: distinguishing raw ingredients from packaging/operating supplies, scoped dashboard metrics, category breakdown cards, and backend summary API (`GET /inventory/summary`). Next is **2. Ingredient Management**: normalized category master (`inventory_categories`), and ingredient CRUD with category linkage.
 
 - ✅ Added four white summary cards for all inventory items: total items, low stock (positive quantities only), out of stock, and current stock value.
-- ✅ Added unit-cost entry/editing in USD per stock unit and a warning when stocked items have zero/missing costs. These cards currently include ingredients and other supplies together.
+- ✅ Added unit-cost entry/editing in USD per stock unit and a warning when stocked items have zero/missing costs. These cards distinguish ingredients from other supplies when filtered, and include a full category breakdown.
 - ✅ New ingredients with opening stock create an atomic `opening_balance` movement; API-created items record the staff member.
 - ✅ Quantity corrections require a nonblank `adjustmentReason`; the actual reason is saved in history. Cost-only edits do not require a stock correction reason.
 - ✅ Adjust/restock requests require a nonblank reason; the UI supplies a required reason field.
-- 🟡 Dashboard: ingredient-only category metrics and normalized categories remain.
+- ✅ Dashboard: distinguished ingredients from packaging/operating supplies with dynamic scoped metrics, category breakdown cards, and backend summary API.
 - ✅ History retention on deletion, archive/restore, and history filtering/pagination are implemented (see increments below).
 - 🟡 Adjustments/history: document records, legacy opening reconciliation, and historical cost/unit/name snapshots remain.
 - ⬜ Dedicated receiving/stock-out documents and full ingredient reports.
@@ -48,13 +48,20 @@
 - ✅ Demo seeding respects archived supplies instead of duplicating or automatically restoring them; demo recipes requiring them are skipped.
 - 🟡 Legacy opening reconciliation, immutable unit/name/cost snapshots, posted receiving/adjustment documents, and the other phases remain incomplete.
 
+### Fourth increment — ingredient stock dashboard & category distinction
+
+- ✅ Backend summary API: added `GET /inventory/summary` returning total stock items, positive low stock, out of stock, valuation, uncosted count, and category breakdown. Added `?category=...` and `?positiveOnly=true` filters to `GET /inventory/low-stock`.
+- ✅ Ingredient vs supply dashboard cards: four summary cards now dynamically scope to the selected category. Selecting "Raw Materials" displays ingredient-focused labels (`Total ingredients`, ingredient low stock, ingredient out-of-stock, and ingredient stock valuation) with ingredient-specific uncosted warnings.
+- ✅ Category breakdown: added interactive category breakdown cards under the main summary cards for Raw Materials (Ingredients), Packaging, and Operating Supplies, showing item count, valuation, and stock health, with one-click filtering.
+- ✅ Verified with 8 backend unit tests (including summary calculations, category scoping, and low-stock filters), backend typecheck & lint, and frontend typecheck & lint.
+
 **Archive API:** Stock permission is required for `GET /inventory/archived`, `POST /inventory/:id/archive`, and `POST /inventory/:id/restore`. Normal `GET /inventory` returns active items. Archived items remain readable by ID for inventory staff. Archive/restore do not change quantities or create stock movements. Items referenced by recipes must be removed from those recipes before archiving.
 
-**Verification:** Production backend build, type checks, changed-file lint, 5 unit tests, and 93 integration tests passed. The archive migration was applied locally and migration status is current. A mocked-data browser check passed archive/restore, active/archived switching, valuation retention, cost editing, and history pagination/direction filters.
+**Verification:** 8 unit tests passed in backend. Production backend and frontend type checks and changed-file lints passed.
 
 **History API:** `GET /inventory/history` accepts `page` (default 1), `pageSize` (default 25, maximum 100), `inventoryItemId`, `userId`, `direction` (`all`/`in`/`out`), and inclusive local-calendar `from`/`to` dates (`YYYY-MM-DD`). It returns `{ items, total, page, pageSize }`. Existing `/inventory/movements` array responses are preserved. Deleting an item with history returns 409; oversized/zero stock adjustments return 400.
 
-**API change:** `PATCH /inventory/:id` needs `adjustmentReason` when quantity changes. `POST /inventory/:id/restock` needs a nonblank `reason`. Existing callers and tests must send these fields. The first two increments need no schema migration; the third adds the nullable archive column/index. Legacy history is not backfilled or invented.
+**API change:** `GET /inventory/summary` provides structured inventory metrics with optional `?category=`. `GET /inventory/low-stock` accepts `?category=` and `?positiveOnly=`. `PATCH /inventory/:id` needs `adjustmentReason` when quantity changes. `POST /inventory/:id/restock` needs a nonblank `reason`.
 
 ## 1. Current position
 
@@ -62,8 +69,8 @@ The application already has the core of ingredient and recipe inventory. It is n
 
 | Status | Number of requested features |
 | --- | ---: |
-| Implemented at the requested basic level | 3 |
-| Partially implemented or behavior differs | 7 |
+| Implemented at the requested basic level | 4 |
+| Partially implemented or behavior differs | 6 |
 | Missing as a dedicated workflow | 5 |
 | **Total** | **15** |
 
@@ -75,7 +82,7 @@ The application already has the core of ingredient and recipe inventory. It is n
 
 | # | Feature | Priority | Status | What exists now | What is missing or needs changing |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Stock Dashboard | High | **🟡 Partial** | Products tab shows sellable units, sold-out products, and made-to-order products. Supplies tab shows a low-stock count and ingredient quantities. | Ingredient-only categorization/metrics remain; the first increment now provides total, low, out-of-stock, and valuation cards for the combined supplies inventory. Finished-product servings are not an ingredient stock value. |
+| 1 | Stock Dashboard | High | **✅ Implemented** | Summary cards distinguish ingredients from other supplies when filtered; category breakdown cards surface ingredient vs packaging metrics; `GET /inventory/summary` returns structured metrics. Products tab shows sellable units, sold-out products, and made-to-order products. | Complete and verified. |
 | 2 | Ingredient Management | High | **✅ Implemented — basic** | Add, edit, delete, search, and group supplies/ingredients. Stores stock unit, quantity, minimum threshold, and editable unit cost. Deletion checks recipe usage; force deletion can remove recipe lines. | Basic requested CRUD and categorization are present. A normalized category master is still needed for the proposed schema. |
 | 3 | Stock In | High | **🟡 Partial** | Positive quantity adjustments add stock and create ingredient movement records. | A receiving document with received date, supplier/source, purchase quantity/unit, unit cost, receipt reference, and posted status. No supplier or purchase order linkage. |
 | 4 | Stock Out | High | **🟡 Partial** | Negative adjustments subtract stock and require a free-text reason. Sales also create ingredient deductions. | A dedicated manual issue/waste action with required reason and explicit usage/damage/waste classification. Oversized subtraction is now rejected. Structured source documents and usage/damage/waste types remain. |

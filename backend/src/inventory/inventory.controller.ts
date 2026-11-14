@@ -48,9 +48,20 @@ export class InventoryController {
     return this.inventoryService.setArchived(id, false);
   }
 
+  @Get('summary')
+  summary(@Query('category') category?: string) {
+    return this.inventoryService.summary(category);
+  }
+
   @Get('low-stock')
-  findLowStock() {
-    return this.inventoryService.findLowStock();
+  findLowStock(
+    @Query('category') category?: string,
+    @Query('positiveOnly') positiveOnly?: string,
+  ) {
+    return this.inventoryService.findLowStock(
+      category,
+      positiveOnly === 'true',
+    );
   }
 
   @Get('movements')

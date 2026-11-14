@@ -21,14 +21,81 @@ export class InventoryService {
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
   }
-  findLowStock() {
+  findLowStock(category?: string, positiveOnly = false) {
     return this.prisma.inventoryItem.findMany({
       where: {
         archivedAt: null,
-        stockQuantity: { lte: this.prisma.inventoryItem.fields.minThreshold },
+        stockQuantity: {
+          ...(positiveOnly ? { gt: 0 } : {}),
+          lte: this.prisma.inventoryItem.fields.minThreshold,
+        },
+        ...(category ? { category } : {}),
       },
       orderBy: { stockQuantity: 'asc' },
     });
+  }
+  async summary(category?: string) {
+    const items = await this.prisma.inventoryItem.findMany({
+      where: { archivedAt: null, ...(category ? { category } : {}) },
+      select: {
+        id: true,
+        category: true,
+        stockQuantity: true,
+        minThreshold: true,
+        costPerUnit: true,
+      },
+    });
+
+    const computeMetrics = (list: typeof items) => {
+      let lowStock = 0;
+      let outOfStock = 0;
+      let stockValue = 0;
+      let uncostedCount = 0;
+
+      for (const item of list) {
+        const qty = Number(item.stockQuantity);
+        const min = Number(item.minThreshold);
+        const cost = Number(item.costPerUnit ?? 0);
+
+        if (qty <= 0) {
+          outOfStock += 1;
+        } else if (qty <= min) {
+          lowStock += 1;
+        }
+
+        if (qty > 0) {
+          stockValue += qty * cost;
+          if (cost === 0) {
+            uncostedCount += 1;
+          }
+        }
+      }
+
+      return {
+        total: list.length,
+        lowStock,
+        outOfStock,
+        stockValue: Math.round(stockValue * 100) / 100,
+        uncostedCount,
+      };
+    };
+
+    const overall = computeMetrics(items);
+    const byCategory: Record<string, ReturnType<typeof computeMetrics>> = {};
+
+    for (const item of items) {
+      const cat = item.category || 'Uncategorized';
+      if (!byCategory[cat]) {
+        byCategory[cat] = computeMetrics(
+          items.filter((i) => (i.category || 'Uncategorized') === cat),
+        );
+      }
+    }
+
+    return {
+      ...overall,
+      byCategory,
+    };
   }
   async findOne(id: number) {
     const item = await this.prisma.inventoryItem.findUnique({ where: { id } });

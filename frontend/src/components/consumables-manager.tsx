@@ -118,18 +118,6 @@ export function ConsumablesManager() {
     });
   }, [items, archivedItems, showArchived, query, categoryFilter]);
 
-  const stockSummary = useMemo(() => ({
-    total: items.length,
-    low: items.filter(i => Number(i.stockQuantity) > 0 && Number(i.stockQuantity) <= Number(i.minThreshold)).length,
-    out: items.filter(i => Number(i.stockQuantity) <= 0).length,
-    value: items.reduce((sum, i) => sum + Number(i.stockQuantity) * Number(i.costPerUnit ?? 0), 0),
-    uncosted: items.filter(i => Number(i.stockQuantity) > 0 && Number(i.costPerUnit ?? 0) === 0).length,
-  }), [items]);
-
-  const lowStockCount = useMemo(() => {
-    return items.filter((i) => Number(i.stockQuantity) <= Number(i.minThreshold)).length;
-  }, [items]);
-
   // Group names for the filter tabs and the picker: the three standard
   // groups, plus any custom name an existing item carries.
   const categoryNames = useMemo(() => {
@@ -143,6 +131,99 @@ export function ConsumablesManager() {
       }
     }
     return names;
+  }, [items]);
+
+  const categoryBreakdown = useMemo(() => {
+    const list = showArchived ? archivedItems : items;
+    const map = new Map<string, {
+      name: string;
+      total: number;
+      low: number;
+      out: number;
+      value: number;
+      uncosted: number;
+    }>();
+
+    for (const group of categoryNames) {
+      map.set(group.toLowerCase(), {
+        name: group,
+        total: 0,
+        low: 0,
+        out: 0,
+        value: 0,
+        uncosted: 0,
+      });
+    }
+
+    for (const item of list) {
+      const key = (item.category || DEFAULT_GROUP).trim().toLowerCase();
+      let stat = map.get(key);
+      if (!stat) {
+        stat = {
+          name: item.category || DEFAULT_GROUP,
+          total: 0,
+          low: 0,
+          out: 0,
+          value: 0,
+          uncosted: 0,
+        };
+        map.set(key, stat);
+      }
+      const qty = Number(item.stockQuantity);
+      const min = Number(item.minThreshold);
+      const cost = Number(item.costPerUnit ?? 0);
+
+      stat.total += 1;
+      if (qty <= 0) {
+        stat.out += 1;
+      } else if (qty <= min) {
+        stat.low += 1;
+      }
+      if (qty > 0) {
+        stat.value += qty * cost;
+        if (cost === 0) stat.uncosted += 1;
+      }
+    }
+    return map;
+  }, [items, archivedItems, showArchived, categoryNames]);
+
+  const activeSummary = useMemo(() => {
+    const isAll = categoryFilter === "all";
+    const selectedKey = categoryFilter.toLowerCase();
+    const isRawMaterials = selectedKey === "raw materials";
+    const list = (showArchived ? archivedItems : items).filter((i) =>
+      isAll ? true : (i.category || DEFAULT_GROUP).trim().toLowerCase() === selectedKey,
+    );
+
+    const total = list.length;
+    const low = list.filter((i) => Number(i.stockQuantity) > 0 && Number(i.stockQuantity) <= Number(i.minThreshold)).length;
+    const out = list.filter((i) => Number(i.stockQuantity) <= 0).length;
+    const value = list.reduce((sum, i) => sum + Number(i.stockQuantity) * Number(i.costPerUnit ?? 0), 0);
+    const uncosted = list.filter((i) => Number(i.stockQuantity) > 0 && Number(i.costPerUnit ?? 0) === 0).length;
+
+    let totalLabel = t("Total stock items");
+    if (!isAll) {
+      if (isRawMaterials) {
+        totalLabel = t("Total ingredients");
+      } else {
+        const found = categoryNames.find((c) => c.toLowerCase() === selectedKey) || categoryFilter;
+        totalLabel = t("Total items in {category}", { category: groupLabel(found, t) });
+      }
+    }
+
+    return {
+      total,
+      low,
+      out,
+      value,
+      uncosted,
+      totalLabel,
+      isRawMaterials,
+    };
+  }, [items, archivedItems, showArchived, categoryFilter, categoryNames, t]);
+
+  const lowStockCount = useMemo(() => {
+    return items.filter((i) => Number(i.stockQuantity) <= Number(i.minThreshold)).length;
   }, [items]);
 
   // Which drinks (and sizes) consume each item — the real link between a
@@ -316,10 +397,10 @@ export function ConsumablesManager() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-busy={loading}>
         {[
-          { label: t("Total stock items"), value: String(stockSummary.total) },
-          { label: t("Low stock"), value: String(stockSummary.low) },
-          { label: t("Out of stock"), value: String(stockSummary.out) },
-          { label: t("Stock value"), value: formatPrice(stockSummary.value) },
+          { label: activeSummary.totalLabel, value: String(activeSummary.total) },
+          { label: t("Low stock"), value: String(activeSummary.low) },
+          { label: t("Out of stock"), value: String(activeSummary.out) },
+          { label: t("Stock value"), value: formatPrice(activeSummary.value) },
         ].map(card => (
           <div key={card.label} className="rounded-2xl border border-stone-200/70 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
             <p className="text-sm text-stone-500 dark:text-stone-400">{card.label}</p>
@@ -327,11 +408,89 @@ export function ConsumablesManager() {
           </div>
         ))}
       </div>
-      {!loading && stockSummary.uncosted > 0 && (
+      {!loading && activeSummary.uncosted > 0 && (
         <p className="text-sm text-amber-700 dark:text-amber-300" role="status">
-          {t("{count} stocked items have no unit cost; stock value is incomplete.", { count: stockSummary.uncosted })}
+          {activeSummary.isRawMaterials
+            ? t("{count} stocked ingredients have no unit cost; stock value is incomplete.", { count: activeSummary.uncosted })
+            : t("{count} stocked items have no unit cost; stock value is incomplete.", { count: activeSummary.uncosted })}
         </p>
       )}
+
+      {/* Category breakdown: clearly distinguish ingredients (Raw Materials) from Packaging and Operating Supplies */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+            {t("Stock breakdown by category")}
+          </span>
+          {categoryFilter !== "all" && (
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("all")}
+              className="text-xs font-medium text-pos-button hover:underline"
+            >
+              {t("All Items")}
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          {SUPPLY_GROUPS.map((group) => {
+            const key = group.toLowerCase();
+            const stat = categoryBreakdown.get(key) ?? {
+              name: group,
+              total: 0,
+              low: 0,
+              out: 0,
+              value: 0,
+              uncosted: 0,
+            };
+            const isIngredient = key === "raw materials";
+            const isSelected = categoryFilter.toLowerCase() === key;
+            return (
+              <button
+                key={group}
+                type="button"
+                onClick={() => setCategoryFilter(isSelected ? "all" : key)}
+                className={`flex flex-col justify-between rounded-xl border p-3.5 text-left transition ${
+                  isSelected
+                    ? "border-pos-button bg-pos-button/5 ring-1 ring-pos-button shadow-sm dark:border-pos-button dark:bg-pos-button/10"
+                    : "border-stone-200/70 bg-white hover:border-stone-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-700"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                    {groupLabel(group, t)} {isIngredient ? `· ${t("Ingredients")}` : ""}
+                  </span>
+                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                    {t("{count} items", { count: stat.total })}
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-baseline justify-between">
+                  <span className="text-lg font-bold text-stone-900 dark:text-stone-100">
+                    {formatPrice(stat.value)}
+                  </span>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {stat.low > 0 && (
+                      <span className="font-semibold text-amber-600 dark:text-amber-400">
+                        {stat.low} {t("low")}
+                      </span>
+                    )}
+                    {stat.out > 0 && (
+                      <span className="font-semibold text-red-600 dark:text-red-400">
+                        {stat.out} {t("out")}
+                      </span>
+                    )}
+                    {stat.low === 0 && stat.out === 0 && (
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {t("in stock")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <button type="button" onClick={() => setShowArchived(value => !value)} aria-pressed={showArchived}
         className="rounded-lg border border-stone-200 px-3 py-2 text-sm text-pos-page-fg dark:border-stone-700">

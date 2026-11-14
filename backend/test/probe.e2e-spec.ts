@@ -145,7 +145,7 @@ describe('probe', () => {
       ['get', '/products/sold'],
       ['get', '/settings/payment'],
     ] as const) {
-      const r = await (http() as any)
+      const r = await http()
         [m](p)
         .set('Authorization', `Bearer ${cashierToken}`);
       console.log(`cashier ${m.toUpperCase()} ${p} ->`, r.status);

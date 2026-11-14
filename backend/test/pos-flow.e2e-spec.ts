@@ -2,8 +2,7 @@ import { applyTestSchema } from './database';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment,
    @typescript-eslint/no-unsafe-member-access,
    @typescript-eslint/no-unsafe-argument,
-   @typescript-eslint/no-unsafe-call,
-   @typescript-eslint/no-unsafe-return --
+   @typescript-eslint/no-unsafe-call --
    supertest's res.body is `any`; asserting every response shape would bury
    the test in casts without making it safer. */
 // End-to-end coverage of the money paths: auth bootstrap, sized-product
